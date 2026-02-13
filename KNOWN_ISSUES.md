@@ -10,7 +10,7 @@
 
 3. **localStorage bloat** — Original save included full command log (unbounded growth). Revised to state-snapshot-only saves (~20-30KB). No undo/rewind. localStorage budget: 5-10MB available, well within limits. Resolved in ARCHITECTURE.md §5.12.
 
-4. **Privacy/student data** — Original design stored "studentName" in save and completion code. Revised to "playerId" (teacher-assigned code or nickname). No PII required or stored. Added privacy section to ARCHITECTURE.md §10.
+4. **Privacy/student data** — Original design stored "studentName" in save and completion code. Revised to "playerId" (teacher-assigned code or nickname). App does not require PII, but cannot prevent students from entering identifiable info as their Player ID — teachers should instruct use of assigned codes. Added privacy section to ARCHITECTURE.md §10.
 
 5. **Doc drift (lettuce)** — Test example referenced lettuce, which isn't in the San Joaquin Valley crop roster. Fixed to sorghum.
 
@@ -24,7 +24,7 @@
 
 ### Deferred to Later Discussion
 
-- **Accessibility** (colorblind modes, keyboard nav, screen reader) — Important but deferrable to Slice 3-4. Should be considered during UI component design.
+- **Advanced accessibility** (colorblind modes, full screen reader support) — Deferrable to Slice 3-4. Baseline accessibility (keyboard navigation, ARIA labels, focus indicators) is in Slice 1.
 - **Sound / music** — Not essential for classroom use. Defer.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.
 - **README.md** — Will be created when there is something to install/run.

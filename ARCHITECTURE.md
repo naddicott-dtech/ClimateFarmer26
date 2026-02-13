@@ -140,9 +140,11 @@ type Command =
 
 The engine validates each command before execution (Do you have enough cash? Is the cell empty? Is the tech available?). Invalid commands are rejected with a typed reason. The discriminated union ensures exhaustive handling — the TypeScript compiler flags any unhandled command type.
 
+**Note on scope:** The full discriminated union is defined here for architectural completeness. Slice 1 implements only: `PLANT_CROP`, `PLANT_BULK`, `HARVEST`, `HARVEST_BULK`, `WATER`, and `SET_SPEED`. Other command variants are added in the slice where their system is built.
+
 **Benefits:**
-- **Testability:** Replay a sequence of commands to reproduce any game state
-- **Deterministic replay:** Scenario seed + command log = exact reproduction of a student's game
+- **Testability:** Issue a sequence of commands in headless tests to reproduce any game state
+- **Determinism:** Same scenario seed + same commands = identical game state (enables automated balance testing)
 - **AI test agents:** Headless tests issue commands, not DOM clicks
 - **Type safety:** No `unknown` payloads; every command's data is checked at compile time
 
@@ -596,7 +598,7 @@ All grid cells, buttons, panels, and interactive elements have `data-testid` att
 | Pattern | From | How We Use It |
 |---------|------|--------------|
 | **Data-Driven Design** | Civ IV, RimWorld, Factorio | All crops, events, advisors, techs defined in JSON. Engine is generic. |
-| **Command Pattern** | StarCraft, Factorio | All player actions are command objects. Enables testing, deterministic replay, and type-safe validation. |
+| **Command Pattern** | StarCraft, Factorio | All player actions are command objects. Enables testing, deterministic runs, and type-safe validation. |
 | **Deterministic Simulation** | Factorio | Seeded RNG. Same scenario + same commands = identical result. |
 | **Storylet System** | King of Dragon Pass, Crusader Kings | Events, tech unlocks, advisors all use the same precondition-based selection system. |
 | **Layered Architecture** | All major sims | State → Systems → Presentation with strict boundaries. |
@@ -604,14 +606,14 @@ All grid cells, buttons, panels, and interactive elements have `data-testid` att
 
 ## 10. Privacy & Student Data
 
-### Principle: No PII required, no PII stored by default.
+### Principle: Minimize data collection. No PII required by the app.
 
-- **Player identity:** Students enter a "Player ID" — a teacher-assigned code (e.g., "Period3-14") or a self-chosen nickname. **Real names are never required.** The field label should say "Player ID" not "Name."
+- **Player identity:** Students enter a "Player ID" — a teacher-assigned code (e.g., "Period3-14") or a self-chosen nickname. **Real names are never required.** The field label should say "Player ID" not "Name." However, **students may still enter identifiable information** (e.g., their actual name as a nickname). The app cannot prevent this, so teachers should instruct students to use assigned codes.
 - **localStorage:** All save data stays on the student's device. Nothing is transmitted anywhere unless the student voluntarily submits a completion code.
-- **Completion code:** Contains the Player ID (not a real name), score metrics, and scenario ID. The student manually submits this via Google Form — it's their choice to click the link.
-- **Google Form:** The teacher controls the form. It may ask for real names separately (teacher's decision, outside our app). Our app never collects or stores real names.
+- **Completion code:** Contains the Player ID, score metrics, and scenario ID. The student manually submits this via Google Form — it's their action to click the link.
+- **Google Form:** The teacher controls the form and its data retention. The form may ask for real names separately (teacher's decision, outside our app). Our app never collects or stores real names.
 - **No analytics, no tracking, no cookies** beyond localStorage for save data.
-- **COPPA/FERPA note:** Since the app collects no PII and transmits nothing without explicit student action, it operates within safe harbor for school use. The completion code mechanism keeps data flow student-initiated.
+- **Regulatory note:** This app is *designed* to avoid collecting PII: it requires no accounts, stores data only on-device, and transmits nothing without explicit student action. However, **we do not assert legal compliance with COPPA, FERPA, or any other regulation.** Schools deploying this should review it under their own data governance policies. Neal should consult with his school's IT/privacy office before classroom use if required by district policy.
 
 ## 11. `data-testid` Naming Convention
 
@@ -695,11 +697,12 @@ The thinnest playable game. A student can plant crops, watch them grow, harvest,
 - Basic UI: grid, top bar, side panel, cell detail, notification bar
 - Save/resume (localStorage)
 - All data-testid attributes in place
+- Baseline accessibility: all controls keyboard-navigable (Tab/Enter/Space), ARIA labels on interactive elements, visible focus indicators. This is a classroom product — accessibility is baked in from the start, not bolted on later.
 - Full engine unit tests + Playwright browser tests
 
 **Does NOT include:** Events, advisors, tech tree, perennials, automation, glossary, solar lease, K/Zn nutrients, cover crops, completion code. These are not stubbed — they simply don't exist yet.
 
-**Acceptance gate:** A student can play through 5 in-game years, planting and harvesting annual crops, and their cash balance reflects realistic costs/revenues. Save/resume works. All tests pass. Runs at 30fps on Chromebook.
+**Acceptance gate:** A student can play through 5 in-game years, planting and harvesting annual crops, and their cash balance reflects realistic costs/revenues. Save/resume works. All controls are keyboard-accessible. All tests pass. Runs at 30fps on Chromebook.
 
 ### Slice 2: Events & Perennials
 The game becomes strategic. Things happen that require decisions. Long-term investments become possible.
@@ -735,5 +738,5 @@ Everything needed to hand this to students with confidence.
 - [ ] Farm expansion / neighbor buyout event (likely v2, not Classroom-Ready Build)
 - [ ] Agrivoltaics detail level in solar lease chain (Slice 4)
 - [ ] Market price model: static base + event modifiers is sufficient for Slice 1-2; full supply/demand is likely overkill
-- [ ] Accessibility: colorblind modes, keyboard navigation, screen reader support (important, plan for during Slice 3-4)
+- [ ] Advanced accessibility: colorblind modes, full screen reader support (Slice 3-4; baseline keyboard nav + ARIA labels are in Slice 1)
 - [ ] Sound / music (defer — nice to have, not essential for classroom use)
