@@ -49,7 +49,7 @@
 - **Simulation ticks are pure math.** No DOM access, no allocation-heavy operations in the hot path.
 - **Batch DOM updates.** Simulation runs N ticks, then UI reads final state once per animation frame.
 - **No per-tick object allocation.** Reuse structures. Avoid creating temporary objects in the simulation loop.
-- **Decouple sim rate from render rate.** At 4x speed, sim may run 48 ticks between frames; UI renders once per frame, not per tick.
+- **Decouple sim rate from render rate.** At 4x speed (48 ticks/sec), the engine runs ~2 ticks per frame at 30fps. UI renders once per frame, not per tick.
 
 ## 4. Architecture Layers
 
@@ -698,6 +698,9 @@ The thinnest playable game. A student can plant crops, watch them grow, harvest,
 - Save/resume (localStorage)
 - All data-testid attributes in place
 - Baseline accessibility: all controls keyboard-navigable (Tab/Enter/Space), ARIA labels on interactive elements, visible focus indicators. This is a classroom product — accessibility is baked in from the start, not bolted on later.
+- 3-step tooltip tutorial with Skip + Don't show again (see SPEC.md DD-3)
+- Auto-pause system: harvest ready, water stress, bankruptcy, year-end (see SPEC.md §3.6)
+- Overripe crop lifecycle: 30-day grace period with linear yield decay (see SPEC.md DD-4)
 - Full engine unit tests + Playwright browser tests
 
 **Does NOT include:** Events, advisors, tech tree, perennials, automation, glossary, solar lease, K/Zn nutrients, cover crops, completion code. These are not stubbed — they simply don't exist yet.
@@ -717,14 +720,18 @@ The fog-of-war tech tree, full nutrient model, and the rest of the crop roster.
 ### Slice 4: Classroom Polish
 Everything needed to hand this to students with confidence.
 
-**Adds:** Automation policies, glossary, solar lease event chain, completion code + Google Form, all 5-8 scenarios, balance testing suite, tutorial/onboarding, final UI polish.
+**Adds:** Automation policies, glossary, solar lease event chain, completion code + Google Form, all 5-8 scenarios, balance testing suite, final UI polish.
 
 ## 14. Open Questions
 
-### Blocking for Slice 1 (must decide before coding)
-- [ ] Exact starting conditions: how much cash? what season does year 1 start in? any pre-planted crops or empty grid?
-- [ ] Tutorial/onboarding: does the game explain itself, or does the teacher introduce it? any in-game hints for first-time players?
-- [ ] Performance test setup: how do we simulate Chromebook performance in CI? (Chrome DevTools throttling profile)
+### Resolved for Slice 1 (see SPEC.md — Locked Design Decisions)
+- [x] Starting conditions: $50,000 cash, Spring Year 1 Day 1, all 64 plots empty, 100 lbs/acre N, 2.0% OM, 4.0in moisture, paused on launch.
+- [x] Tutorial: 3-step tooltip tour with Skip + Don't show again. All elements have data-testid for AI testers.
+- [x] Watering model: Manual ~14-day dose with first-per-season auto-pause at 25% moisture.
+- [x] Bulk operations: Round down to complete rows when cash is insufficient; confirmation dialog.
+- [x] Overripe crops: Auto-pause at harvestable → 30-day grace period → linear yield decay → rot.
+- [x] Bankruptcy: Cash ≤ $0 = game over in Slice 1 (no credit/loans until Slice 2).
+- [ ] Performance test setup: how do we simulate Chromebook performance in CI? (Chrome DevTools throttling profile) — deferred to implementation
 
 ### Blocking for Slice 2 (must decide before that slice)
 - [ ] Loan terms and credit rating mechanics (needed when events can cause financial stress)

@@ -1,0 +1,176 @@
+/* Shared overlay styles for auto-pause, game-over, year-end, tutorial, confirm */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.panel {
+  background: white;
+  border-radius: 10px;
+  padding: 28px 32px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.panelWide {
+  max-width: 560px;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.message {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.primaryBtn {
+  padding: 10px 20px;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+}
+
+.primaryBtn:hover {
+  background: var(--color-primary-dark);
+}
+
+.secondaryBtn {
+  padding: 10px 20px;
+  font-size: var(--font-size-base);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-bg-dark);
+}
+
+.secondaryBtn:hover {
+  background: var(--color-bg-dark);
+}
+
+.dangerBtn {
+  padding: 10px 20px;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  background: var(--color-danger);
+  color: white;
+}
+
+.dangerBtn:hover {
+  background: var(--color-danger-light);
+}
+
+/* Year-end summary table */
+.summaryTable {
+  width: 100%;
+  margin-bottom: 16px;
+  border-collapse: collapse;
+}
+
+.summaryTable td {
+  padding: 6px 0;
+  font-size: var(--font-size-base);
+}
+
+.summaryTable td:last-child {
+  text-align: right;
+  font-weight: 600;
+}
+
+.summaryTable tr:last-child td {
+  border-top: 2px solid var(--color-bg-dark);
+  padding-top: 10px;
+  font-size: var(--font-size-lg);
+}
+
+.positive {
+  color: var(--color-success);
+}
+
+.negative {
+  color: var(--color-danger);
+}
+
+/* Game over report */
+.report {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--color-bg);
+  border-radius: var(--border-radius);
+}
+
+.suggestion {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+/* Tutorial tooltip */
+.tutorialOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip {
+  background: white;
+  border-radius: 10px;
+  padding: 20px 24px;
+  max-width: 360px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.tooltipStep {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.tooltipStepNumber {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.tooltipActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}

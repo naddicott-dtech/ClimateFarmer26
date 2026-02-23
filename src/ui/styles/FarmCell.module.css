@@ -1,0 +1,86 @@
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  transition: border-color 0.15s, background-color 0.15s;
+  padding: 0;
+  background: var(--cell-empty);
+}
+
+/* Growth stages */
+.seedling { background: var(--cell-seedling); }
+.vegetative { background: var(--cell-vegetative); }
+.flowering { background: var(--cell-flowering); }
+.mature { background: var(--cell-mature); }
+.harvestable {
+  background: var(--cell-harvestable);
+  border-color: #b08820;
+  animation: pulse-gold 1.5s infinite alternate;
+}
+.overripe {
+  background: var(--cell-overripe);
+  border-color: #a85820;
+}
+
+/* Selected state */
+.selected {
+  border-color: var(--cell-selected) !important;
+  box-shadow: 0 0 0 2px var(--cell-selected);
+}
+
+/* Hover */
+.cell:hover:not(.selected) {
+  border-color: rgba(58, 124, 156, 0.4);
+}
+
+/* Moisture warnings */
+.moistureWarning::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--moisture-low);
+}
+
+.moistureCritical::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--moisture-critical);
+}
+
+/* Crop icons */
+.cropIcon {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Growth progress bar (bottom edge) */
+.progressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--color-primary-light);
+  border-radius: 0 0 2px 2px;
+  transition: width 0.3s;
+}
+
+@keyframes pulse-gold {
+  from { box-shadow: 0 0 4px rgba(212, 160, 32, 0.4); }
+  to { box-shadow: 0 0 10px rgba(212, 160, 32, 0.7); }
+}

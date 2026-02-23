@@ -60,7 +60,8 @@ Review every contribution as untrusted until proven:
 3. Security/privacy: OWASP-style basics, safe storage/logging, input validation.
 4. Classroom UX: low click count, clear cause/effect explanations.
 5. Test quality: meaningful assertions, deterministic seeds where applicable.
-6. Maintainability: clean boundaries, no UI-engine coupling, no dead/stub code.
+6. Anti-cheating TDD check: no hard-coded outputs or test-specific branching; reject large nested `if` chains that only satisfy known test cases instead of implementing general rules.
+7. Maintainability: clean boundaries, no UI-engine coupling, no dead/stub code.
 
 ## Required Test Layers
 1. Engine unit tests (headless, deterministic).
@@ -99,3 +100,19 @@ Keep these current at all times:
 3. What is the smallest vertical slice that proves it end-to-end?
 4. What must be measured (performance, reliability, usability) before moving on?
 5. What assumptions are still unverified?
+
+## Fresh Context Bootstrap (2026-02-23)
+Run these first in any new session:
+1. `/bin/zsh -lc "TMPDIR=$PWD git status --short"` (see what changed before reviewing).
+2. `npm run test` (expect full engine suite to pass; currently 113 tests).
+3. `npm run test:browser` (expect Playwright suite to pass; currently 38 tests).
+4. `npm run build` (expect successful production build; currently ~22KB gzipped JS).
+
+Current known review priorities:
+1. Weather RNG continuity at Spring start: `createInitialState` warms RNG with `generateDailyWeather` only, but tick path also calls `updateExtremeEvents`. Re-check determinism intent and skipped-day event carryover in `src/engine/game.ts`.
+2. Extreme-event probability semantics: `heatwaveProbability`/`frostProbability` are documented as per-season but implemented as `p/90` daily approximation in `src/engine/weather.ts`. Confirm whether this approximation is acceptable for classroom balance.
+3. Weather streak test strength: the test checks `maxStreak >= 3`; tighten if needed to ensure no isolated one-day event regressions in `tests/engine/weather.test.ts`.
+
+Review discipline reminders:
+- Never accept pass-count claims without rerunning tests locally.
+- For TDD work, explicitly scan for hard-coded outputs, test-specific branching, and nested `if` ladders that only satisfy known test cases.

@@ -1,0 +1,101 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 24px;
+  padding: 24px;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  text-align: center;
+}
+
+.subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  text-align: center;
+  max-width: 400px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  align-self: flex-start;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  border: 2px solid var(--color-bg-dark);
+  border-radius: var(--border-radius);
+  background: white;
+  color: var(--color-text);
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.validation {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  min-height: 1.2em;
+}
+
+.charCount {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  align-self: flex-end;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.startBtn {
+  width: 100%;
+  padding: 12px;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+}
+
+.startBtn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.resumeBtn {
+  width: 100%;
+  padding: 10px;
+  font-size: var(--font-size-base);
+  background: var(--color-info);
+  color: white;
+}
+
+.resumeBtn:hover {
+  background: #2e6680;
+}

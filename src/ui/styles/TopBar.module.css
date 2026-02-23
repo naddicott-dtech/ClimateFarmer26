@@ -1,0 +1,93 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 16px;
+  background: var(--color-primary-dark);
+  color: white;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.dateSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.seasonIcon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.dateText {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.weatherSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+}
+
+.weatherIcon {
+  font-size: 1.1rem;
+}
+
+.speedControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.speedBtn {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-radius: 4px;
+}
+
+.speedBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.speedBtnActive {
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.cashSection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.cashUp {
+  animation: flash-green 0.6s ease-out;
+}
+
+.cashDown {
+  animation: flash-red 0.6s ease-out;
+}
+
+.saveBtn {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-radius: 4px;
+}
+
+.saveBtn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

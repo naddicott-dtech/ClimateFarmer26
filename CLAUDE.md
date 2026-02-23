@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClimateFarmer26 is a browser-based educational simulation game where students role-play as California farmers across multiple years, making season-by-season strategic decisions as climate impacts challenge their operations. A successful playthrough teaches diversification, water conservation, and forward-thinking agricultural practices. The student experience should be pleasant and focused on key decisions — many systems run on autopilot until the student opts into manual control.
 
-**Status: Pre-development.** Tech stack decided. Architecture draft (ARCHITECTURE.md) under review. No code until blueprint is approved by Neal.
+**Status: Slice 1 complete.** Core farming loop (plant → grow → harvest → economy) fully implemented and tested. 105 unit tests, 38 Playwright browser tests, all passing.
 
 ## Workflow Rules
 
@@ -41,6 +41,51 @@ Use well-known frameworks, starter kits, and deployment paths. Novel architectur
 
 ### Neal controls git
 Do not commit, push, or create branches/PRs unless Neal explicitly asks. This folder may not even have a git repo initialized.
+
+## Commands
+
+```bash
+npm run dev          # Dev server (http://localhost:5173)
+npm run build        # Type-check + production build (tsc -b && vite build)
+npm run preview      # Serve production build (http://localhost:4173)
+npm test             # Unit tests (vitest run) — 105 tests
+npm run test:watch   # Unit tests in watch mode
+npm run test:browser # Playwright browser tests — 38 tests (builds first)
+npm run test:all     # Unit + browser tests
+npx vitest run tests/engine/game.test.ts  # Run a single test file
+npx vitest run -t "plants a crop"         # Run tests matching a name pattern
+```
+
+## Architecture (Slice 1)
+
+**Stack:** Preact + @preact/signals + TypeScript strict + Vite + Vitest + Playwright + CSS Modules
+
+**Three-layer architecture:**
+
+1. **Engine** (`src/engine/`) — Pure TypeScript, zero UI deps. All game logic lives here. Testable headlessly.
+   - `types.ts` — All game state types and constants. `GameState` is the root type.
+   - `game.ts` — Core: `createInitialState()`, `processCommand()`, `simulateTick()`. Commands are discriminated unions (`Command` type).
+   - `calendar.ts` — Day↔calendar conversion. Game starts at `STARTING_DAY=59` (March 1).
+   - `weather.ts` — Deterministic daily weather from `ClimateScenario` + seeded RNG.
+   - `rng.ts` — Mulberry32 seeded PRNG with save/restore state.
+
+2. **Adapter** (`src/adapter/signals.ts`) — Bridges engine↔UI with Preact Signals.
+   - `_liveState` is mutable (engine mutates it). `publishState()` creates a `structuredClone` for the reactive `gameState` signal.
+   - Game loop: `requestAnimationFrame`-based, 12 ticks/sec × speed multiplier.
+   - All player actions go through `dispatch()` → `processCommand()`.
+
+3. **UI** (`src/ui/`) — Preact components + CSS Modules. Reads computed signals, calls adapter functions.
+   - Components: App, GameScreen, NewGameScreen, TopBar, FarmGrid, FarmCell, SidePanel, CropMenu, AutoPausePanel, NotificationBar, ConfirmDialog, Tutorial
+
+**Data files** (`src/data/`): `crops.ts` (3 crops), `scenario.ts` (30-year climate scenario)
+
+**Save system** (`src/save/storage.ts`): localStorage with corruption detection, auto-save on season change
+
+**Key patterns:**
+- Command pattern for all player actions (discriminated union `Command` type)
+- Seeded PRNG for deterministic simulation (Mulberry32)
+- `structuredClone` for signal reactivity (engine mutates, adapter clones)
+- Every interactive element has `data-testid` for Playwright
 
 ## Project Memory
 

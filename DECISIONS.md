@@ -105,3 +105,17 @@ Format: **Date — Decision — Rationale**
 2026-02-12 — data-testid naming convention established — Format: `{area}-{element}-{qualifier}` in kebab-case. Grid cells: `farm-cell-{row}-{col}`. All IDs stable across sessions.
 
 2026-02-12 — 4-slice development plan — Slice 1 (core loop, 3 annuals, no events), Slice 2 (events + perennials), Slice 3 (full depth), Slice 4 (classroom polish). Each slice fully working before next begins.
+
+## SPEC.md Design Decisions (Slice 1)
+
+2026-02-12 — Bulk ops round down to complete rows (DD-1) — When "Plant Field" or "Water Field" can't afford full coverage, offer the maximum number of complete rows via confirmation dialog. Keeps students in bulk-operation mode rather than falling into per-plot micromanagement.
+
+2026-02-12 — Year 30 is a simple end message; bankruptcy is game over (DD-2) — Year 30: "Congratulations! 30 years. Final cash: $X." Bankruptcy (cash ≤ $0): game over with final report, no credit or loans in Slice 1. Emergency loans deferred to Slice 2.
+
+2026-02-12 — 3-step tooltip tutorial with Skip + Don't show again (DD-3) — Lightweight onboarding for first-time players. All tutorial elements have data-testid for AI test agents to dismiss programmatically.
+
+2026-02-12 — Overripe crops: auto-pause + 30-day grace period + linear yield decay (DD-4) — Game auto-pauses when crop becomes harvestable. Student can harvest or continue. If continued, 30-day grace period with yield decaying from 100% to 0%. After 30 days, crop rots (total loss). Future slice: sell rotting product as animal feed.
+
+2026-02-12 — Manual "weekly dose" watering with first-per-season auto-pause (DD-5) — Each Water action provides ~14 days of moisture. Auto-pause fires once per season when moisture first drops below 25% capacity. Visual warnings at 30% (yellow) and 15% (red/wilting) without pausing. Low-tech "garden hose sprinkler" level. Irrigation upgrades and water rights trading are Slice 3+ tech tree.
+
+2026-02-12 — Student-facing terminology: "plots" and "field" (not "cells" and "grid") — UI uses farm language. Code and data-testid use engineering terms for ARCHITECTURE.md consistency.

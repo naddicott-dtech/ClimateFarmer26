@@ -1,0 +1,211 @@
+import { useEffect, useRef } from 'preact/hooks';
+import {
+  autoPauseQueue, handleDismissAutoPause,
+  harvestBulk, waterBulk, returnToTitle,
+  gameState,
+} from '../../adapter/signals.ts';
+import type { AutoPauseEvent } from '../../engine/types.ts';
+import styles from '../styles/Overlay.module.css';
+
+export function AutoPausePanel() {
+  const queue = autoPauseQueue.value;
+  if (queue.length === 0) return null;
+
+  const event = queue[0];
+  return <AutoPauseOverlay event={event} />;
+}
+
+function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Trap focus in overlay
+  useEffect(() => {
+    const first = panelRef.current?.querySelector('button') as HTMLElement;
+    first?.focus();
+  }, [event.reason]);
+
+  const state = gameState.value;
+
+  function handlePrimary() {
+    switch (event.reason) {
+      case 'harvest_ready':
+        harvestBulk('all');
+        handleDismissAutoPause();
+        break;
+      case 'water_stress':
+        waterBulk('all');
+        handleDismissAutoPause();
+        break;
+      case 'year_end':
+        handleDismissAutoPause();
+        break;
+      case 'bankruptcy':
+        returnToTitle();
+        break;
+      case 'year_30':
+        returnToTitle();
+        break;
+    }
+  }
+
+  function handleSecondary() {
+    handleDismissAutoPause();
+  }
+
+  const config = getEventConfig(event, state);
+
+  return (
+    <div class={styles.overlay} data-testid="autopause-panel" role="alertdialog" aria-label={config.title}>
+      <div class={`${styles.panel} ${config.wide ? styles.panelWide : ''}`} ref={panelRef}>
+        <h2 class={styles.title}>{config.title}</h2>
+        <div class={styles.message}>{event.message}</div>
+
+        {config.summaryData && <YearEndTable data={config.summaryData} />}
+
+        {config.report && (
+          <div data-testid="gameover-report" class={styles.report}>{config.report}</div>
+        )}
+        {config.suggestion && (
+          <div class={styles.suggestion}>{config.suggestion}</div>
+        )}
+
+        <div class={styles.buttonRow}>
+          {config.secondaryLabel && (
+            <button
+              data-testid="autopause-action-secondary"
+              class={styles.secondaryBtn}
+              onClick={handleSecondary}
+            >
+              {config.secondaryLabel}
+            </button>
+          )}
+          <button
+            data-testid="autopause-action-primary"
+            class={event.reason === 'bankruptcy' ? styles.dangerBtn : styles.primaryBtn}
+            onClick={handlePrimary}
+          >
+            {config.primaryLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EventConfig {
+  title: string;
+  primaryLabel: string;
+  secondaryLabel?: string;
+  wide?: boolean;
+  summaryData?: YearEndData;
+  report?: string;
+  suggestion?: string;
+}
+
+interface YearEndData {
+  revenue: number;
+  expenses: number;
+  net: number;
+  cash: number;
+}
+
+function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types.ts').GameState | null): EventConfig {
+  switch (event.reason) {
+    case 'harvest_ready':
+      return {
+        title: 'Harvest Time!',
+        primaryLabel: 'Harvest Field',
+        secondaryLabel: 'Continue',
+      };
+
+    case 'water_stress':
+      return {
+        title: 'Water Warning',
+        primaryLabel: 'Water Field',
+        secondaryLabel: 'Continue without watering',
+      };
+
+    case 'year_end': {
+      const data = event.data as Record<string, number> | undefined;
+      return {
+        title: `Year ${data?.year ?? '?'} Complete`,
+        primaryLabel: `Continue to Year ${(data?.year ?? 0) + 1}`,
+        wide: true,
+        summaryData: data ? {
+          revenue: data.revenue,
+          expenses: data.expenses,
+          net: data.netProfit,
+          cash: data.cash,
+        } : undefined,
+      };
+    }
+
+    case 'bankruptcy': {
+      const data = event.data as Record<string, number> | undefined;
+      const suggestion = getSuggestion(state);
+      return {
+        title: 'Game Over',
+        primaryLabel: 'Start New Game',
+        report: data
+          ? `Starting cash: $50,000. Total revenue: $${Math.floor(data.yearlyRevenue).toLocaleString()}. Total expenses: $${Math.floor(data.yearlyExpenses).toLocaleString()}.`
+          : undefined,
+        suggestion,
+      };
+    }
+
+    case 'year_30':
+      return {
+        title: 'Congratulations!',
+        primaryLabel: 'Start New Game',
+      };
+
+    default:
+      return { title: 'Paused', primaryLabel: 'Continue' };
+  }
+}
+
+function getSuggestion(state: import('../../engine/types.ts').GameState | null): string {
+  if (!state) return 'Try a different strategy next time.';
+
+  // Simple heuristic suggestions
+  const avgN = state.grid.flat().reduce((sum, c) => sum + c.soil.nitrogen, 0) / 64;
+  if (avgN < 30) {
+    return 'Tip: Your soil nitrogen was very low. Try rotating crops \u2014 plant winter wheat after tomatoes to give the soil a break.';
+  }
+
+  const avgMoisture = state.grid.flat().reduce((sum, c) => sum + c.soil.moisture, 0) / 64;
+  if (avgMoisture < 1) {
+    return 'Tip: Your crops were very thirsty. Try watering more often during hot summer months.';
+  }
+
+  return 'Tip: Consider diversifying your crops and watching your expenses carefully.';
+}
+
+function YearEndTable({ data }: { data: YearEndData }) {
+  const isProfit = data.net >= 0;
+
+  return (
+    <table class={styles.summaryTable}>
+      <tbody>
+        <tr>
+          <td>Revenue</td>
+          <td class={styles.positive}>${Math.floor(data.revenue).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td>Expenses</td>
+          <td class={styles.negative}>-${Math.floor(data.expenses).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td>Net {isProfit ? 'Profit' : 'Loss'}</td>
+          <td class={isProfit ? styles.positive : styles.negative}>
+            {isProfit ? '+' : '-'}${Math.floor(Math.abs(data.net)).toLocaleString()}
+          </td>
+        </tr>
+        <tr>
+          <td>Cash Balance</td>
+          <td>${Math.floor(data.cash).toLocaleString()}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}

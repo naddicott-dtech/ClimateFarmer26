@@ -1,0 +1,58 @@
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.cropOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-bg-dark);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.cropOption:hover:not(:disabled) {
+  background: var(--color-bg-dark);
+}
+
+.cropOption:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cropName {
+  font-weight: 600;
+}
+
+.cropCost {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.cancelBtn {
+  margin-top: 4px;
+  padding: 6px 12px;
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-bg-dark);
+}
+
+.cancelBtn:hover {
+  background: var(--color-bg-dark);
+}
+
+.disabledReason {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}

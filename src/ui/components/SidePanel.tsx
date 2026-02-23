@@ -1,0 +1,348 @@
+import {
+  selectedCell, selectedCellData, gameState,
+  openCropMenu, dispatch, harvestBulk, waterBulk,
+  plantBulk, cropMenuOpen, availableCrops,
+} from '../../adapter/signals.ts';
+import { getCropDefinition } from '../../data/crops.ts';
+import { getGrowthProgress, getYieldPercentage } from '../../engine/game.ts';
+import {
+  GRID_ROWS, GRID_COLS, NITROGEN_HIGH_THRESHOLD,
+  NITROGEN_MODERATE_THRESHOLD,
+  IRRIGATION_COST_PER_CELL,
+} from '../../engine/types.ts';
+import { CropMenu } from './CropMenu.tsx';
+import styles from '../styles/SidePanel.module.css';
+
+export function SidePanel() {
+  const state = gameState.value;
+  if (!state) return null;
+
+  const sel = selectedCell.value;
+  const cellData = selectedCellData.value;
+
+  return (
+    <aside class={styles.panel} role="complementary" aria-label="Farm details">
+      {cellData ? (
+        <CellDetail cell={cellData} row={sel!.row} col={sel!.col} />
+      ) : (
+        <FieldSummary />
+      )}
+      <BulkActions />
+    </aside>
+  );
+}
+
+function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').Cell; row: number; col: number }) {
+  const { crop, soil } = cell;
+  const cropDef = crop ? getCropDefinition(crop.cropId) : null;
+  const isMenuOpen = cropMenuOpen.value;
+  const cropsAvailable = availableCrops.value;
+
+  const canPlant = !crop && cropsAvailable.length > 0;
+  const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe');
+  const progress = crop ? getGrowthProgress(crop) : 0;
+  const yieldPct = crop ? getYieldPercentage(crop) : 0;
+
+  // Growth stage display text
+  let growthText = '';
+  if (crop) {
+    const pctDone = Math.round(progress * 100);
+    if (crop.growthStage === 'harvestable') {
+      growthText = 'Ready to harvest!';
+    } else if (crop.growthStage === 'overripe') {
+      growthText = `Overripe \u2014 yield declining. ${crop.overripeDaysRemaining} days until crop loss.`;
+    } else {
+      growthText = `${crop.growthStage.charAt(0).toUpperCase() + crop.growthStage.slice(1)} \u2014 ${pctDone}% grown`;
+    }
+  }
+
+  // Harvest tooltip for non-ready crops
+  let harvestTooltip = '';
+  if (crop && !canHarvest) {
+    harvestTooltip = `${cropDef?.name} \u2014 ${Math.round(progress * 100)}% grown.`;
+  }
+
+  function handlePlantClick() {
+    openCropMenu();
+  }
+
+  function handleHarvest() {
+    dispatch({ type: 'HARVEST', cellRow: row, cellCol: col });
+  }
+
+  return (
+    <div data-testid="sidebar-cell-detail">
+      <div class={styles.section}>
+        <div class={styles.sectionTitle}>Plot (Row {row + 1}, Col {col + 1})</div>
+        <div class={styles.cellDetail}>
+          <span data-testid="sidebar-crop-name" class={styles.cropName}>
+            {cropDef ? cropDef.name : 'Empty'}
+          </span>
+          {crop && (
+            <>
+              <span class={styles.cropStage}>{growthText}</span>
+              {crop.growthStage === 'overripe' && (
+                <span class={styles.overripeWarning}>
+                  Yield: {Math.round(yieldPct)}% of maximum. Harvest now or lose it in {crop.overripeDaysRemaining} days.
+                </span>
+              )}
+              <div data-testid="sidebar-crop-growth" class={styles.growthBar}>
+                <div class={styles.growthLabel}>Growth Progress</div>
+                <div class={styles.growthBarContainer}>
+                  <div
+                    class={styles.growthBarFill}
+                    style={{ width: `${Math.min(100, progress * 100)}%` }}
+                  />
+                </div>
+              </div>
+              {cropDef && (
+                <span class={styles.cropDescription}>{cropDef.shortDescription}</span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div class={styles.section}>
+        <div class={styles.sectionTitle}>Soil</div>
+        <SoilBar
+          label="Nitrogen"
+          testId="sidebar-soil-n"
+          value={soil.nitrogen}
+          max={200}
+          unit="lbs/acre"
+          color={
+            soil.nitrogen >= NITROGEN_HIGH_THRESHOLD ? 'var(--nitrogen-high)' :
+            soil.nitrogen >= NITROGEN_MODERATE_THRESHOLD ? 'var(--nitrogen-medium)' :
+            'var(--nitrogen-low)'
+          }
+        />
+        <SoilBar
+          label="Moisture"
+          testId="sidebar-soil-moisture"
+          value={soil.moisture}
+          max={soil.moistureCapacity}
+          unit="in"
+          color={
+            soil.moistureCapacity > 0 && soil.moisture / soil.moistureCapacity > 0.5 ? 'var(--moisture-high)' :
+            soil.moistureCapacity > 0 && soil.moisture / soil.moistureCapacity > 0.25 ? 'var(--moisture-medium)' :
+            'var(--moisture-critical)'
+          }
+        />
+        <SoilBar
+          label="Organic M."
+          testId="sidebar-soil-om"
+          value={soil.organicMatter}
+          max={5}
+          unit="%"
+          color="var(--color-primary)"
+        />
+      </div>
+
+      <div class={styles.section}>
+        <div class={styles.sectionTitle}>Actions</div>
+        <div class={styles.actions}>
+          {canPlant && !isMenuOpen && (
+            <button
+              data-testid="action-plant"
+              class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+              onClick={handlePlantClick}
+            >
+              Plant...
+            </button>
+          )}
+          {!canPlant && !crop && cropsAvailable.length === 0 && (
+            <div class={styles.tooltip}>No crops available this season.</div>
+          )}
+          {crop && !canPlant && (
+            <div class={styles.tooltip}>This plot already has a crop.</div>
+          )}
+
+          {isMenuOpen && <CropMenu row={row} col={col} />}
+
+          <button
+            data-testid="action-harvest"
+            class={`${styles.actionBtn} ${canHarvest ? styles.actionBtnHarvest : ''}`}
+            onClick={handleHarvest}
+            disabled={!canHarvest}
+            aria-label={canHarvest ? 'Harvest this plot' : harvestTooltip}
+            title={canHarvest ? undefined : harvestTooltip}
+          >
+            Harvest
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SoilBar({ label, testId, value, max, unit, color }: {
+  label: string;
+  testId: string;
+  value: number;
+  max: number;
+  unit: string;
+  color: string;
+}) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  const display = unit === '%' ? `${value.toFixed(1)}${unit}` : `${Math.round(value)} ${unit}`;
+
+  return (
+    <div class={styles.soilRow} data-testid={testId}>
+      <span class={styles.soilLabel}>{label}</span>
+      <div
+        class={styles.barContainer}
+        role="meter"
+        aria-label={`${label}: ${display}`}
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={max}
+      >
+        <div class={styles.barFill} style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span class={styles.soilValue}>{display}</span>
+    </div>
+  );
+}
+
+function FieldSummary() {
+  const state = gameState.value;
+  if (!state) return null;
+
+  let planted = 0;
+  let harvestableCount = 0;
+  let totalN = 0;
+  let totalMoisture = 0;
+
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const cell = state.grid[r][c];
+      if (cell.crop) {
+        planted++;
+        if (cell.crop.growthStage === 'harvestable' || cell.crop.growthStage === 'overripe') {
+          harvestableCount++;
+        }
+      }
+      totalN += cell.soil.nitrogen;
+      totalMoisture += cell.soil.moisture;
+    }
+  }
+
+  const avgN = totalN / (GRID_ROWS * GRID_COLS);
+  const avgMoisture = totalMoisture / (GRID_ROWS * GRID_COLS);
+  const empty = GRID_ROWS * GRID_COLS - planted;
+
+  return (
+    <div class={styles.section}>
+      <div class={styles.sectionTitle}>Field Summary</div>
+      <div class={styles.fieldSummary}>
+        <div class={styles.summaryRow}>
+          <span>Planted plots</span>
+          <span>{planted} / {GRID_ROWS * GRID_COLS}</span>
+        </div>
+        <div class={styles.summaryRow}>
+          <span>Empty plots</span>
+          <span>{empty}</span>
+        </div>
+        <div class={styles.summaryRow}>
+          <span>Ready to harvest</span>
+          <span>{harvestableCount}</span>
+        </div>
+        <div class={styles.summaryRow}>
+          <span>Avg. nitrogen</span>
+          <span>{Math.round(avgN)} lbs/acre</span>
+        </div>
+        <div class={styles.summaryRow}>
+          <span>Avg. moisture</span>
+          <span>{avgMoisture.toFixed(1)} in</span>
+        </div>
+        <div class={styles.summaryRow}>
+          <span>Revenue (this year)</span>
+          <span>${Math.floor(state.economy.yearlyRevenue).toLocaleString()}</span>
+        </div>
+        <div class={styles.summaryRow}>
+          <span>Expenses (this year)</span>
+          <span>${Math.floor(state.economy.yearlyExpenses).toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BulkActions() {
+  const state = gameState.value;
+  if (!state) return null;
+
+  const sel = selectedCell.value;
+  const cropsAvailable = availableCrops.value;
+  const hasCrops = state.grid.some(row => row.some(c => c.crop !== null));
+  const hasHarvestable = state.grid.some(row => row.some(c =>
+    c.crop && (c.crop.growthStage === 'harvestable' || c.crop.growthStage === 'overripe'),
+  ));
+
+  return (
+    <div class={styles.section}>
+      <div class={styles.sectionTitle}>Bulk Actions</div>
+      <div class={styles.actions}>
+        {cropsAvailable.length > 0 && cropsAvailable.map(cropId => {
+          const def = getCropDefinition(cropId);
+          return (
+            <button
+              key={cropId}
+              data-testid="action-plant-all"
+              class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+              onClick={() => plantBulk('all', cropId)}
+            >
+              Plant Field: {def.name} (${def.seedCostPerAcre}/plot)
+            </button>
+          );
+        })}
+
+        {sel && cropsAvailable.length > 0 && cropsAvailable.map(cropId => {
+          const def = getCropDefinition(cropId);
+          return (
+            <button
+              key={`row-${cropId}`}
+              data-testid={`action-plant-row-${sel.row}`}
+              class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+              onClick={() => plantBulk('row', cropId, sel.row)}
+            >
+              Plant Row {sel.row + 1}: {def.name}
+            </button>
+          );
+        })}
+
+        <button
+          data-testid="action-harvest-all"
+          class={`${styles.actionBtn} ${hasHarvestable ? styles.actionBtnHarvest : ''}`}
+          onClick={() => harvestBulk('all')}
+          disabled={!hasHarvestable}
+        >
+          Harvest Field
+        </button>
+
+        <button
+          data-testid="action-water-all"
+          class={`${styles.actionBtn} ${hasCrops ? styles.actionBtnWater : ''}`}
+          onClick={() => waterBulk('all')}
+          disabled={!hasCrops}
+        >
+          Water Field (${IRRIGATION_COST_PER_CELL}/plot)
+        </button>
+
+        {sel && (
+          <>
+            <button
+              data-testid={`action-water-row-${sel.row}`}
+              class={`${styles.actionBtn} ${styles.actionBtnWater}`}
+              onClick={() => waterBulk('row', sel.row)}
+              disabled={!hasCrops}
+            >
+              Water Row {sel.row + 1}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

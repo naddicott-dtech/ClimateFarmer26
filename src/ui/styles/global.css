@@ -1,0 +1,156 @@
+/* ============================================================================
+   Global Styles — ClimateFarmer26
+   Chromebook-friendly, 1366x768 primary target, 1920x1080 secondary.
+   ============================================================================ */
+
+:root {
+  /* Colors — earthy farm palette */
+  --color-bg: #f5f0e8;
+  --color-bg-dark: #e8e0d0;
+  --color-text: #2c2416;
+  --color-text-muted: #7a6e5e;
+  --color-primary: #4a7c3a;
+  --color-primary-dark: #3a6430;
+  --color-primary-light: #6aa85a;
+  --color-danger: #c44b3f;
+  --color-danger-light: #e06056;
+  --color-warning: #d4a030;
+  --color-warning-light: #f0c040;
+  --color-info: #3a7c9c;
+  --color-success: #4a9050;
+
+  /* Grid cell states */
+  --cell-empty: #c4b99a;
+  --cell-seedling: #a8d48a;
+  --cell-vegetative: #6ab84a;
+  --cell-flowering: #50a838;
+  --cell-mature: #3a8828;
+  --cell-harvestable: #d4a020;
+  --cell-overripe: #d07820;
+  --cell-selected: #3a7c9c;
+
+  /* Soil moisture */
+  --moisture-high: #3a8cb0;
+  --moisture-medium: #6aaccc;
+  --moisture-low: #d4a030;
+  --moisture-critical: #c44b3f;
+
+  /* Nitrogen */
+  --nitrogen-high: #4a9050;
+  --nitrogen-medium: #d4a030;
+  --nitrogen-low: #c44b3f;
+
+  /* Layout */
+  --topbar-height: 52px;
+  --sidebar-width: 280px;
+  --notify-height: 48px;
+  --cell-size: 64px;
+  --cell-gap: 3px;
+  --border-radius: 6px;
+
+  /* Typography */
+  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(58, 124, 156, 0.5);
+}
+
+/* Base reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+}
+
+/* Focus indicators — SPEC §7.2 */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Buttons base */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 6px 14px;
+  transition: background-color 0.15s, opacity 0.15s;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Cash flash animations — SPEC §5.1 */
+@keyframes flash-green {
+  0% { background-color: rgba(74, 144, 80, 0.3); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flash-red {
+  0% { background-color: rgba(196, 75, 63, 0.3); }
+  100% { background-color: transparent; }
+}
+
+/* ARIA live region for notifications */
+[aria-live] {
+  /* Ensure screen readers pick up changes */
+}
+
+/* Scrollbar styling for side panel */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: 3px;
+}
+
+/* Responsive adjustments for 1920x1080 */
+@media (min-width: 1600px) {
+  :root {
+    --cell-size: 80px;
+    --sidebar-width: 320px;
+    --topbar-height: 56px;
+  }
+}
