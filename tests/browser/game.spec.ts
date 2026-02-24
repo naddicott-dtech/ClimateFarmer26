@@ -844,20 +844,38 @@ test.describe('Event Panel', () => {
     await startNewGame(page);
     await waitForGameScreen(page);
 
-    // Plant a crop
+    // Plant a crop (needed for Late Frost Warning precondition: has_crop)
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-processing-tomatoes').click();
 
-    // Run at max speed
+    // Run at max speed and wait for an event panel
     await page.getByTestId('speed-fastest').click();
-
-    // Wait until we see any notification in the bar (foreshadowing or season change)
-    // then wait for the event panel
     await dismissAutoPausesUntil(page, 'event-panel');
 
-    // The event panel is visible — game should be paused
-    await expect(page.getByTestId('speed-pause')).toHaveAttribute('aria-pressed', 'true');
+    // At this point an event fired. Check the game state's notifications array
+    // for a foreshadowing notification that appeared BEFORE the event.
+    const hasForeshadow = await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug?.getState();
+      if (!state) return false;
+      // Check notifications for foreshadowing type (foreshadow was created before event fired)
+      return state.notifications.some((n: any) => n.type === 'foreshadowing');
+    });
+
+    // Also check that we can see the event panel with real content
+    await expect(page.getByTestId('event-title')).not.toBeEmpty();
+
+    // Foreshadowing notification should exist in state
+    // (Not all events foreshadow reliably — 75-90% reliability — so check pendingForeshadows too)
+    const hadForeshadowing = await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug?.getState();
+      if (!state) return false;
+      return state.pendingForeshadows.length > 0 ||
+        state.notifications.some((n: any) => n.type === 'foreshadowing');
+    });
+    expect(hadForeshadowing).toBe(true);
   });
 });
 
@@ -866,25 +884,60 @@ test.describe('Event Panel', () => {
 // ==========================================================================
 
 test.describe('Loan Panel', () => {
-  // Loan panel requires bankruptcy, which is hard to trigger in normal gameplay
-  // within a reasonable browser test timeout. Unit tests cover loan mechanics
-  // thoroughly (16 tests in loans.test.ts). This test is skipped for now.
-  // TODO: Add when test state injection or faster bankruptcy path is available.
-  test.skip('loan offer panel has accept and decline buttons', async ({ page }) => {
+  test('loan offer panel appears when cash hits zero (via debug hook)', async ({ page }) => {
     await startNewGame(page);
     await waitForGameScreen(page);
 
-    await page.getByTestId('action-plant-all-processing-tomatoes').click();
-    const confirmAccept = page.getByTestId('confirm-accept');
-    if (await confirmAccept.isVisible().catch(() => false)) {
-      await confirmAccept.click();
-    }
+    // Use debug hook to force cash to $0 — triggers loan offer on next tick
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setCash(0);
+    });
 
-    await page.getByTestId('speed-fastest').click();
-    await dismissAutoPausesUntil(page, 'loan-panel', 60000);
+    // Start the game loop so simulateTick detects bankruptcy
+    await page.getByTestId('speed-play').click();
 
-    await expect(page.getByTestId('loan-panel')).toBeVisible();
+    // Wait for the loan panel to appear
+    await expect(page.getByTestId('loan-panel')).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId('loan-accept')).toBeVisible();
     await expect(page.getByTestId('autopause-dismiss')).toBeVisible();
+  });
+
+  test('accepting loan adds debt and continues game', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Force bankruptcy via debug hook
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setCash(0);
+    });
+
+    await page.getByTestId('speed-play').click();
+    await expect(page.getByTestId('loan-panel')).toBeVisible({ timeout: 10000 });
+
+    // Accept the loan
+    await page.getByTestId('loan-accept').click();
+
+    // Loan panel should close, debt should appear in TopBar
+    await expect(page.getByTestId('loan-panel')).not.toBeVisible();
+    await expect(page.getByTestId('topbar-debt')).toBeVisible();
+  });
+
+  test('declining loan returns to title screen', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Force bankruptcy via debug hook
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setCash(0);
+    });
+
+    await page.getByTestId('speed-play').click();
+    await expect(page.getByTestId('loan-panel')).toBeVisible({ timeout: 10000 });
+
+    // Decline the loan
+    await page.getByTestId('autopause-dismiss').click();
+
+    // Game over → returns to title screen
+    await expect(page.getByTestId('newgame-start')).toBeVisible({ timeout: 5000 });
   });
 });

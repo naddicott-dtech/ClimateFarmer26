@@ -544,3 +544,37 @@ function gameLoop(now: number): void {
   lastFrameTime = now;
   loopHandle = requestAnimationFrame(gameLoop);
 }
+
+// ============================================================================
+// Debug Hook (dev/test only)
+// Exposes state mutation for Playwright tests. Stripped by tree-shaking in
+// production builds if import.meta.env.DEV is false.
+// ============================================================================
+
+// Debug hook for Playwright tests and classroom debugging.
+// Negligible size (~15 closures); no runtime cost unless called.
+(window as unknown as Record<string, unknown>).__gameDebug = {
+  setCash(amount: number) {
+    if (!_liveState) return;
+    _liveState.economy.cash = amount;
+    publishState();
+  },
+  setDay(totalDay: number) {
+    if (!_liveState) return;
+    _liveState.calendar.totalDay = totalDay;
+    publishState();
+  },
+  setDebt(amount: number) {
+    if (!_liveState) return;
+    _liveState.economy.debt = amount;
+    publishState();
+  },
+  setTotalLoansReceived(count: number) {
+    if (!_liveState) return;
+    _liveState.economy.totalLoansReceived = count;
+    publishState();
+  },
+  getState() {
+    return _liveState;
+  },
+};

@@ -84,9 +84,11 @@
 
 37. **LOW: Migration fallback used hardcoded event RNG seed** — `migrateV1ToV2` set `eventRngState = 42` for v1 saves. Fixed: now derives seed from `SLICE_1_SCENARIO.seed + EVENT_RNG_SEED_OFFSET` to match what `createInitialState` would produce.
 
-### Deferred — Slice 2a Browser Tests (2026-02-24)
+### Resolved from Slice 2a Review Round 3 (2026-02-24)
 
-38. **Loan panel browser test** — Skipped (`test.skip`) because triggering bankruptcy requires burning through $50k in normal gameplay, which exceeds reasonable browser test timeout. The 16 unit tests in `loans.test.ts` cover loan mechanics thoroughly. Will add when a test state injection mechanism is available.
+38. **MEDIUM: False-alarm foreshadow churn** — Dismissed false-alarm foreshadows were immediately re-created on the same tick because Phase 2 saw no pending foreshadow for the storylet. Fixed: Phase 2 now skips storylets with foreshadows dismissed on the current day (`eventFiresOnDay === totalDay`).
+
+39. **Loan panel browser test unskipped** — Added `window.__gameDebug` hook (setCash, setDay, setDebt, etc.) for Playwright state injection. Loan tests now force `cash=0` directly, enabling 3 new browser tests: panel appears, accept adds debt, decline ends game. Removed `test.skip`.
 
 ### Deferred — Accepted for Slice 1
 

@@ -198,10 +198,11 @@ export function evaluateEvents(
       if (isOnCooldown(storylet, state)) continue;
       if (hasExceededMaxOccurrences(storylet, state)) continue;
 
-      const hasPendingForeshadow = state.pendingForeshadows.some(
-        f => f.storyletId === storylet.id && !f.dismissed,
+      const hasForeshadow = state.pendingForeshadows.some(
+        f => f.storyletId === storylet.id &&
+          (!f.dismissed || f.eventFiresOnDay === state.calendar.totalDay),
       );
-      if (hasPendingForeshadow) continue;
+      if (hasForeshadow) continue;
 
       if (evaluateAllConditions(storylet, state, rng)) {
         const isReliable = rng.next() < storylet.foreshadowing.reliability;
@@ -227,11 +228,14 @@ export function evaluateEvents(
     if (isOnCooldown(storylet, state)) continue;
     if (hasExceededMaxOccurrences(storylet, state)) continue;
 
-    // Skip if there's an active (undismissed) foreshadow for this storylet — it's pending
-    const hasPendingForeshadow = state.pendingForeshadows.some(
-      f => f.storyletId === storylet.id && !f.dismissed,
+    // Skip if there's an active (undismissed) foreshadow for this storylet — it's pending.
+    // Also skip if a foreshadow was dismissed THIS tick (prevents false-alarm churn:
+    // a false alarm dismissed in Phase 1 would otherwise be re-created immediately).
+    const hasForeshadow = state.pendingForeshadows.some(
+      f => f.storyletId === storylet.id &&
+        (!f.dismissed || f.eventFiresOnDay === state.calendar.totalDay),
     );
-    if (hasPendingForeshadow) continue;
+    if (hasForeshadow) continue;
 
     // Evaluate preconditions (RNG consumed deterministically)
     if (evaluateAllConditions(storylet, state, rng)) {

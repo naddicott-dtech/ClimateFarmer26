@@ -741,6 +741,34 @@ describe('Foreshadowing', () => {
     expect(state.pendingForeshadows[0].dismissed).toBe(true);
   });
 
+  it('false-alarm foreshadow dismissed on maturity day is not re-created same tick', () => {
+    const rng = new SeededRNG(42);
+    const storylets = [makeSimpleStorylet({
+      foreshadowing: {
+        signal: 'Storm approaching',
+        daysBeforeEvent: 7,
+        reliability: 1.0,
+      },
+    })];
+
+    // False alarm that matures today — Phase 1 dismisses it
+    state.pendingForeshadows.push({
+      storyletId: 'test-event',
+      signal: 'Storm approaching',
+      appearsOnDay: state.calendar.totalDay - 7,
+      eventFiresOnDay: state.calendar.totalDay,
+      isFalseAlarm: true,
+      dismissed: false,
+    });
+
+    const result = evaluateEvents(state, storylets, rng);
+    // False alarm dismissed, event doesn't fire
+    expect(result.fireEvent).toBeNull();
+    expect(state.pendingForeshadows[0].dismissed).toBe(true);
+    // Crucially: no new foreshadow created for the same event this tick
+    expect(result.newForeshadows).toHaveLength(0);
+  });
+
   it('does not duplicate foreshadowing for already-foreshadowed event', () => {
     const rng = new SeededRNG(42);
     const storylets = [makeSimpleStorylet({
