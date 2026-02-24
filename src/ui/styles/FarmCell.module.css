@@ -63,6 +63,12 @@
   background: var(--moisture-critical);
 }
 
+/* Dormant perennial */
+.dormant {
+  background: var(--cell-empty);
+  opacity: 0.75;
+}
+
 /* Crop icons */
 .cropIcon {
   pointer-events: none;

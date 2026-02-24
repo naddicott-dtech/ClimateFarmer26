@@ -56,3 +56,10 @@
   color: var(--color-text-muted);
   font-style: italic;
 }
+
+.perennialWarning {
+  font-size: 0.75rem;
+  color: var(--color-warning, #b08820);
+  font-style: italic;
+  padding: 0 12px 2px;
+}

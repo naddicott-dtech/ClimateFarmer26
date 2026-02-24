@@ -7,7 +7,8 @@ import { getCropDefinition } from '../data/crops.ts';
 import { SLICE_1_SCENARIO } from '../data/scenario.ts';
 import { autoSave, loadAutoSave, hasSaveData, hasManualSaves, saveGame, loadGame, listManualSaves, deleteSave, isTutorialDismissed, setTutorialDismissed } from '../save/storage.ts';
 import type { SaveSlotInfo } from '../save/storage.ts';
-import { isSeasonChange, getSeasonName } from '../engine/calendar.ts';
+import { isSeasonChange, getSeasonName, totalDayToCalendar } from '../engine/calendar.ts';
+import { STORYLETS } from '../data/events.ts';
 
 // ============================================================================
 // Core State Signals
@@ -546,13 +547,9 @@ function gameLoop(now: number): void {
 }
 
 // ============================================================================
-// Debug Hook (dev/test only)
-// Exposes state mutation for Playwright tests. Stripped by tree-shaking in
-// production builds if import.meta.env.DEV is false.
+// Debug Hook — Playwright tests and classroom debugging.
+// Negligible size; no runtime cost unless called.
 // ============================================================================
-
-// Debug hook for Playwright tests and classroom debugging.
-// Negligible size (~15 closures); no runtime cost unless called.
 (window as unknown as Record<string, unknown>).__gameDebug = {
   setCash(amount: number) {
     if (!_liveState) return;
@@ -561,7 +558,7 @@ function gameLoop(now: number): void {
   },
   setDay(totalDay: number) {
     if (!_liveState) return;
-    _liveState.calendar.totalDay = totalDay;
+    _liveState.calendar = totalDayToCalendar(totalDay);
     publishState();
   },
   setDebt(amount: number) {
@@ -573,6 +570,26 @@ function gameLoop(now: number): void {
     if (!_liveState) return;
     _liveState.economy.totalLoansReceived = count;
     publishState();
+  },
+  /** Inject an event directly — bypasses RNG/conditions. For testing. */
+  triggerEvent(storyletId: string) {
+    if (!_liveState) return false;
+    const storylet = STORYLETS.find(s => s.id === storyletId);
+    if (!storylet) return false;
+    _liveState.activeEvent = {
+      storyletId: storylet.id,
+      title: storylet.title,
+      description: storylet.description,
+      choices: storylet.choices,
+      firedOnDay: _liveState.calendar.totalDay,
+    };
+    _liveState.speed = 0;
+    _liveState.autoPauseQueue.push({
+      reason: storylet.type === 'advisor' ? 'advisor' : 'event',
+      message: storylet.title,
+    });
+    publishState();
+    return true;
   },
   getState() {
     return _liveState;

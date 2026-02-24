@@ -17,7 +17,7 @@ import { applyEffects, expireActiveEffects, getYieldModifier, getPriceModifier, 
 import { STORYLETS } from '../data/events.ts';
 import { totalDayToCalendar, isYearEnd, isSeasonChange, isInPlantingWindow, getSeasonName, getMonthName } from './calendar.ts';
 import { generateDailyWeather, updateExtremeEvents } from './weather.ts';
-import { getCropDefinition } from '../data/crops.ts';
+import { getCropDefinition, getAllCropIds } from '../data/crops.ts';
 import { SeededRNG } from './rng.ts';
 
 // ============================================================================
@@ -136,8 +136,7 @@ export function processCommand(state: GameState, command: Command, _scenario: Cl
     case 'TAKE_LOAN':
       return processTakeLoan(state);
     case 'REMOVE_CROP':
-      // Slice 2b — stub for now, returns error
-      return { success: false, reason: 'Crop removal is not yet available.' };
+      return processRemoveCrop(state, command.cellRow, command.cellCol);
     default: {
       const _exhaustive: never = command;
       throw new Error(`Unhandled command type: ${(_exhaustive as Command).type}`);
@@ -295,6 +294,10 @@ function processHarvest(state: GameState, row: number, col: number): CommandResu
   const stage = cell.crop.growthStage;
   if (stage !== 'harvestable' && stage !== 'overripe') {
     return { success: false, reason: `Crop is not ready to harvest (${stage}).` };
+  }
+
+  if (cell.crop.isPerennial && cell.crop.harvestedThisSeason) {
+    return { success: false, reason: 'Already harvested this season. Trees produce one crop per year.' };
   }
 
   const revenue = harvestCell(state, cell);
@@ -468,6 +471,29 @@ function processTakeLoan(state: GameState): CommandResult {
   return { success: true };
 }
 
+function processRemoveCrop(state: GameState, row: number, col: number): CommandResult {
+  const cell = getCell(state, row, col);
+  if (!cell) return { success: false, reason: 'Invalid cell position.' };
+  if (!cell.crop) return { success: false, reason: 'This plot has no crop to remove.' };
+  if (!cell.crop.isPerennial) {
+    return { success: false, reason: 'Use harvest to clear annual crops.' };
+  }
+
+  const cropDef = getCropDefinition(cell.crop.cropId);
+  const cost = cropDef.removalCost ?? 0;
+
+  if (state.economy.cash < cost) {
+    return { success: false, reason: `Not enough cash. Removal cost: $${cost}, Available: $${Math.floor(state.economy.cash)}.` };
+  }
+
+  state.economy.cash -= cost;
+  state.economy.yearlyExpenses += cost;
+  addNotification(state, 'info', `Removed ${cropDef.name} from row ${row + 1}, col ${col + 1}. Cost: $${cost}.`);
+  cell.crop = null;
+
+  return { success: true, cost };
+}
+
 // ============================================================================
 // Simulation Tick
 // ============================================================================
@@ -525,7 +551,8 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
       if (cell.crop) {
         simulateCrop(cell, weather, state);
 
-        if (cell.crop && cell.crop.growthStage === 'harvestable') {
+        if (cell.crop && cell.crop.growthStage === 'harvestable' &&
+            !(cell.crop.isPerennial && cell.crop.harvestedThisSeason)) {
           anyHarvestReady = true;
         }
 
@@ -602,6 +629,26 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
 
   // Year end check
   if (isYearEnd(newTotalDay)) {
+    // Perennial year-end: age increment, establishment check, maintenance cost
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        const cell = state.grid[row][col];
+        if (cell.crop && cell.crop.isPerennial) {
+          cell.crop.perennialAge++;
+          const def = getCropDefinition(cell.crop.cropId);
+          if (!cell.crop.perennialEstablished && def.yearsToEstablish &&
+              cell.crop.perennialAge >= def.yearsToEstablish) {
+            cell.crop.perennialEstablished = true;
+          }
+          // Deduct annual maintenance
+          if (def.annualMaintenanceCost) {
+            state.economy.cash -= def.annualMaintenanceCost;
+            state.economy.yearlyExpenses += def.annualMaintenanceCost;
+          }
+        }
+      }
+    }
+
     state.yearEndSummaryPending = true;
     state.autoPauseQueue.push({
       reason: 'year_end',
@@ -713,11 +760,42 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState): void
   const crop = cell.crop!;
   const cropDef = getCropDefinition(crop.cropId);
 
+  // --- Perennial dormancy management ---
+  if (crop.isPerennial && cropDef.dormantSeasons) {
+    const shouldBeDormant = cropDef.dormantSeasons.includes(state.calendar.season);
+    if (shouldBeDormant && !crop.isDormant) {
+      // Enter dormancy
+      crop.isDormant = true;
+    } else if (!shouldBeDormant && crop.isDormant) {
+      // Spring awakening: exit dormancy, reset GDD for new growing season
+      crop.isDormant = false;
+      crop.gddAccumulated = 0;
+      crop.waterStressDays = 0;
+      crop.plantedDay = state.calendar.totalDay; // Fix #1: reset so water-stress denominator matches current season
+      crop.harvestedThisSeason = false;           // Fix #2: allow one harvest per growing season
+      crop.growthStage = 'seedling';
+      crop.overripeDaysRemaining = -1;
+    }
+    if (crop.isDormant) {
+      // No GDD accumulation, no growth during dormancy. Reduced water use via kc.
+      return;
+    }
+  }
+
   // Overripe countdown
   if (crop.growthStage === 'overripe') {
     crop.overripeDaysRemaining--;
     if (crop.overripeDaysRemaining <= 0) {
-      // Crop rots — total loss
+      if (crop.isPerennial) {
+        // Perennial survives overripe — yield=0 that year, reset for next season
+        crop.growthStage = 'mature';
+        crop.overripeDaysRemaining = -1;
+        crop.gddAccumulated = cropDef.gddToMaturity * 0.8; // reset to mature stage
+        addNotification(state, 'info',
+          `Your ${cropDef.name} in row ${cell.row + 1} missed the harvest window. No yield this season, but the trees survive.`);
+        return;
+      }
+      // Annual crop rots — total loss
       addNotification(state, 'crop_rotted',
         `Your ${cropDef.name} in row ${cell.row + 1} rotted in the field. Total loss.`);
       cell.crop = null;
@@ -728,7 +806,6 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState): void
 
   // Harvestable: start overripe countdown
   if (crop.growthStage === 'harvestable') {
-    // Transition to overripe if we've been harvestable for a tick
     crop.growthStage = 'overripe';
     crop.overripeDaysRemaining = OVERRIPE_GRACE_DAYS;
     return;
@@ -751,7 +828,12 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState): void
 
   // Growth stage transitions
   const progress = crop.gddAccumulated / cropDef.gddToMaturity;
-  crop.growthStage = getGrowthStage(progress);
+  if (crop.isPerennial && !crop.perennialEstablished) {
+    // During establishment: cap growth at vegetative (no fruit production)
+    crop.growthStage = getGrowthStage(Math.min(progress, 0.49));
+  } else {
+    crop.growthStage = getGrowthStage(progress);
+  }
 }
 
 function getGrowthStage(progress: number): GrowthStage {
@@ -763,6 +845,7 @@ function getGrowthStage(progress: number): GrowthStage {
 }
 
 function getCropCoefficient(crop: CropInstance): number {
+  if (crop.isPerennial && crop.isDormant) return 0.2; // Reduced water use during dormancy
   const cropDef = getCropDefinition(crop.cropId);
   const entry = cropDef.cropCoefficients.find(c => c.stage === crop.growthStage);
   return entry ? entry.kc : 0.5;
@@ -776,8 +859,11 @@ function harvestCell(state: GameState, cell: Cell): number {
   const crop = cell.crop!;
   const cropDef = getCropDefinition(crop.cropId);
 
-  // Base yield
+  // Base yield — perennials yield 0 during establishment
   let yieldAmount = cropDef.yieldPotential;
+  if (crop.isPerennial && !crop.perennialEstablished) {
+    yieldAmount = 0;
+  }
 
   // Water stress factor: 1 - ky * (stressDays / totalGrowingDays)
   const totalGrowingDays = Math.max(1, state.calendar.totalDay - crop.plantedDay);
@@ -786,7 +872,6 @@ function harvestCell(state: GameState, cell: Cell): number {
   yieldAmount *= waterFactor;
 
   // Nitrogen factor: min(1, soilN at harvest / needed)
-  // We use current soil N as a proxy (it was depleted during growth)
   const nFactor = Math.min(1, (cell.soil.nitrogen + cropDef.nitrogenUptake * 0.5) / cropDef.nitrogenUptake);
   yieldAmount *= nFactor;
 
@@ -834,7 +919,18 @@ function harvestCell(state: GameState, cell: Cell): number {
       `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost})`);
   }
 
-  cell.crop = null;
+  if (crop.isPerennial) {
+    // Perennial: reset for next season but keep the crop
+    crop.growthStage = 'mature';
+    crop.gddAccumulated = cropDef.gddToMaturity * 0.8; // back to mature stage
+    crop.overripeDaysRemaining = -1;
+    crop.waterStressDays = 0;
+    crop.plantedDay = state.calendar.totalDay; // Fix #1: reset so next season's water-stress denominator is fresh
+    crop.harvestedThisSeason = true;           // Fix #2: prevent multiple harvests per season
+  } else {
+    // Annual: remove crop after harvest
+    cell.crop = null;
+  }
 
   assertFinite(state.economy.cash, 'economy.cash after harvest');
   return netRevenue;
@@ -856,6 +952,7 @@ export function resetYearlyTracking(state: GameState): void {
 // ============================================================================
 
 function createCropInstance(cropId: string, plantedDay: number): CropInstance {
+  const def = getCropDefinition(cropId);
   return {
     cropId,
     plantedDay,
@@ -863,10 +960,11 @@ function createCropInstance(cropId: string, plantedDay: number): CropInstance {
     waterStressDays: 0,
     growthStage: 'seedling',
     overripeDaysRemaining: -1,
-    isPerennial: false,
+    isPerennial: def.type === 'perennial',
     perennialAge: 0,
     perennialEstablished: false,
     isDormant: false,
+    harvestedThisSeason: false,
   };
 }
 
@@ -893,7 +991,9 @@ function getEmptyCells(state: GameState, scope: 'all' | 'row' | 'col', index?: n
 
 function getHarvestableCells(state: GameState, scope: 'all' | 'row' | 'col', index?: number): Cell[] {
   return getCellsInScope(state, scope, index).filter(
-    c => c.crop !== null && (c.crop.growthStage === 'harvestable' || c.crop.growthStage === 'overripe'),
+    c => c.crop !== null &&
+      (c.crop.growthStage === 'harvestable' || c.crop.growthStage === 'overripe') &&
+      !(c.crop.isPerennial && c.crop.harvestedThisSeason),
   );
 }
 
@@ -947,8 +1047,7 @@ export function dismissAutoPause(state: GameState): void {
 /** Get available crops for the current planting window */
 export function getAvailableCrops(state: GameState): string[] {
   const { month } = state.calendar;
-  const allCropIds = ['processing-tomatoes', 'silage-corn', 'winter-wheat'];
-  return allCropIds.filter(id => {
+  return getAllCropIds().filter(id => {
     const def = getCropDefinition(id);
     return isInPlantingWindow(month, def.plantingWindow.startMonth, def.plantingWindow.endMonth);
   });

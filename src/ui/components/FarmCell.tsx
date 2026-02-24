@@ -30,6 +30,22 @@ const CROP_ICONS: Record<string, Record<string, string>> = {
     harvestable: '\u{1F33E}',
     overripe: '\u{1F33E}',
   },
+  'almonds': {
+    seedling: '\u{1F333}',
+    vegetative: '\u{1F333}',
+    flowering: '\u{1F338}',
+    mature: '\u{1F333}',
+    harvestable: '\u{1F95C}',
+    overripe: '\u{1F95C}',
+  },
+  'pistachios': {
+    seedling: '\u{1F333}',
+    vegetative: '\u{1F333}',
+    flowering: '\u{1F338}',
+    mature: '\u{1F333}',
+    harvestable: '\u{1F95C}',
+    overripe: '\u{1F95C}',
+  },
 };
 
 interface FarmCellProps {
@@ -48,8 +64,11 @@ export function FarmCell({ cell }: FarmCellProps) {
     crop && moistureRatio < WATER_VISUAL_WARNING_THRESHOLD ? styles.moistureWarning :
     '';
 
-  // Crop icon
-  const icon = crop ? (CROP_ICONS[crop.cropId]?.[crop.growthStage] ?? '\u{1F331}') : '';
+  // Crop icon — dormant perennials show a bare tree
+  const icon = crop
+    ? (crop.isDormant ? '\u{1FAB5}' : (CROP_ICONS[crop.cropId]?.[crop.growthStage] ?? '\u{1F331}'))
+    : '';
+  const dormantClass = crop?.isDormant ? styles.dormant : '';
 
   // Growth progress (0-1)
   const progress = crop ? getGrowthProgress(crop) : 0;
@@ -75,7 +94,7 @@ export function FarmCell({ cell }: FarmCellProps) {
   return (
     <button
       data-testid={`farm-cell-${row}-${col}`}
-      class={`${styles.cell} ${stageClass} ${moistureClass} ${isSelected ? styles.selected : ''}`}
+      class={`${styles.cell} ${stageClass} ${moistureClass} ${dormantClass} ${isSelected ? styles.selected : ''}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role="gridcell"
@@ -84,7 +103,7 @@ export function FarmCell({ cell }: FarmCellProps) {
       tabIndex={row === 0 && col === 0 ? 0 : -1}
     >
       {icon && <span class={styles.cropIcon} aria-hidden="true">{icon}</span>}
-      {crop && crop.growthStage !== 'harvestable' && crop.growthStage !== 'overripe' && (
+      {crop && !crop.isDormant && crop.growthStage !== 'harvestable' && crop.growthStage !== 'overripe' && (
         <div class={styles.progressBar} style={{ width: `${progress * 100}%` }} />
       )}
     </button>

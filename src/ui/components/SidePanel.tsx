@@ -1,7 +1,7 @@
 import {
   selectedCell, selectedCellData, gameState,
   openCropMenu, dispatch, harvestBulk, waterBulk,
-  plantBulk, cropMenuOpen, availableCrops,
+  plantBulk, cropMenuOpen, availableCrops, confirmDialog,
 } from '../../adapter/signals.ts';
 import { getCropDefinition } from '../../data/crops.ts';
 import { getGrowthProgress, getYieldPercentage } from '../../engine/game.ts';
@@ -40,6 +40,7 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
 
   const canPlant = !crop && cropsAvailable.length > 0;
   const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe');
+  const canRemove = crop?.isPerennial === true;
   const progress = crop ? getGrowthProgress(crop) : 0;
   const yieldPct = crop ? getYieldPercentage(crop) : 0;
 
@@ -47,10 +48,13 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
   let growthText = '';
   if (crop) {
     const pctDone = Math.round(progress * 100);
-    if (crop.growthStage === 'harvestable') {
+    if (crop.isDormant) {
+      growthText = 'Dormant \u2014 waiting for spring';
+    } else if (crop.growthStage === 'harvestable') {
       growthText = 'Ready to harvest!';
     } else if (crop.growthStage === 'overripe') {
-      growthText = `Overripe \u2014 yield declining. ${crop.overripeDaysRemaining} days until crop loss.`;
+      const lossText = crop.isPerennial ? 'yield lost this year' : 'crop loss';
+      growthText = `Overripe \u2014 yield declining. ${crop.overripeDaysRemaining} days until ${lossText}.`;
     } else {
       growthText = `${crop.growthStage.charAt(0).toUpperCase() + crop.growthStage.slice(1)} \u2014 ${pctDone}% grown`;
     }
@@ -70,6 +74,18 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
     dispatch({ type: 'HARVEST', cellRow: row, cellCol: col });
   }
 
+  function handleRemove() {
+    const cost = cropDef?.removalCost ?? 0;
+    confirmDialog.value = {
+      message: `Remove ${cropDef?.name}? This will permanently clear this plot. Cost: $${cost}.`,
+      onConfirm: () => {
+        dispatch({ type: 'REMOVE_CROP', cellRow: row, cellCol: col });
+        confirmDialog.value = null;
+      },
+      onCancel: () => { confirmDialog.value = null; },
+    };
+  }
+
   return (
     <div data-testid="sidebar-cell-detail">
       <div class={styles.section}>
@@ -86,15 +102,35 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
                   Yield: {Math.round(yieldPct)}% of maximum. Harvest now or lose it in {crop.overripeDaysRemaining} days.
                 </span>
               )}
-              <div data-testid="sidebar-crop-growth" class={styles.growthBar}>
-                <div class={styles.growthLabel}>Growth Progress</div>
-                <div class={styles.growthBarContainer}>
-                  <div
-                    class={styles.growthBarFill}
-                    style={{ width: `${Math.min(100, progress * 100)}%` }}
-                  />
+              {!crop.isDormant && (
+                <div data-testid="sidebar-crop-growth" class={styles.growthBar}>
+                  <div class={styles.growthLabel}>Growth Progress</div>
+                  <div class={styles.growthBarContainer}>
+                    <div
+                      class={styles.growthBarFill}
+                      style={{ width: `${Math.min(100, progress * 100)}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+              {crop.isPerennial && cropDef && (
+                <div data-testid="sidebar-perennial-status" class={styles.perennialInfo}>
+                  {crop.perennialEstablished ? (
+                    <span data-testid="sidebar-perennial-age" class={styles.perennialLabel}>
+                      {crop.isDormant ? 'Dormant' : 'Producing'} — Year {crop.perennialAge} of {cropDef.productiveLifespan ?? '?'}
+                    </span>
+                  ) : (
+                    <span data-testid="sidebar-perennial-age" class={styles.perennialLabel}>
+                      {crop.isDormant ? 'Dormant' : 'Establishing'} — Year {crop.perennialAge}/{cropDef.yearsToEstablish ?? '?'}
+                    </span>
+                  )}
+                  {!crop.perennialEstablished && cropDef.yearsToEstablish && !crop.isDormant && (
+                    <span class={styles.perennialEstablishing}>
+                      {cropDef.yearsToEstablish - crop.perennialAge} year{cropDef.yearsToEstablish - crop.perennialAge !== 1 ? 's' : ''} until first harvest
+                    </span>
+                  )}
+                </div>
+              )}
               {cropDef && (
                 <span class={styles.cropDescription}>{cropDef.shortDescription}</span>
               )}
@@ -170,6 +206,16 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
           >
             Harvest
           </button>
+
+          {canRemove && (
+            <button
+              data-testid="action-remove-crop"
+              class={`${styles.actionBtn} ${styles.actionBtnRemove}`}
+              onClick={handleRemove}
+            >
+              Remove {cropDef?.name} (${cropDef?.removalCost ?? 0})
+            </button>
+          )}
         </div>
       </div>
     </div>

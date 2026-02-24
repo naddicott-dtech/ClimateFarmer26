@@ -801,36 +801,32 @@ test.describe('Event Panel', () => {
     await startNewGame(page);
     await waitForGameScreen(page);
 
-    // Plant a crop so has_crop condition passes (enables Late Frost Warning)
-    await page.getByTestId('farm-cell-0-0').click();
-    await page.getByTestId('action-plant').click();
-    await page.getByTestId('menu-crop-processing-tomatoes').click();
-
-    // Run at max speed and wait for event-panel
-    await page.getByTestId('speed-fastest').click();
-    await dismissAutoPausesUntil(page, 'event-panel');
+    // Inject a heatwave event directly via debug hook (deterministic, no RNG wait)
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('heatwave-advisory');
+    });
 
     // Verify event panel structure
     await expect(page.getByTestId('event-panel')).toBeVisible();
     await expect(page.getByTestId('event-title')).toBeVisible();
+    await expect(page.getByTestId('event-title')).toHaveText('Heatwave Advisory');
     await expect(page.getByTestId('event-description')).toBeVisible();
 
-    // Should have at least one choice button
-    const choiceButtons = page.locator('[data-testid^="event-choice-"]');
-    const count = await choiceButtons.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    // Should have at least 2 choices (Emergency Irrigation + Wait It Out)
+    await expect(page.getByTestId('event-choice-emergency-irrigation')).toBeVisible();
+    await expect(page.getByTestId('event-choice-wait-it-out')).toBeVisible();
   });
 
   test('clicking an event choice dismisses the panel', async ({ page }) => {
     await startNewGame(page);
     await waitForGameScreen(page);
 
-    await page.getByTestId('farm-cell-0-0').click();
-    await page.getByTestId('action-plant').click();
-    await page.getByTestId('menu-crop-processing-tomatoes').click();
+    // Inject late frost warning via debug hook
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('late-frost-warning');
+    });
 
-    await page.getByTestId('speed-fastest').click();
-    await dismissAutoPausesUntil(page, 'event-panel');
+    await expect(page.getByTestId('event-panel')).toBeVisible();
 
     // Click the first available choice
     const firstChoice = page.locator('[data-testid^="event-choice-"]').first();
@@ -840,7 +836,7 @@ test.describe('Event Panel', () => {
     await expect(page.getByTestId('event-panel')).not.toBeVisible();
   });
 
-  test('foreshadowing notification appears before event fires', async ({ page }) => {
+  test('foreshadowing notification appears before event fires naturally', async ({ page }) => {
     await startNewGame(page);
     await waitForGameScreen(page);
 
@@ -849,25 +845,12 @@ test.describe('Event Panel', () => {
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-processing-tomatoes').click();
 
-    // Run at max speed and wait for an event panel
+    // Run at max speed and wait for an event panel to appear naturally
     await page.getByTestId('speed-fastest').click();
     await dismissAutoPausesUntil(page, 'event-panel');
 
-    // At this point an event fired. Check the game state's notifications array
-    // for a foreshadowing notification that appeared BEFORE the event.
-    const hasForeshadow = await page.evaluate(() => {
-      const debug = (window as Record<string, any>).__gameDebug;
-      const state = debug?.getState();
-      if (!state) return false;
-      // Check notifications for foreshadowing type (foreshadow was created before event fired)
-      return state.notifications.some((n: any) => n.type === 'foreshadowing');
-    });
-
-    // Also check that we can see the event panel with real content
-    await expect(page.getByTestId('event-title')).not.toBeEmpty();
-
-    // Foreshadowing notification should exist in state
-    // (Not all events foreshadow reliably — 75-90% reliability — so check pendingForeshadows too)
+    // The event fired naturally. Verify foreshadowing notification exists in state
+    // (all 3 events have foreshadowing; even false alarms create notifications).
     const hadForeshadowing = await page.evaluate(() => {
       const debug = (window as Record<string, any>).__gameDebug;
       const state = debug?.getState();
@@ -876,6 +859,7 @@ test.describe('Event Panel', () => {
         state.notifications.some((n: any) => n.type === 'foreshadowing');
     });
     expect(hadForeshadowing).toBe(true);
+    await expect(page.getByTestId('event-title')).not.toBeEmpty();
   });
 });
 
@@ -939,5 +923,173 @@ test.describe('Loan Panel', () => {
 
     // Game over → returns to title screen
     await expect(page.getByTestId('newgame-start')).toBeVisible({ timeout: 5000 });
+  });
+});
+
+// ==========================================================================
+// §15 — Slice 2b: Perennial Crops
+// ==========================================================================
+
+test.describe('Perennial Crops', () => {
+  test('perennials appear in crop menu with establishment warning', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set day to January (month 1) so perennials are in planting window
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      // Day 0 = Jan 1
+      debug.setDay(0);
+    });
+
+    // Click a cell and open crop menu
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+
+    // Almonds and pistachios should be visible
+    await expect(page.getByTestId('menu-crop-almonds')).toBeVisible();
+    await expect(page.getByTestId('menu-crop-pistachios')).toBeVisible();
+  });
+
+  test('planting a perennial shows tree icon and perennial status in sidebar', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set day to January so perennials can be planted
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(0);
+    });
+
+    // Plant almonds
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Cell is still selected after planting — sidebar updates automatically
+    // Sidebar should show perennial status
+    await expect(page.getByTestId('sidebar-perennial-status')).toBeVisible();
+    await expect(page.getByTestId('sidebar-perennial-age')).toBeVisible();
+    // Should show "Establishing" since it's year 0
+    await expect(page.getByTestId('sidebar-perennial-status')).toContainText('Establishing');
+  });
+
+  test('perennial sidebar shows Remove button with cost', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant almonds in January
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(0);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Cell is still selected after planting — sidebar updates automatically
+    // Remove button should be visible
+    await expect(page.getByTestId('action-remove-crop')).toBeVisible();
+    await expect(page.getByTestId('action-remove-crop')).toContainText('500');
+  });
+
+  test('removing a perennial shows confirmation and clears the cell', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant almonds in January
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(0);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Cell is still selected after planting — click Remove
+    await page.getByTestId('action-remove-crop').click();
+
+    // Confirmation dialog should appear
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+
+    // Confirm removal
+    await page.getByTestId('confirm-accept').click();
+
+    // Cell is still selected — sidebar should now show Empty
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Empty');
+  });
+
+  test('perennial harvest does not remove the tree', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Use debug hook to set up an established perennial at harvestable stage
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      if (!state) return;
+      const cell = state.grid[0][0];
+      cell.crop = {
+        cropId: 'almonds',
+        plantedDay: state.calendar.totalDay,
+        gddAccumulated: 3000,
+        waterStressDays: 0,
+        growthStage: 'harvestable',
+        overripeDaysRemaining: -1,
+        isPerennial: true,
+        perennialAge: 4,
+        perennialEstablished: true,
+        isDormant: false,
+        harvestedThisSeason: false,
+      };
+    });
+    // Publish the state change
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.setCash(debug.getState().economy.cash); // triggers publishState
+    });
+
+    // Select cell and harvest
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Almonds');
+    await page.getByTestId('action-harvest').click();
+
+    // Tree should still be there (perennial harvest doesn't remove)
+    // Cell is still selected — sidebar updates automatically
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Almonds');
+    await expect(page.getByTestId('sidebar-perennial-status')).toContainText('Producing');
+  });
+
+  test('dormant perennial shows dormancy visual', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set up a dormant perennial via debug hook
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      if (!state) return;
+      const cell = state.grid[0][0];
+      cell.crop = {
+        cropId: 'almonds',
+        plantedDay: 0,
+        gddAccumulated: 0,
+        waterStressDays: 0,
+        growthStage: 'seedling',
+        overripeDaysRemaining: -1,
+        isPerennial: true,
+        perennialAge: 1,
+        perennialEstablished: false,
+        isDormant: true,
+        harvestedThisSeason: false,
+      };
+      // Set season to winter
+      state.calendar.season = 'winter';
+      debug.setCash(state.economy.cash); // triggers publishState
+    });
+
+    // Select dormant cell
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Almonds');
+    await expect(page.getByTestId('sidebar-perennial-status')).toContainText('Dormant');
   });
 });

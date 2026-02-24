@@ -103,6 +103,84 @@ export const CROPS: Record<string, CropDefinition> = {
 
     shortDescription: 'Cool-season grain. Low water needs, light on soil. Plant in fall, harvest in spring.',
   },
+
+  // --- Slice 2b Perennials ---
+
+  'almonds': {
+    id: 'almonds',
+    name: 'Almonds',
+    type: 'perennial',
+
+    gddBase: 50,
+    gddToMaturity: 3000,   // GDD for annual fruit production cycle
+    plantingWindow: { startMonth: 1, endMonth: 3 }, // January–March
+
+    waterUsePerDay: 0.30,
+    cropCoefficients: [
+      { stage: 'seedling', kc: 0.4 },
+      { stage: 'vegetative', kc: 0.7 },
+      { stage: 'flowering', kc: 1.0 },
+      { stage: 'mature', kc: 0.9 },
+      { stage: 'harvestable', kc: 0.5 },
+      { stage: 'overripe', kc: 0.3 },
+    ],
+    ky: 0.9,
+
+    nitrogenUptake: 120,
+
+    yieldPotential: 2500,  // lbs/acre
+    yieldUnit: 'lbs',
+    basePrice: 2.50,       // $/lb
+    seedCostPerAcre: 960,  // establishment cost (high)
+    laborCostPerAcre: 300,
+
+    yearsToEstablish: 3,
+    removalCost: 500,
+    annualMaintenanceCost: 200,
+    dormantSeasons: ['winter'],
+    productiveLifespan: 22,
+    chillHoursRequired: 700, // NOT used until 2c
+
+    shortDescription: 'Perennial tree crop. High establishment cost, no revenue for 3 years, then strong annual income. Goes dormant in winter.',
+  },
+
+  'pistachios': {
+    id: 'pistachios',
+    name: 'Pistachios',
+    type: 'perennial',
+
+    gddBase: 50,
+    gddToMaturity: 2800,
+    plantingWindow: { startMonth: 1, endMonth: 3 },
+
+    waterUsePerDay: 0.28,
+    cropCoefficients: [
+      { stage: 'seedling', kc: 0.35 },
+      { stage: 'vegetative', kc: 0.65 },
+      { stage: 'flowering', kc: 0.95 },
+      { stage: 'mature', kc: 0.85 },
+      { stage: 'harvestable', kc: 0.45 },
+      { stage: 'overripe', kc: 0.25 },
+    ],
+    ky: 0.7,              // more drought-tolerant than almonds
+
+    nitrogenUptake: 100,
+
+    yieldPotential: 2200,  // lbs/acre
+    yieldUnit: 'lbs',
+    basePrice: 2.80,       // $/lb
+    seedCostPerAcre: 900,
+    laborCostPerAcre: 280,
+
+    yearsToEstablish: 4,
+    removalCost: 450,
+    annualMaintenanceCost: 180,
+    dormantSeasons: ['winter'],
+    productiveLifespan: 25,
+    chillHoursRequired: 600, // NOT used until 2c
+
+    shortDescription: 'Perennial tree crop. 4-year establishment, very drought-tolerant. Alternate bearing — reliable long-term investment.',
+  },
 };
 
 export function getCropDefinition(cropId: string): CropDefinition {

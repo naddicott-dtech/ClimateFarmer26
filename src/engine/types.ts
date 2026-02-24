@@ -123,6 +123,14 @@ export interface CropDefinition {
   seedCostPerAcre: number;
   laborCostPerAcre: number;
 
+  // Perennial-only fields (undefined for annuals)
+  yearsToEstablish?: number;          // almonds: 3, pistachios: 4
+  removalCost?: number;               // cost to clear a perennial from a cell
+  annualMaintenanceCost?: number;     // deducted at year-end per perennial cell
+  dormantSeasons?: Season[];          // seasons where crop goes dormant (typically ['winter'])
+  productiveLifespan?: number;        // display only in 2b (almonds: 22, pistachios: 25)
+  chillHoursRequired?: number;        // data placeholder — NOT used until 2c
+
   // Display
   shortDescription: string;
 }
@@ -143,6 +151,7 @@ export interface CropInstance {
   perennialAge: number;
   perennialEstablished: boolean;
   isDormant: boolean;
+  harvestedThisSeason: boolean;
 }
 
 export interface SoilState {

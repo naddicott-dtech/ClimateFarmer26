@@ -242,6 +242,7 @@ function migrateV1ToV2(data: unknown): GameState | null {
           if (cell.crop.perennialAge === undefined) cell.crop.perennialAge = 0;
           if (cell.crop.perennialEstablished === undefined) cell.crop.perennialEstablished = false;
           if (cell.crop.isDormant === undefined) cell.crop.isDormant = false;
+          if (cell.crop.harvestedThisSeason === undefined) cell.crop.harvestedThisSeason = false;
         }
       }
     }

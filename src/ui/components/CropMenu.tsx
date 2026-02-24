@@ -51,6 +51,8 @@ export function CropMenu(_props: CropMenuProps) {
           disabledReason = `Cost: $${def.seedCostPerAcre}. Available: $${Math.floor(cash)}.`;
         }
 
+        const isPerennial = def.type === 'perennial';
+
         return (
           <div key={cropId}>
             <button
@@ -70,6 +72,11 @@ export function CropMenu(_props: CropMenuProps) {
             </button>
             {disabled && (
               <div class={styles.disabledReason}>{disabledReason}</div>
+            )}
+            {!disabled && isPerennial && def.yearsToEstablish && (
+              <div class={styles.perennialWarning}>
+                Takes {def.yearsToEstablish} years before first harvest
+              </div>
             )}
           </div>
         );
