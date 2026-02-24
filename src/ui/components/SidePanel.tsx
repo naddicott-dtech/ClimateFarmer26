@@ -289,7 +289,7 @@ function BulkActions() {
           return (
             <button
               key={cropId}
-              data-testid="action-plant-all"
+              data-testid={`action-plant-all-${cropId}`}
               class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
               onClick={() => plantBulk('all', cropId)}
             >
@@ -303,11 +303,25 @@ function BulkActions() {
           return (
             <button
               key={`row-${cropId}`}
-              data-testid={`action-plant-row-${sel.row}`}
+              data-testid={`action-plant-row-${sel.row}-${cropId}`}
               class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
               onClick={() => plantBulk('row', cropId, sel.row)}
             >
               Plant Row {sel.row + 1}: {def.name}
+            </button>
+          );
+        })}
+
+        {sel && cropsAvailable.length > 0 && cropsAvailable.map(cropId => {
+          const def = getCropDefinition(cropId);
+          return (
+            <button
+              key={`col-${cropId}`}
+              data-testid={`action-plant-col-${sel.col}-${cropId}`}
+              class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+              onClick={() => plantBulk('col', cropId, sel.col)}
+            >
+              Plant Col {sel.col + 1}: {def.name}
             </button>
           );
         })}
@@ -321,6 +335,28 @@ function BulkActions() {
           Harvest Field
         </button>
 
+        {sel && (
+          <button
+            data-testid={`action-harvest-row-${sel.row}`}
+            class={`${styles.actionBtn} ${hasHarvestable ? styles.actionBtnHarvest : ''}`}
+            onClick={() => harvestBulk('row', sel.row)}
+            disabled={!hasHarvestable}
+          >
+            Harvest Row {sel.row + 1}
+          </button>
+        )}
+
+        {sel && (
+          <button
+            data-testid={`action-harvest-col-${sel.col}`}
+            class={`${styles.actionBtn} ${hasHarvestable ? styles.actionBtnHarvest : ''}`}
+            onClick={() => harvestBulk('col', sel.col)}
+            disabled={!hasHarvestable}
+          >
+            Harvest Col {sel.col + 1}
+          </button>
+        )}
+
         <button
           data-testid="action-water-all"
           class={`${styles.actionBtn} ${hasCrops ? styles.actionBtnWater : ''}`}
@@ -331,16 +367,25 @@ function BulkActions() {
         </button>
 
         {sel && (
-          <>
-            <button
-              data-testid={`action-water-row-${sel.row}`}
-              class={`${styles.actionBtn} ${styles.actionBtnWater}`}
-              onClick={() => waterBulk('row', sel.row)}
-              disabled={!hasCrops}
-            >
-              Water Row {sel.row + 1}
-            </button>
-          </>
+          <button
+            data-testid={`action-water-row-${sel.row}`}
+            class={`${styles.actionBtn} ${styles.actionBtnWater}`}
+            onClick={() => waterBulk('row', sel.row)}
+            disabled={!hasCrops}
+          >
+            Water Row {sel.row + 1}
+          </button>
+        )}
+
+        {sel && (
+          <button
+            data-testid={`action-water-col-${sel.col}`}
+            class={`${styles.actionBtn} ${styles.actionBtnWater}`}
+            onClick={() => waterBulk('col', sel.col)}
+            disabled={!hasCrops}
+          >
+            Water Col {sel.col + 1}
+          </button>
         )}
       </div>
     </div>

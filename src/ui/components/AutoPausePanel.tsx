@@ -54,8 +54,19 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
 
   const config = getEventConfig(event, state);
 
+  // Conditional data-testids per SPEC §11
+  const panelTestId =
+    event.reason === 'bankruptcy' ? 'gameover-panel' :
+    event.reason === 'year_30' ? 'year30-panel' :
+    'autopause-panel';
+
+  const primaryTestId =
+    event.reason === 'bankruptcy' ? 'gameover-new-game' :
+    event.reason === 'year_30' ? 'year30-new-game' :
+    'autopause-action-primary';
+
   return (
-    <div class={styles.overlay} data-testid="autopause-panel" role="alertdialog" aria-label={config.title}>
+    <div class={styles.overlay} data-testid={panelTestId} role="alertdialog" aria-label={config.title}>
       <div class={`${styles.panel} ${config.wide ? styles.panelWide : ''}`} ref={panelRef}>
         <h2 class={styles.title}>{config.title}</h2>
         <div class={styles.message}>{event.message}</div>
@@ -72,7 +83,7 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
         <div class={styles.buttonRow}>
           {config.secondaryLabel && (
             <button
-              data-testid="autopause-action-secondary"
+              data-testid="autopause-dismiss"
               class={styles.secondaryBtn}
               onClick={handleSecondary}
             >
@@ -80,7 +91,7 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
             </button>
           )}
           <button
-            data-testid="autopause-action-primary"
+            data-testid={primaryTestId}
             class={event.reason === 'bankruptcy' ? styles.dangerBtn : styles.primaryBtn}
             onClick={handlePrimary}
           >

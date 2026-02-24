@@ -7,8 +7,9 @@ import {
 import type { GameState, Command } from '../../src/engine/types.ts';
 import {
   STARTING_CASH, STARTING_NITROGEN, STARTING_DAY, GRID_ROWS, GRID_COLS,
-  OVERRIPE_GRACE_DAYS, IRRIGATION_COST_PER_CELL,
+  OVERRIPE_GRACE_DAYS, IRRIGATION_COST_PER_CELL, AUTO_PAUSE_PRIORITY,
 } from '../../src/engine/types.ts';
+import type { AutoPauseReason } from '../../src/engine/types.ts';
 import { SLICE_1_SCENARIO } from '../../src/data/scenario.ts';
 import { getCropDefinition } from '../../src/data/crops.ts';
 
@@ -775,5 +776,136 @@ describe('Year-end tracking', () => {
     expect(state.economy.yearlyRevenue).toBe(0);
     expect(state.economy.yearlyExpenses).toBe(0);
     expect(state.yearEndSummaryPending).toBe(false);
+  });
+});
+
+// ============================================================================
+// Harvest Auto-Pause (Issue #1 fix)
+// ============================================================================
+
+describe('Harvest auto-pause', () => {
+  it('auto-pauses when crop naturally reaches harvestable via GDD', () => {
+    state.calendar = { day: 60, month: 3, season: 'spring', year: 1, totalDay: 59 };
+    processCommand(state, {
+      type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn',
+    }, SLICE_1_SCENARIO);
+
+    state.speed = 1;
+
+    // Run until harvest auto-pause triggers or 200 days pass
+    let harvestPause = false;
+    for (let i = 0; i < 200; i++) {
+      simulateTick(state, SLICE_1_SCENARIO);
+      const harvestEvent = state.autoPauseQueue.find(e => e.reason === 'harvest_ready');
+      if (harvestEvent) {
+        harvestPause = true;
+        break;
+      }
+      // Dismiss any other auto-pause events and continue
+      if (state.autoPauseQueue.length > 0) {
+        dismissAutoPause(state);
+        state.speed = 1;
+      }
+    }
+
+    expect(harvestPause).toBe(true);
+    expect(state.speed).toBe(0);
+  });
+});
+
+// ============================================================================
+// Auto-Pause Priority Ordering (Issue #2 fix)
+// ============================================================================
+
+describe('Auto-pause priority ordering', () => {
+  it('orders events by priority (highest first)', () => {
+    state.speed = 1;
+    state.calendar = { day: 364, month: 12, season: 'winter', year: 1, totalDay: 363 };
+    state.economy.cash = 0;
+    state.rngState = 42;
+
+    // This tick should trigger both year_end and bankruptcy
+    simulateTick(state, SLICE_1_SCENARIO);
+
+    expect(state.autoPauseQueue.length).toBeGreaterThanOrEqual(2);
+    // Bankruptcy (priority 100) should come before year_end (priority 40)
+    const reasons = state.autoPauseQueue.map(e => e.reason);
+    const bankruptcyIdx = reasons.indexOf('bankruptcy');
+    const yearEndIdx = reasons.indexOf('year_end');
+    expect(bankruptcyIdx).not.toBe(-1);
+    expect(yearEndIdx).not.toBe(-1);
+    expect(bankruptcyIdx).toBeLessThan(yearEndIdx);
+  });
+
+  it('AUTO_PAUSE_PRIORITY has correct relative ordering', () => {
+    expect(AUTO_PAUSE_PRIORITY.bankruptcy).toBeGreaterThan(AUTO_PAUSE_PRIORITY.harvest_ready);
+    expect(AUTO_PAUSE_PRIORITY.harvest_ready).toBeGreaterThan(AUTO_PAUSE_PRIORITY.water_stress);
+    expect(AUTO_PAUSE_PRIORITY.water_stress).toBeGreaterThan(AUTO_PAUSE_PRIORITY.year_end);
+  });
+
+  it('preserves insertion order for equal-priority events (stable sort)', () => {
+    // bankruptcy and year_30 both have priority 100
+    state.autoPauseQueue = [
+      { reason: 'year_end', message: 'first (low priority)' },
+      { reason: 'bankruptcy', message: 'second (high priority)' },
+      { reason: 'year_30', message: 'third (high priority, same as bankruptcy)' },
+      { reason: 'water_stress', message: 'fourth (mid priority)' },
+    ];
+
+    // Sort by priority
+    state.autoPauseQueue.sort(
+      (a, b) => AUTO_PAUSE_PRIORITY[b.reason] - AUTO_PAUSE_PRIORITY[a.reason],
+    );
+
+    const reasons = state.autoPauseQueue.map(e => e.reason);
+    // bankruptcy and year_30 are both priority 100 — insertion order preserved
+    expect(reasons[0]).toBe('bankruptcy');
+    expect(reasons[1]).toBe('year_30');
+    // Then water_stress (60), then year_end (40)
+    expect(reasons[2]).toBe('water_stress');
+    expect(reasons[3]).toBe('year_end');
+  });
+});
+
+// ============================================================================
+// DD-1: Partial Plant Skips Partially-Filled Rows (Issue #7 fix)
+// ============================================================================
+
+describe('DD-1 complete rows', () => {
+  it('partial plant offer only counts fully-empty rows', () => {
+    state.calendar = { day: 60, month: 3, season: 'spring', year: 1, totalDay: 59 };
+
+    // Plant one cell in row 0 (making it partially filled)
+    processCommand(state, {
+      type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'processing-tomatoes',
+    }, SLICE_1_SCENARIO);
+
+    // Set cash so we can only afford 2 full rows
+    const cornCost = getCropDefinition('silage-corn').seedCostPerAcre;
+    state.economy.cash = cornCost * GRID_COLS * 2; // Exactly 2 rows worth
+
+    const result = processCommand(state, {
+      type: 'PLANT_BULK', scope: 'all', cropId: 'silage-corn',
+    }, SLICE_1_SCENARIO);
+
+    // Should get partial offer — only counting fully-empty rows (7 rows, not 8)
+    // With budget for 2 rows, should offer 2 rows
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe('partial');
+    expect(result.partialOffer).toBeDefined();
+    expect(result.partialOffer!.affordableRows).toBe(2);
+    // Should be 16 plots (2 full rows of 8)
+    expect(result.partialOffer!.affordablePlots).toBe(16);
+  });
+
+  it('fully-empty field plant-all works normally', () => {
+    state.calendar = { day: 60, month: 3, season: 'spring', year: 1, totalDay: 59 };
+
+    const result = processCommand(state, {
+      type: 'PLANT_BULK', scope: 'all', cropId: 'silage-corn',
+    }, SLICE_1_SCENARIO);
+
+    expect(result.success).toBe(true);
+    expect(result.cellsAffected).toBe(64);
   });
 });

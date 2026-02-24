@@ -50,7 +50,7 @@ Format: **Date — Decision — Rationale**
 
 2026-02-12 — 30-year playthrough — Enough years to see long-term consequences. Retirement event at year 30.
 
-2026-02-12 — Variable-speed simulation (not turn-based) — Pausable real-time: 0x/0.5x/1x/2x/4x. Auto-pause for events. ~30 sec per year at 1x. Inspired by RimWorld/Factorio, not Civilization.
+2026-02-12 — Variable-speed simulation (not turn-based) — Pausable real-time: 0×/1×/2×/4×. Auto-pause for events. ~30 sec per year at 1x. Inspired by RimWorld/Factorio, not Civilization.
 
 2026-02-12 — 8x8 grid (64 cells), abstract plots — Bulk operations: plant/harvest/water all/row/column. Solar lease can convert cells.
 
@@ -119,3 +119,21 @@ Format: **Date — Decision — Rationale**
 2026-02-12 — Manual "weekly dose" watering with first-per-season auto-pause (DD-5) — Each Water action provides ~14 days of moisture. Auto-pause fires once per season when moisture first drops below 25% capacity. Visual warnings at 30% (yellow) and 15% (red/wilting) without pausing. Low-tech "garden hose sprinkler" level. Irrigation upgrades and water rights trading are Slice 3+ tech tree.
 
 2026-02-12 — Student-facing terminology: "plots" and "field" (not "cells" and "grid") — UI uses farm language. Code and data-testid use engineering terms for ARCHITECTURE.md consistency.
+
+## Slice 1 Review Decisions
+
+2026-02-12 — Auto-pause priority via constant map, not ad-hoc ordering — `AUTO_PAUSE_PRIORITY` record in types.ts gives each reason a numeric priority. Sorted with stable sort after all events collected in `simulateTick`. Extensible for Slice 2 event types.
+
+2026-02-12 — Field-scope bulk ops always require confirmation dialog — Even when affordable. SPEC §2.3 is explicit. Row/col scope is all-or-nothing (no partial offers, no confirmation needed).
+
+2026-02-12 — Manual saves keyed by "Year N Season" (not including cash) — Including cash in the slot name created unbounded new slots. Season-based keys naturally limit to ~120 slots (30 years × 4 seasons) and same-season saves overwrite.
+
+2026-02-12 — `hasSaveData()` only checks auto-save — The "Continue" button on the title screen should only appear when an auto-save exists. Manual saves have their own "Load Game" section. Prevents confusing state where Continue exists but loads a manual save from a different playthrough.
+
+2026-02-12 — `ExtremeEventState` extracted as narrow interface — Rather than passing full `GameState` to `updateExtremeEvents`, a 2-field interface (`activeHeatwaveDays`, `activeFrostDays`) makes the dependency explicit and avoids unsafe casts during warmup.
+
+2026-02-12 — Per-season probability exact formula — `1-(1-p)^(1/90)` instead of `p/90`. The linear approximation under-targets by ~28% at p=0.4 (40% seasonal heatwave probability). The exact formula ensures observed seasonal event rates match scenario data.
+
+2026-02-12 — RNG warmup must call both weather + event functions — `createInitialState` advances the RNG from day 0 to STARTING_DAY. Both `generateDailyWeather` (4-5 calls/day) and `updateExtremeEvents` (0-4 calls/day) consume RNG values. Skipping events during warmup causes state drift and non-deterministic weather after game start.
+
+2026-02-12 — Affordable bulk confirm callbacks route through processCommand — Ensures planting window validation, cash checks, and other engine guards are always applied. Partial-offer confirm callbacks still call `executeBulkPlant`/`executeWater` directly since the prior `processCommand` already validated eligibility and computed the partial offer.

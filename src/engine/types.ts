@@ -187,6 +187,15 @@ export interface AutoPauseEvent {
   data?: Record<string, unknown>;
 }
 
+/** Priority for auto-pause events. Higher = more urgent = shown first. */
+export const AUTO_PAUSE_PRIORITY: Record<AutoPauseReason, number> = {
+  bankruptcy: 100,
+  year_30: 100,
+  harvest_ready: 80,
+  water_stress: 60,
+  year_end: 40,
+};
+
 // --- Full Game State ---
 
 export interface GameState {

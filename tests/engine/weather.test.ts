@@ -3,7 +3,7 @@ import { generateDailyWeather, updateExtremeEvents } from '../../src/engine/weat
 import { SeededRNG } from '../../src/engine/rng.ts';
 import { SLICE_1_SCENARIO } from '../../src/data/scenario.ts';
 import { createInitialState } from '../../src/engine/game.ts';
-import type { DailyWeather } from '../../src/engine/types.ts';
+import type { DailyWeather, GameState } from '../../src/engine/types.ts';
 import { STARTING_DAY } from '../../src/engine/types.ts';
 
 describe('Weather Generation', () => {
@@ -109,6 +109,34 @@ describe('Weather Generation', () => {
       expect(weather.tempHigh).toBeGreaterThan(-50); // Sanity
       expect(weather.tempHigh).toBeLessThan(150);
       expect(weather.et0).toBeGreaterThan(0);
+    }
+  });
+
+  it('createInitialState warmup produces same RNG state as simulating from day 0', () => {
+    // Method A: Manual simulation from day 0 with both weather + event rolls
+    const rngA = new SeededRNG(SLICE_1_SCENARIO.seed);
+    const warmupA = { activeHeatwaveDays: 0, activeFrostDays: 0 };
+    for (let d = 0; d < STARTING_DAY; d++) {
+      const w = generateDailyWeather(SLICE_1_SCENARIO, d, rngA);
+      updateExtremeEvents(warmupA, w, SLICE_1_SCENARIO, d, rngA);
+    }
+
+    // Method B: createInitialState (should use identical warmup logic)
+    const state = createInitialState('test', SLICE_1_SCENARIO);
+    const rngB = new SeededRNG(state.rngState);
+
+    // RNG states must match
+    expect(state.rngState).toBe(rngA.getState());
+
+    // Event tracking state must match
+    expect(state.activeHeatwaveDays).toBe(warmupA.activeHeatwaveDays);
+    expect(state.activeFrostDays).toBe(warmupA.activeFrostDays);
+
+    // Future weather from both must be identical
+    for (let d = STARTING_DAY; d < STARTING_DAY + 30; d++) {
+      const wA = generateDailyWeather(SLICE_1_SCENARIO, d, rngA);
+      const wB = generateDailyWeather(SLICE_1_SCENARIO, d, rngB);
+      expect(wA).toEqual(wB);
     }
   });
 });
@@ -231,33 +259,34 @@ describe('Extreme Events (multi-day)', () => {
       weatherLog.push(weather);
     }
 
-    // Find streaks of either event type
-    function findMaxStreak(predicate: (w: DailyWeather) => boolean): { streakCount: number; maxStreak: number } {
-      let current = 0, max = 0, count = 0;
+    // Analyze streaks of either event type
+    function analyzeStreaks(predicate: (w: DailyWeather) => boolean): { streakCount: number; maxStreak: number; minStreak: number } {
+      let current = 0, max = 0, min = Infinity, count = 0;
       for (const w of weatherLog) {
         if (predicate(w)) {
           current++;
         } else {
-          if (current > 0) { count++; max = Math.max(max, current); }
+          if (current > 0) { count++; max = Math.max(max, current); min = Math.min(min, current); }
           current = 0;
         }
       }
-      if (current > 0) { count++; max = Math.max(max, current); }
-      return { streakCount: count, maxStreak: max };
+      if (current > 0) { count++; max = Math.max(max, current); min = Math.min(min, current); }
+      if (count === 0) min = 0;
+      return { streakCount: count, maxStreak: max, minStreak: min };
     }
 
-    const hw = findMaxStreak(w => w.isHeatwave);
-    const fr = findMaxStreak(w => w.isFrost);
+    const hw = analyzeStreaks(w => w.isHeatwave);
+    const fr = analyzeStreaks(w => w.isFrost);
 
     // At least one event type should have triggered over 5 years
     expect(hw.streakCount + fr.streakCount).toBeGreaterThan(0);
 
-    // Whichever type triggered, streaks must be >= 3 days (minimum event duration)
+    // ALL streaks must be >= 3 days (EVENT_MIN_DAYS) — not just the longest
     if (hw.streakCount > 0) {
-      expect(hw.maxStreak).toBeGreaterThanOrEqual(3);
+      expect(hw.minStreak).toBeGreaterThanOrEqual(3);
     }
     if (fr.streakCount > 0) {
-      expect(fr.maxStreak).toBeGreaterThanOrEqual(3);
+      expect(fr.minStreak).toBeGreaterThanOrEqual(3);
     }
   });
 });

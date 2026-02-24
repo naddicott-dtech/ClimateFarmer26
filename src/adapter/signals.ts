@@ -1,11 +1,12 @@
 import { signal, computed, batch } from '@preact/signals';
 import type { GameState, Command, CommandResult, Cell, DailyWeather } from '../engine/types.ts';
-import { GRID_ROWS } from '../engine/types.ts';
+import { GRID_ROWS, GRID_COLS, IRRIGATION_COST_PER_CELL } from '../engine/types.ts';
 import { createInitialState, processCommand, simulateTick, dismissAutoPause, resetYearlyTracking, addNotification, dismissNotification, getAvailableCrops, executeBulkPlant, executeWater } from '../engine/game.ts';
 import { getCropDefinition } from '../data/crops.ts';
 import { SLICE_1_SCENARIO } from '../data/scenario.ts';
-import { autoSave, loadAutoSave, hasSaveData, saveGame, isTutorialDismissed, setTutorialDismissed } from '../save/storage.ts';
-import { isSeasonChange } from '../engine/calendar.ts';
+import { autoSave, loadAutoSave, hasSaveData, hasManualSaves, saveGame, loadGame, listManualSaves, deleteSave, isTutorialDismissed, setTutorialDismissed } from '../save/storage.ts';
+import type { SaveSlotInfo } from '../save/storage.ts';
+import { isSeasonChange, getSeasonName } from '../engine/calendar.ts';
 
 // ============================================================================
 // Core State Signals
@@ -134,6 +135,10 @@ export function canResume(): boolean {
   return hasSaveData();
 }
 
+export function canLoadSaves(): boolean {
+  return hasManualSaves();
+}
+
 export function returnToTitle(): void {
   stopGameLoop();
   _liveState = null;
@@ -214,42 +219,78 @@ export function plantCrop(cropId: string): void {
 export function plantBulk(scope: 'all' | 'row' | 'col', cropId: string, index?: number): void {
   if (!_liveState) return;
 
-  const result = processCommand(_liveState, { type: 'PLANT_BULK', scope, cropId, index }, SLICE_1_SCENARIO);
+  if (scope === 'all') {
+    // SPEC §2.3: Always show confirmation for field-scope plant
+    const cropDef = getCropDefinition(cropId);
+    const emptyCells = _liveState.grid.flat().filter(c => c.crop === null);
+    if (emptyCells.length === 0) return;
 
-  if (result.success) {
+    // Check how many fully-empty rows exist (DD-1)
+    const fullRowCells: Cell[] = [];
+    for (let r = 0; r < GRID_ROWS; r++) {
+      const rowEmpty = _liveState.grid[r].filter(c => c.crop === null);
+      if (rowEmpty.length === GRID_COLS) {
+        fullRowCells.push(...rowEmpty);
+      }
+    }
+
+    if (fullRowCells.length === 0) return;
+
+    const costPerCell = cropDef.seedCostPerAcre;
+    const totalCost = fullRowCells.length * costPerCell;
+
+    if (_liveState.economy.cash >= totalCost) {
+      // Can afford all full rows — confirm, then route through processCommand
+      // so all engine validation (planting window, cash, etc.) applies at execution time
+      confirmDialog.value = {
+        message: `Plant all ${fullRowCells.length} plots with ${cropDef.name} for $${totalCost.toLocaleString()}?`,
+        onConfirm: () => {
+          if (!_liveState) return;
+          processCommand(_liveState, { type: 'PLANT_BULK', scope: 'all', cropId }, SLICE_1_SCENARIO);
+          confirmDialog.value = null;
+          publishState();
+        },
+        onCancel: () => { confirmDialog.value = null; },
+      };
+      return;
+    }
+
+    // Cannot afford all — delegate to engine for partial offer
+    const result = processCommand(_liveState, { type: 'PLANT_BULK', scope, cropId }, SLICE_1_SCENARIO);
+
+    if (result.partialOffer) {
+      const offer = result.partialOffer;
+      confirmDialog.value = {
+        message: `You can afford to plant ${offer.affordableRows} full row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Plant ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?`,
+        onConfirm: () => {
+          if (!_liveState) return;
+          const cells: Cell[] = [];
+          let rowsCollected = 0;
+          for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
+            const rowEmpty = _liveState.grid[r].filter(c => c.crop === null);
+            if (rowEmpty.length === GRID_COLS) {
+              cells.push(...rowEmpty);
+              rowsCollected++;
+            }
+          }
+          executeBulkPlant(_liveState, cells, cropId, costPerCell);
+          confirmDialog.value = null;
+          publishState();
+        },
+        onCancel: () => { confirmDialog.value = null; },
+      };
+      return;
+    }
+
     publishState();
     return;
   }
 
-  if (result.partialOffer) {
-    const offer = result.partialOffer;
-    confirmDialog.value = {
-      message: `You can afford to plant ${offer.affordableRows} full row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Plant ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?`,
-      onConfirm: () => {
-        if (!_liveState) return;
-        const emptyCells: Cell[] = [];
-        let rowsCollected = 0;
-        for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
-          const rowEmpty = _liveState.grid[r].filter(c => c.crop === null);
-          if (rowEmpty.length > 0) {
-            emptyCells.push(...rowEmpty);
-            rowsCollected++;
-          }
-        }
-
-        const cropDef = getCropDefinition(cropId);
-        executeBulkPlant(_liveState, emptyCells, cropId, cropDef.seedCostPerAcre);
-        confirmDialog.value = null;
-        publishState();
-      },
-      onCancel: () => {
-        confirmDialog.value = null;
-      },
-    };
-    return;
+  // Row/Column scope: no confirmation needed (all-or-nothing per DD-1)
+  const result = processCommand(_liveState, { type: 'PLANT_BULK', scope, cropId, index }, SLICE_1_SCENARIO);
+  if (result.success) {
+    publishState();
   }
-
-  publishState();
 }
 
 export function harvestBulk(scope: 'all' | 'row' | 'col', index?: number): void {
@@ -259,41 +300,69 @@ export function harvestBulk(scope: 'all' | 'row' | 'col', index?: number): void 
 export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
   if (!_liveState) return;
 
-  const result = processCommand(_liveState, { type: 'WATER', scope, index }, SLICE_1_SCENARIO);
+  if (scope === 'all') {
+    // SPEC §2.6: Always show confirmation for field-scope water
+    const plantedCells = _liveState.grid.flat().filter(c => c.crop !== null);
+    if (plantedCells.length === 0) {
+      processCommand(_liveState, { type: 'WATER', scope }, SLICE_1_SCENARIO);
+      publishState();
+      return;
+    }
 
-  if (result.success) {
+    const totalCost = plantedCells.length * IRRIGATION_COST_PER_CELL;
+
+    if (_liveState.economy.cash >= totalCost) {
+      // Can afford all — confirm, then route through processCommand
+      // so all engine validation applies at execution time
+      confirmDialog.value = {
+        message: `Water all ${plantedCells.length} planted plots for $${totalCost.toLocaleString()}?`,
+        onConfirm: () => {
+          if (!_liveState) return;
+          processCommand(_liveState, { type: 'WATER', scope: 'all' }, SLICE_1_SCENARIO);
+          confirmDialog.value = null;
+          publishState();
+        },
+        onCancel: () => { confirmDialog.value = null; },
+      };
+      return;
+    }
+
+    // Cannot afford all — delegate to engine for partial offer
+    const result = processCommand(_liveState, { type: 'WATER', scope }, SLICE_1_SCENARIO);
+
+    if (result.partialOffer) {
+      const offer = result.partialOffer;
+      confirmDialog.value = {
+        message: `You can afford to water ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Water ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?`,
+        onConfirm: () => {
+          if (!_liveState) return;
+          const cells: Cell[] = [];
+          let rowsCollected = 0;
+          for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
+            const rowPlanted = _liveState.grid[r].filter(c => c.crop !== null);
+            if (rowPlanted.length > 0) {
+              cells.push(...rowPlanted);
+              rowsCollected++;
+            }
+          }
+          executeWater(_liveState, cells);
+          confirmDialog.value = null;
+          publishState();
+        },
+        onCancel: () => { confirmDialog.value = null; },
+      };
+      return;
+    }
+
     publishState();
     return;
   }
 
-  if (result.partialOffer) {
-    const offer = result.partialOffer;
-    confirmDialog.value = {
-      message: `You can afford to water ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Water ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?`,
-      onConfirm: () => {
-        if (!_liveState) return;
-        const plantedCells: Cell[] = [];
-        let rowsCollected = 0;
-        for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
-          const rowPlanted = _liveState.grid[r].filter(c => c.crop !== null);
-          if (rowPlanted.length > 0) {
-            plantedCells.push(...rowPlanted);
-            rowsCollected++;
-          }
-        }
-
-        executeWater(_liveState, plantedCells);
-        confirmDialog.value = null;
-        publishState();
-      },
-      onCancel: () => {
-        confirmDialog.value = null;
-      },
-    };
-    return;
+  // Row/Column scope
+  const result = processCommand(_liveState, { type: 'WATER', scope, index }, SLICE_1_SCENARIO);
+  if (result.success) {
+    publishState();
   }
-
-  publishState();
 }
 
 // ============================================================================
@@ -354,10 +423,20 @@ export function dismissTutorialPermanently(dismiss: boolean): void {
 // Save
 // ============================================================================
 
-export function handleSave(slotName?: string): void {
+export function handleSave(): void {
   if (!_liveState) return;
 
-  const result = slotName ? saveGame(_liveState, slotName) : autoSave(_liveState);
+  // Auto-save (for Continue button)
+  autoSave(_liveState);
+
+  // Manual save with deterministic name (SPEC §6.2).
+  // Uses Year+Season as key so saves within the same season overwrite,
+  // preventing unbounded slot accumulation (max ~120 across 30 years).
+  const cal = _liveState.calendar;
+  const seasonName = getSeasonName(cal.season);
+  const slotName = `Year ${cal.year} ${seasonName}`;
+  const result = saveGame(_liveState, slotName);
+
   if (!result.success) {
     saveError.value = result.error ?? 'Failed to save game.';
   } else {
@@ -365,6 +444,30 @@ export function handleSave(slotName?: string): void {
     addNotification(_liveState, 'info', 'Game saved.');
     publishState();
   }
+}
+
+export function loadSavedGame(slotName: string): void {
+  const state = loadGame(slotName);
+  if (!state) return;
+
+  _liveState = state;
+  batch(() => {
+    publishState();
+    screen.value = 'playing';
+    selectedCell.value = null;
+    cropMenuOpen.value = false;
+    confirmDialog.value = null;
+    saveError.value = null;
+    tutorialStep.value = -1;
+  });
+}
+
+export function handleDeleteSave(slotName: string): void {
+  deleteSave(slotName);
+}
+
+export function getManualSaves(): SaveSlotInfo[] {
+  return listManualSaves();
 }
 
 // ============================================================================

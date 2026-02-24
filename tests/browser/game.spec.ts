@@ -540,3 +540,167 @@ test.describe('Edge Cases', () => {
     await expect(page.getByTestId('topbar-cash')).toContainText('50,000');
   });
 });
+
+// ==========================================================================
+// Column bulk actions (Issue #4)
+// ==========================================================================
+
+test.describe('Column Bulk Actions', () => {
+  test('column plant and water buttons appear when cell selected', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Select a cell to reveal column actions
+    await page.getByTestId('farm-cell-2-3').click();
+
+    // Plant Col button should appear (unique per crop now)
+    await expect(page.getByTestId('action-plant-col-3-processing-tomatoes')).toBeVisible();
+
+    // Water Col button should appear
+    await expect(page.getByTestId('action-water-col-3')).toBeVisible();
+
+    // Harvest Row and Col buttons should be present (even if disabled)
+    await expect(page.getByTestId('action-harvest-row-2')).toBeVisible();
+    await expect(page.getByTestId('action-harvest-col-3')).toBeVisible();
+  });
+});
+
+// ==========================================================================
+// Auto-pause dismiss testid (Issue #9)
+// ==========================================================================
+
+test.describe('Auto-pause testids', () => {
+  test('autopause-dismiss testid is present on secondary button', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant a crop to trigger an auto-pause eventually
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-processing-tomatoes').click();
+
+    // Run at max speed until we get an auto-pause
+    await page.getByTestId('speed-fastest').click();
+    await expect(page.getByTestId('autopause-panel')).toBeVisible({ timeout: 15000 });
+
+    // The secondary (dismiss) button should have the new testid
+    await expect(page.getByTestId('autopause-dismiss')).toBeVisible();
+  });
+});
+
+// ==========================================================================
+// New Game button from game screen (Issue #9)
+// ==========================================================================
+
+test.describe('New Game from TopBar', () => {
+  test('save-new-game button returns to title screen', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await expect(page.getByTestId('save-new-game')).toBeVisible();
+    await page.getByTestId('save-new-game').click();
+
+    // Should be back on new game screen
+    await expect(page.getByTestId('newgame-player-id')).toBeVisible();
+  });
+});
+
+// ==========================================================================
+// Field confirmation dialog (confirm + cancel paths)
+// ==========================================================================
+
+test.describe('Field Confirmation Dialog', () => {
+  test('Plant Field shows confirmation dialog and confirm plants crops', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Click Plant Field for silage corn
+    await page.getByTestId('action-plant-all-silage-corn').click();
+
+    // Confirmation dialog should appear
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+    await expect(page.getByTestId('confirm-message')).toContainText('Plant all');
+
+    // Confirm planting
+    await page.getByTestId('confirm-accept').click();
+
+    // Dialog should close
+    await expect(page.getByTestId('confirm-dialog')).not.toBeVisible();
+
+    // Cash should have decreased (64 plots * cost)
+    const cash = await page.getByTestId('topbar-cash').textContent();
+    expect(cash).not.toContain('50,000');
+  });
+
+  test('Plant Field cancel does not plant or deduct cash', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.getByTestId('action-plant-all-silage-corn').click();
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+
+    // Cancel
+    await page.getByTestId('confirm-cancel').click();
+
+    // Dialog should close, cash unchanged
+    await expect(page.getByTestId('confirm-dialog')).not.toBeVisible();
+    await expect(page.getByTestId('topbar-cash')).toContainText('50,000');
+  });
+});
+
+// ==========================================================================
+// Manual save/load/delete flow from title screen
+// ==========================================================================
+
+test.describe('Manual Save/Load/Delete', () => {
+  test('save creates named slot visible in Load Game menu', async ({ page }) => {
+    await startNewGame(page, 'SaveLoadTest');
+    await waitForGameScreen(page);
+
+    // Save the game
+    await page.getByTestId('save-button').click();
+    await expect(page.getByTestId('notify-bar')).toContainText('saved');
+
+    // Return to title screen
+    await page.getByTestId('save-new-game').click();
+    await expect(page.getByTestId('newgame-player-id')).toBeVisible();
+
+    // Load Game toggle should be visible
+    await expect(page.getByTestId('save-load-toggle')).toBeVisible();
+    await page.getByTestId('save-load-toggle').click();
+
+    // Save list should appear
+    await expect(page.getByTestId('save-load-menu')).toBeVisible();
+
+    // Should contain at least one save entry with Year/Season name
+    const menuText = await page.getByTestId('save-load-menu').textContent();
+    expect(menuText).toContain('Year 1');
+    expect(menuText).toContain('Spring');
+  });
+
+  test('loading a saved game restores game state', async ({ page }) => {
+    await startNewGame(page, 'LoadTest');
+    await waitForGameScreen(page);
+
+    // Plant a crop so we have a distinguishable state
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Save
+    await page.getByTestId('save-button').click();
+
+    // Return to title, open load menu, load the save
+    await page.getByTestId('save-new-game').click();
+    await page.getByTestId('save-load-toggle').click();
+
+    // Click Load on the first save entry
+    const loadBtn = page.getByTestId('save-load-menu').getByRole('button', { name: 'Load' });
+    await loadBtn.first().click();
+
+    // Should be back in game with the planted crop
+    await waitForGameScreen(page);
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toContainText('Silage Corn');
+  });
+});

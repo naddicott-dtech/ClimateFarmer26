@@ -8,7 +8,7 @@ import {
   STARTING_ORGANIC_MATTER, STARTING_MOISTURE, BASE_MOISTURE_CAPACITY,
   OM_MOISTURE_BONUS_PER_PERCENT, OVERRIPE_GRACE_DAYS, DAYS_PER_YEAR,
   MAX_YEARS, WATER_STRESS_AUTOPAUSE_THRESHOLD, IRRIGATION_COST_PER_CELL,
-  WATER_DOSE_INCHES, STARTING_DAY,
+  WATER_DOSE_INCHES, STARTING_DAY, AUTO_PAUSE_PRIORITY,
 } from './types.ts';
 import { totalDayToCalendar, isYearEnd, isSeasonChange, isInPlantingWindow, getSeasonName, getMonthName } from './calendar.ts';
 import { generateDailyWeather, updateExtremeEvents } from './weather.ts';
@@ -35,10 +35,14 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
   }
 
   // Advance RNG through the skipped days (Jan-Feb) to maintain determinism.
-  // The RNG state must match what it would be if we had simulated from day 0.
+  // Both generateDailyWeather AND updateExtremeEvents consume RNG values,
+  // so we must call both — exactly as simulateTick does — to keep the
+  // RNG sequence identical to what a from-day-0 simulation would produce.
   const rng = new SeededRNG(scenario.seed);
+  const warmup = { activeHeatwaveDays: 0, activeFrostDays: 0 };
   for (let d = 0; d < STARTING_DAY; d++) {
-    generateDailyWeather(scenario, d, rng);
+    const w = generateDailyWeather(scenario, d, rng);
+    updateExtremeEvents(warmup, w, scenario, d, rng);
   }
 
   return {
@@ -52,8 +56,8 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     scenarioId: scenario.id,
     rngState: rng.getState(),
     waterStressPausedThisSeason: false,
-    activeHeatwaveDays: 0,
-    activeFrostDays: 0,
+    activeHeatwaveDays: warmup.activeHeatwaveDays,
+    activeFrostDays: warmup.activeFrostDays,
     nextNotificationId: 1,
     gameOver: false,
     yearEndSummaryPending: false,
@@ -160,44 +164,62 @@ function processPlantBulk(state: GameState, scope: 'all' | 'row' | 'col', cropId
       return { success: false, reason: `Not enough cash. Cost per plot: $${costPerCell}.` };
     }
 
-    if (affordableCells < emptyCells.length) {
-      // Group empty cells by row and figure out how many complete rows we can afford
-      const emptyByRow = groupByRow(emptyCells);
-      let rowsAffordable = 0;
-      let plotsInRows = 0;
-      let costForRows = 0;
-
-      for (const [, cells] of emptyByRow) {
-        const rowCost = cells.length * costPerCell;
-        if (costForRows + rowCost <= state.economy.cash) {
-          rowsAffordable++;
-          plotsInRows += cells.length;
-          costForRows += rowCost;
-        } else {
-          break;
-        }
+    // DD-1: Only consider fully empty rows (skip rows with any existing crops)
+    const emptyByRow = groupByRow(emptyCells);
+    const fullRows: Cell[][] = [];
+    for (const [, cells] of emptyByRow) {
+      if (cells.length === GRID_COLS) {
+        fullRows.push(cells);
       }
+    }
 
-      if (rowsAffordable === 0) {
-        return {
-          success: false,
-          reason: `Not enough cash to plant a full row. Cost per row: $${emptyByRow.values().next().value!.length * costPerCell}, Available: $${Math.floor(state.economy.cash)}.`,
-        };
-      }
+    const fullRowCells = fullRows.flat();
+    const fullRowCost = fullRowCells.length * costPerCell;
 
+    if (fullRowCells.length === 0) {
       return {
         success: false,
-        reason: 'partial',
-        partialOffer: {
-          affordableRows: rowsAffordable,
-          affordablePlots: plotsInRows,
-          totalCost: costForRows,
-        },
+        reason: 'No fully empty rows available. Use "Plant Row" to fill specific rows.',
       };
     }
 
-    // Can afford all — plant everything
-    return executeBulkPlant(state, emptyCells, cropId, costPerCell);
+    if (state.economy.cash >= fullRowCost) {
+      // Can afford all full rows — plant everything
+      return executeBulkPlant(state, fullRowCells, cropId, costPerCell);
+    }
+
+    // Partial: figure out how many complete rows we can afford
+    let rowsAffordable = 0;
+    let plotsInRows = 0;
+    let costForRows = 0;
+
+    for (const rowCells of fullRows) {
+      const rowCost = rowCells.length * costPerCell;
+      if (costForRows + rowCost <= state.economy.cash) {
+        rowsAffordable++;
+        plotsInRows += rowCells.length;
+        costForRows += rowCost;
+      } else {
+        break;
+      }
+    }
+
+    if (rowsAffordable === 0) {
+      return {
+        success: false,
+        reason: `Not enough cash to plant a full row. Cost per row: $${GRID_COLS * costPerCell}, Available: $${Math.floor(state.economy.cash)}.`,
+      };
+    }
+
+    return {
+      success: false,
+      reason: 'partial',
+      partialOffer: {
+        affordableRows: rowsAffordable,
+        affordablePlots: plotsInRows,
+        totalCost: costForRows,
+      },
+    };
 
   } else {
     // Row/Column: all-or-nothing
@@ -378,7 +400,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
       if (cell.crop) {
         simulateCrop(cell, weather, state);
 
-        if (cell.crop && cell.crop.growthStage === 'harvestable' && cell.crop.overripeDaysRemaining === OVERRIPE_GRACE_DAYS) {
+        if (cell.crop && cell.crop.growthStage === 'harvestable') {
           anyHarvestReady = true;
         }
 
@@ -437,6 +459,13 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         yearlyExpenses: state.economy.yearlyExpenses,
       },
     });
+  }
+
+  // Sort auto-pause queue by priority (most urgent first per SPEC §3.6)
+  if (state.autoPauseQueue.length > 1) {
+    state.autoPauseQueue.sort(
+      (a, b) => AUTO_PAUSE_PRIORITY[b.reason] - AUTO_PAUSE_PRIORITY[a.reason],
+    );
   }
 
   // Auto-pause: stop simulation if there are pending events

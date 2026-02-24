@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   saveGame, loadGame, autoSave, loadAutoSave,
-  hasSaveData, deleteSave, deleteAutoSave,
+  hasSaveData, hasManualSaves, deleteSave, deleteAutoSave,
   listManualSaves, AUTOSAVE_KEY,
 } from '../../src/save/storage.ts';
 import { createInitialState, simulateTick, processCommand } from '../../src/engine/game.ts';
@@ -36,10 +36,28 @@ describe('Save/Load System', () => {
       expect(hasSaveData()).toBe(true);
     });
 
+    it('returns false when only manual saves exist (no auto-save)', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      saveGame(state, 'slot1');
+      expect(hasSaveData()).toBe(false);
+    });
+  });
+
+  describe('hasManualSaves', () => {
+    it('returns false when no manual saves exist', () => {
+      expect(hasManualSaves()).toBe(false);
+    });
+
     it('returns true when manual save exists', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
       saveGame(state, 'slot1');
-      expect(hasSaveData()).toBe(true);
+      expect(hasManualSaves()).toBe(true);
+    });
+
+    it('returns false when only auto-save exists', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      autoSave(state);
+      expect(hasManualSaves()).toBe(false);
     });
   });
 

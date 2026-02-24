@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'preact/hooks';
-import { gameState, currentWeather, dispatch, handleSave } from '../../adapter/signals.ts';
+import { gameState, currentWeather, dispatch, handleSave, returnToTitle } from '../../adapter/signals.ts';
 import { getSeasonName, getMonthName } from '../../engine/calendar.ts';
 import type { GameSpeed, DailyWeather } from '../../engine/types.ts';
 import styles from '../styles/TopBar.module.css';
@@ -107,6 +107,15 @@ export function TopBar() {
         aria-label="Save game"
       >
         Save
+      </button>
+
+      <button
+        data-testid="save-new-game"
+        class={styles.newGameBtn}
+        onClick={() => returnToTitle()}
+        aria-label="Return to title screen"
+      >
+        New Game
       </button>
     </header>
   );

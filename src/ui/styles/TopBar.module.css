@@ -91,3 +91,15 @@
 .saveBtn:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+.newGameBtn {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-radius: 4px;
+}
+
+.newGameBtn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

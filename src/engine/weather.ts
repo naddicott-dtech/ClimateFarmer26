@@ -1,4 +1,4 @@
-import type { DailyWeather, ClimateScenario, GameState, Season } from './types.ts';
+import type { DailyWeather, ClimateScenario, Season } from './types.ts';
 import { totalDayToCalendar } from './calendar.ts';
 import type { SeededRNG } from './rng.ts';
 
@@ -59,15 +59,32 @@ export function generateDailyWeather(
 /** Heatwave/frost event durations (days) */
 const EVENT_MIN_DAYS = 3;
 const EVENT_MAX_DAYS = 5;
+const DAYS_PER_SEASON = 90;
+
+/**
+ * Convert a per-season probability to a per-day probability.
+ * Solves: 1 - (1 - dailyP)^90 = seasonP  →  dailyP = 1 - (1 - seasonP)^(1/90)
+ */
+function seasonalToDaily(seasonP: number): number {
+  if (seasonP <= 0) return 0;
+  if (seasonP >= 1) return 1;
+  return 1 - Math.pow(1 - seasonP, 1 / DAYS_PER_SEASON);
+}
+
+/** The subset of game state that extreme event tracking needs. */
+export interface ExtremeEventState {
+  activeHeatwaveDays: number;
+  activeFrostDays: number;
+}
 
 /**
  * Roll for new extreme events and manage active event countdowns.
- * Modifies both the weather (adds temperature effects) and the game state
+ * Modifies both the weather (adds temperature effects) and the event state
  * (tracks remaining event days). Must be called once per tick after
  * generateDailyWeather.
  */
 export function updateExtremeEvents(
-  state: GameState,
+  state: ExtremeEventState,
   weather: DailyWeather,
   scenario: ClimateScenario,
   totalDay: number,
@@ -84,8 +101,9 @@ export function updateExtremeEvents(
     weather.isHeatwave = true;
     weather.tempHigh += 10; // Heatwave adds 10°F
   } else {
-    // Roll for new heatwave start (per-day chance derived from seasonal probability)
-    const dailyChance = params.heatwaveProbability / 90;
+    // Roll for new heatwave. Convert per-season probability to per-day:
+    // dailyP = 1 - (1 - seasonP)^(1/90) so that (1-dailyP)^90 = 1-seasonP
+    const dailyChance = seasonalToDaily(params.heatwaveProbability);
     if (rng.chance(dailyChance)) {
       const duration = rng.nextInt(EVENT_MIN_DAYS, EVENT_MAX_DAYS);
       state.activeHeatwaveDays = duration - 1; // -1 because today counts
@@ -102,7 +120,7 @@ export function updateExtremeEvents(
     weather.tempLow = Math.min(weather.tempLow, 32); // Frost forces low to ≤32
   } else {
     // Roll for new frost start
-    const dailyChance = params.frostProbability / 90;
+    const dailyChance = seasonalToDaily(params.frostProbability);
     if (rng.chance(dailyChance)) {
       const duration = rng.nextInt(EVENT_MIN_DAYS, EVENT_MAX_DAYS);
       state.activeFrostDays = duration - 1;

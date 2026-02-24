@@ -99,3 +99,98 @@
 .resumeBtn:hover {
   background: #2e6680;
 }
+
+.loadToggleBtn {
+  width: 100%;
+  padding: 10px;
+  font-size: var(--font-size-base);
+  background: var(--color-bg-dark);
+  color: var(--color-text);
+  border: 1px solid var(--color-bg-dark);
+}
+
+.loadToggleBtn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+}
+
+.loadSection {
+  width: 100%;
+  border: 1px solid var(--color-bg-dark);
+  border-radius: var(--border-radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.loadTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.saveEntry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: var(--color-bg);
+  border-radius: var(--border-radius);
+  gap: 8px;
+}
+
+.saveInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.saveName {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saveTimestamp {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.saveActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.loadBtn {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  background: var(--color-primary);
+  color: white;
+}
+
+.loadBtn:hover {
+  background: var(--color-primary-dark);
+}
+
+.deleteBtn {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+
+.deleteBtn:hover {
+  background: var(--color-danger);
+  color: white;
+}
