@@ -663,6 +663,57 @@ describe('Foreshadowing', () => {
     expect(result.fireEvent!.id).toBe('test-event');
   });
 
+  it('foreshadowed event fires guaranteed even when competing with other eligible events', () => {
+    const rng = new SeededRNG(42);
+    const foreshadowed = makeSimpleStorylet({
+      id: 'foreshadowed',
+      priority: 10, // low priority — would lose weighted random
+      foreshadowing: { signal: 'Storm', daysBeforeEvent: 7, reliability: 1.0 },
+    });
+    const competitor = makeSimpleStorylet({
+      id: 'competitor',
+      priority: 90, // high priority
+    });
+
+    // Mature foreshadow ready to fire
+    state.pendingForeshadows.push({
+      storyletId: 'foreshadowed',
+      signal: 'Storm',
+      appearsOnDay: state.calendar.totalDay - 7,
+      eventFiresOnDay: state.calendar.totalDay,
+      isFalseAlarm: false,
+      dismissed: false,
+    });
+
+    const result = evaluateEvents(state, [foreshadowed, competitor], rng);
+    // Foreshadowed event must fire (guaranteed), not the higher-priority competitor
+    expect(result.fireEvent).not.toBeNull();
+    expect(result.fireEvent!.id).toBe('foreshadowed');
+  });
+
+  it('multiple mature foreshadows: first fires, others stay pending', () => {
+    const rng = new SeededRNG(42);
+    const event1 = makeSimpleStorylet({ id: 'event-1' });
+    const event2 = makeSimpleStorylet({ id: 'event-2' });
+
+    state.pendingForeshadows.push(
+      {
+        storyletId: 'event-1', signal: 'First', appearsOnDay: state.calendar.totalDay - 7,
+        eventFiresOnDay: state.calendar.totalDay, isFalseAlarm: false, dismissed: false,
+      },
+      {
+        storyletId: 'event-2', signal: 'Second', appearsOnDay: state.calendar.totalDay - 5,
+        eventFiresOnDay: state.calendar.totalDay, isFalseAlarm: false, dismissed: false,
+      },
+    );
+
+    const result = evaluateEvents(state, [event1, event2], rng);
+    expect(result.fireEvent!.id).toBe('event-1');
+    // First foreshadow dismissed, second still pending
+    expect(state.pendingForeshadows[0].dismissed).toBe(true);
+    expect(state.pendingForeshadows[1].dismissed).toBe(false);
+  });
+
   it('false alarm foreshadow expires without firing event', () => {
     const rng = new SeededRNG(42);
     const storylets = [makeSimpleStorylet({

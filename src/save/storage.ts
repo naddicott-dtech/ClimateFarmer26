@@ -1,5 +1,6 @@
 import type { GameState, SaveGame } from '../engine/types.ts';
-import { SAVE_VERSION, GRID_ROWS, GRID_COLS } from '../engine/types.ts';
+import { SAVE_VERSION, GRID_ROWS, GRID_COLS, EVENT_RNG_SEED_OFFSET } from '../engine/types.ts';
+import { SLICE_1_SCENARIO } from '../data/scenario.ts';
 
 // ============================================================================
 // Storage Keys
@@ -226,7 +227,12 @@ function migrateV1ToV2(data: unknown): GameState | null {
     if (state.wateringRestricted === undefined) state.wateringRestricted = false;
     if (state.wateringRestrictionEndsDay === undefined) state.wateringRestrictionEndsDay = 0;
     if (state.irrigationCostMultiplier === undefined) state.irrigationCostMultiplier = 1.0;
-    if (state.eventRngState === undefined) state.eventRngState = 42; // fallback seed
+    // Derive event RNG seed from scenario seed, not a hardcoded value.
+    // This is correct for the current scenario; future multi-scenario support
+    // would need the scenario ID to look up the right seed.
+    if (state.eventRngState === undefined) {
+      state.eventRngState = SLICE_1_SCENARIO.seed + EVENT_RNG_SEED_OFFSET;
+    }
 
     // Fill missing perennial fields on crop instances
     for (const row of state.grid) {

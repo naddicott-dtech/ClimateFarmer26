@@ -5,6 +5,7 @@ import {
   gameState, dispatch,
 } from '../../adapter/signals.ts';
 import type { AutoPauseEvent } from '../../engine/types.ts';
+import { EventPanel } from './EventPanel.tsx';
 import styles from '../styles/Overlay.module.css';
 
 export function AutoPausePanel() {
@@ -12,6 +13,17 @@ export function AutoPausePanel() {
   if (queue.length === 0) return null;
 
   const event = queue[0];
+
+  // Event/advisor auto-pause: render the EventPanel with choices
+  if (event.reason === 'event' || event.reason === 'advisor') {
+    const state = gameState.value;
+    if (state?.activeEvent) {
+      return <EventPanel event={state.activeEvent} isAdvisor={event.reason === 'advisor'} />;
+    }
+    // Fallback: activeEvent already cleared (shouldn't happen, but safe)
+    return <AutoPauseOverlay event={event} />;
+  }
+
   return <AutoPauseOverlay event={event} />;
 }
 
@@ -51,8 +63,8 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
         break;
       case 'event':
       case 'advisor':
-        // Event/advisor panels are handled by EventPanel component.
-        // Dismiss just closes the auto-pause overlay.
+        // Should not reach here — EventPanel handles these reasons.
+        // Fallback: dismiss the auto-pause (clears activeEvent via engine).
         handleDismissAutoPause();
         break;
     }

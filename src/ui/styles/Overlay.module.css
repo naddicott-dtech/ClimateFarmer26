@@ -174,3 +174,86 @@
   color: var(--color-text-muted);
   cursor: pointer;
 }
+
+/* Event/Advisor choice panel */
+.advisorHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-bg-dark);
+}
+
+.advisorIcon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.advisorName {
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.advisorRole {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.choiceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choiceBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.choiceBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: white;
+}
+
+.choiceBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.choiceBtnDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.choiceLabel {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.choiceDesc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.choiceCost {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  margin-top: 4px;
+}
+
+.choiceCostUnaffordable {
+  color: var(--color-danger);
+}

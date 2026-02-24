@@ -78,9 +78,15 @@
 
 35. **TAKE_LOAN guard** — `TAKE_LOAN` command was valid at any time (only checked `totalLoansReceived`). Fixed: now requires active `loan_offer` in `autoPauseQueue`, preventing command from being dispatched outside the loan offer flow.
 
+### Resolved from Slice 2a Senior Engineer Review Round 2 (2026-02-24)
+
+36. **MEDIUM: Foreshadowed events dropped on maturity day** — When multiple events matured on the same tick, all mature foreshadows were dismissed before weighted selection. If a foreshadowed event lost the random roll, its foreshadow was gone permanently. Fixed: foreshadowed events now fire with guaranteed priority (the player was warned, so the event must follow through). Only one fires per tick; others stay pending for subsequent ticks.
+
+37. **LOW: Migration fallback used hardcoded event RNG seed** — `migrateV1ToV2` set `eventRngState = 42` for v1 saves. Fixed: now derives seed from `SLICE_1_SCENARIO.seed + EVENT_RNG_SEED_OFFSET` to match what `createInitialState` would produce.
+
 ### Deferred — Slice 2a Browser Tests (2026-02-24)
 
-36. **MEDIUM: Thin browser coverage for 2a** — Browser tests only have generic auto-pause panel visibility checks. Full browser coverage for event choice response, loan accept/decline, debt display in TopBar, and foreshadowing notifications will be added when the EventPanel UI is built (next checkpoint).
+38. **Loan panel browser test** — Skipped (`test.skip`) because triggering bankruptcy requires burning through $50k in normal gameplay, which exceeds reasonable browser test timeout. The 16 unit tests in `loans.test.ts` cover loan mechanics thoroughly. Will add when a test state injection mechanism is available.
 
 ### Deferred — Accepted for Slice 1
 

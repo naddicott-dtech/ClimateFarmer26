@@ -155,38 +155,77 @@ export function evaluateEvents(
     return { fireEvent: null, newForeshadows: [] };
   }
 
-  const eligible: Storylet[] = [];
   const newForeshadows: PendingForeshadow[] = [];
 
   // Phase 1: Resolve mature foreshadows (totalDay >= eventFiresOnDay).
-  // These events already passed conditions when the foreshadow was created,
-  // so they skip re-evaluation and go straight to eligible (or expire if false alarm).
+  // Foreshadowed events fire with guaranteed priority — the player was warned,
+  // so the event must follow through. Only one fires per tick; others stay pending.
+  // False alarms are dismissed silently.
+  let foreshadowedFire: Storylet | null = null;
+
   for (const foreshadow of state.pendingForeshadows) {
     if (foreshadow.dismissed) continue;
     if (state.calendar.totalDay < foreshadow.eventFiresOnDay) continue;
 
-    // Mature foreshadow — resolve it
-    foreshadow.dismissed = true;
-
     if (foreshadow.isFalseAlarm) {
-      // False alarm: foreshadow expires, event doesn't fire
+      // False alarm: dismiss silently, event doesn't fire
+      foreshadow.dismissed = true;
       continue;
     }
 
-    // Find the storylet to fire
-    const storylet = allStorylets.find(s => s.id === foreshadow.storyletId);
-    if (storylet && !isOnCooldown(storylet, state) && !hasExceededMaxOccurrences(storylet, state)) {
-      eligible.push(storylet);
+    // Real mature foreshadow — fire if we haven't already selected one
+    if (!foreshadowedFire) {
+      const storylet = allStorylets.find(s => s.id === foreshadow.storyletId);
+      if (storylet && !isOnCooldown(storylet, state) && !hasExceededMaxOccurrences(storylet, state)) {
+        foreshadowedFire = storylet;
+        foreshadow.dismissed = true; // Only dismiss the one we're firing
+      } else {
+        // Storylet blocked by cooldown/maxOccurrences — dismiss the stale foreshadow
+        foreshadow.dismissed = true;
+      }
     }
+    // If foreshadowedFire is already set, leave other mature foreshadows
+    // undismissed — they'll fire on subsequent ticks
   }
 
-  // Phase 2: Evaluate storylets that don't have active foreshadows.
+  // If a foreshadowed event matured, it fires immediately (guaranteed).
+  // Still run Phase 2 for new foreshadow creation, but skip event selection.
+  if (foreshadowedFire) {
+    // Phase 2 (foreshadow creation only): check for new foreshadows
+    for (const storylet of allStorylets) {
+      if (storylet.id === foreshadowedFire.id) continue;
+      if (!storylet.foreshadowing) continue;
+      if (isOnCooldown(storylet, state)) continue;
+      if (hasExceededMaxOccurrences(storylet, state)) continue;
+
+      const hasPendingForeshadow = state.pendingForeshadows.some(
+        f => f.storyletId === storylet.id && !f.dismissed,
+      );
+      if (hasPendingForeshadow) continue;
+
+      if (evaluateAllConditions(storylet, state, rng)) {
+        const isReliable = rng.next() < storylet.foreshadowing.reliability;
+        newForeshadows.push({
+          storyletId: storylet.id,
+          signal: storylet.foreshadowing.signal,
+          appearsOnDay: state.calendar.totalDay,
+          eventFiresOnDay: state.calendar.totalDay + storylet.foreshadowing.daysBeforeEvent,
+          isFalseAlarm: !isReliable,
+          advisorSource: storylet.foreshadowing.advisorSource,
+          dismissed: false,
+        });
+      }
+    }
+
+    return { fireEvent: foreshadowedFire, newForeshadows };
+  }
+
+  // Phase 2: Evaluate storylets without active foreshadows.
+  const eligible: Storylet[] = [];
+
   for (const storylet of allStorylets) {
     if (isOnCooldown(storylet, state)) continue;
     if (hasExceededMaxOccurrences(storylet, state)) continue;
-
-    // Skip if already added from foreshadow resolution in Phase 1
-    if (eligible.some(e => e.id === storylet.id)) continue;
 
     // Skip if there's an active (undismissed) foreshadow for this storylet — it's pending
     const hasPendingForeshadow = state.pendingForeshadows.some(
