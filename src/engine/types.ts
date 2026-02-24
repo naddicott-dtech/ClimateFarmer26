@@ -1,7 +1,11 @@
 // ============================================================================
-// Core Engine Types — ClimateFarmer26 Slice 1
+// Core Engine Types — ClimateFarmer26
 // All game state types. Pure data, no logic. Serializable for save/load.
 // ============================================================================
+
+import type {
+  ActiveEvent, EventOccurrence, ActiveEffect, PendingForeshadow,
+} from './events/types.ts';
 
 // --- Calendar ---
 
@@ -15,7 +19,7 @@ export interface CalendarDate {
   totalDay: number;   // absolute day since game start (0-indexed, used by engine)
 }
 
-// --- Commands (Slice 1 subset) ---
+// --- Commands ---
 
 export type Command =
   | { type: 'PLANT_CROP'; cellRow: number; cellCol: number; cropId: string }
@@ -23,7 +27,12 @@ export type Command =
   | { type: 'HARVEST'; cellRow: number; cellCol: number }
   | { type: 'HARVEST_BULK'; scope: 'all' | 'row' | 'col'; index?: number }
   | { type: 'WATER'; scope: 'all' | 'row' | 'col'; index?: number }
-  | { type: 'SET_SPEED'; speed: GameSpeed };
+  | { type: 'SET_SPEED'; speed: GameSpeed }
+  // Slice 2a: Event system + loans
+  | { type: 'RESPOND_EVENT'; eventId: string; choiceId: string }
+  | { type: 'TAKE_LOAN' }  // parameterless — amount is engine-computed
+  // Slice 2b: Perennial removal
+  | { type: 'REMOVE_CROP'; cellRow: number; cellCol: number };
 
 export type GameSpeed = 0 | 1 | 2 | 4;
 
@@ -92,7 +101,7 @@ export interface DailyWeather {
 export interface CropDefinition {
   id: string;
   name: string;
-  type: 'annual';             // Slice 1 only has annuals
+  type: 'annual' | 'perennial';
 
   // Growth
   gddBase: number;            // base temperature °F for GDD calculation
@@ -129,6 +138,11 @@ export interface CropInstance {
   waterStressDays: number;
   growthStage: GrowthStage;
   overripeDaysRemaining: number; // 30 → 0, then crop rots. -1 means not overripe.
+  // Slice 2b: Perennial tracking (defaults to false/0 for annuals)
+  isPerennial: boolean;
+  perennialAge: number;
+  perennialEstablished: boolean;
+  isDormant: boolean;
 }
 
 export interface SoilState {
@@ -151,6 +165,10 @@ export interface EconomyState {
   cash: number;
   yearlyRevenue: number;
   yearlyExpenses: number;
+  // Slice 2a: Loan system
+  debt: number;
+  totalLoansReceived: number; // 0 or 1 (max 1 in Slice 2)
+  interestPaidThisYear: number;
 }
 
 // --- Notifications ---
@@ -163,7 +181,11 @@ export type NotificationType =
   | 'water_warning'
   | 'nitrogen_warning'
   | 'crop_rotted'
-  | 'bankruptcy';
+  | 'bankruptcy'
+  // Slice 2a
+  | 'foreshadowing'
+  | 'event_result'
+  | 'loan';
 
 export interface Notification {
   id: number;
@@ -179,7 +201,11 @@ export type AutoPauseReason =
   | 'water_stress'
   | 'bankruptcy'
   | 'year_end'
-  | 'year_30';
+  | 'year_30'
+  // Slice 2a
+  | 'loan_offer'
+  | 'event'
+  | 'advisor';
 
 export interface AutoPauseEvent {
   reason: AutoPauseReason;
@@ -191,6 +217,9 @@ export interface AutoPauseEvent {
 export const AUTO_PAUSE_PRIORITY: Record<AutoPauseReason, number> = {
   bankruptcy: 100,
   year_30: 100,
+  loan_offer: 95,
+  event: 85,
+  advisor: 82,
   harvest_ready: 80,
   water_stress: 60,
   year_end: 40,
@@ -215,6 +244,17 @@ export interface GameState {
   gameOver: boolean;
   gameOverReason?: string;
   yearEndSummaryPending: boolean;
+  // Slice 2a: Event system
+  eventLog: EventOccurrence[];
+  activeEvent: ActiveEvent | null;
+  pendingForeshadows: PendingForeshadow[];
+  activeEffects: ActiveEffect[];
+  cropFailureStreak: number;
+  flags: Record<string, boolean>;
+  wateringRestricted: boolean;
+  wateringRestrictionEndsDay: number;
+  irrigationCostMultiplier: number;
+  eventRngState: number;      // separate RNG for events (seeded from mainSeed + 10000)
 }
 
 // --- Save/Load ---
@@ -246,4 +286,10 @@ export const NITROGEN_MODERATE_THRESHOLD = 40;
 export const IRRIGATION_COST_PER_CELL = 5; // $ per cell per watering
 export const WATER_DOSE_INCHES = 3.0; // inches per watering action (~14 days worth at typical ET)
 export const STARTING_DAY = 59; // March 1 (0-indexed totalDay) — Spring start per SPEC
-export const SAVE_VERSION = '1.0.0';
+export const SAVE_VERSION = '2.0.0';
+
+// Loan constants
+export const LOAN_INTEREST_RATE = 0.10; // 10% annual
+export const LOAN_REPAYMENT_FRACTION = 0.20; // 20% of gross harvest revenue
+export const LOAN_DEBT_CAP = 100_000; // debt > this = game over
+export const EVENT_RNG_SEED_OFFSET = 10_000; // event RNG = mainSeed + this

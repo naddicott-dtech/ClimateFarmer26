@@ -85,16 +85,22 @@ Three rounds of Senior Engineer review were conducted. All findings addressed:
 - **Sound/music** — not essential for classroom
 - **Emergency loans / credit** — Slice 2 (bankruptcy is game-over in Slice 1)
 
-## What's Next (Slice 2 Planning)
+## What's Next (Slice 2: Events, Perennials, Loans & Advisor)
 
-Per ARCHITECTURE.md §13, Slice 2 adds:
-- Event system (storylets with preconditions)
-- Perennial crops (almonds, grapes)
-- Market price fluctuations
-- Basic tech tree unlocks
-- Advisor system (4 advisors with different reliability)
+Slice 2 scope locked per ARCHITECTURE.md §13 and SPEC.md §12-19:
 
-Before starting Slice 2: tag Slice 1 and create a SPEC update for Slice 2 scope.
+**Core (must ship):**
+- Storylet/event engine + foreshadowing + 3 climate events (Heatwave Advisory, Water Allocation Cut, Late Frost Warning)
+- 1 advisor (Extension Agent — Dr. Maria Santos, reliability 0.95)
+- Perennial crops (almonds, pistachios) with establishment period, dormancy, non-destructive harvest
+- Minimal emergency loan (one-time bailout, fixed 10% interest, parameterless TAKE_LOAN)
+- Chill-hour tracking with fog-of-war reveal (hidden until advisor or first perennial planted)
+
+**Stretch (only after Core passes all gates):** Market price fluctuation events OR a 2nd advisor.
+
+**Deferred to Slice 3:** Tech tree, remaining advisors, insurance, credit systems, perennial decline phase.
+
+**Sub-sliced as:** 2a (event engine + loans + 3 events) → 2b (perennials) → 2c (advisor + chill hours + stretch events). Each independently shippable.
 
 ## Verification Commands
 

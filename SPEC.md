@@ -447,4 +447,196 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 
 ---
 
-*Additional slices will be added to this document as Slice 1 is approved and implemented.*
+## Slice 2: Events, Perennials, Loans & Advisor
+
+> **Status: APPROVED — Locked for implementation.**
+> Sub-sliced into 2a (events + loans), 2b (perennials), 2c (advisor + chill hours).
+
+### Slice 2 Scope Lock
+
+- **Core (must ship):** Storylet/event engine + foreshadowing + 1 advisor (extension agent) + perennials (almonds, pistachios) + 3 events + minimal emergency loan
+- **Stretch (only after Core passes all gates):** Market price fluctuation events OR a 2nd advisor
+- **Deferred to Slice 3:** Tech tree, remaining advisors, insurance, credit systems, perennial decline phase
+
+---
+
+### Sub-Slice 2a: Event System + Emergency Loan
+
+#### 12. Event System
+
+##### 12.1 Event Triggers
+- **When** the game simulation is running and an event's preconditions are met, **the system should** auto-pause and display an event panel with the event title, description, and choice buttons.
+- **When** an event fires, **I should see** the event panel overlay with clearly described choices and their costs/consequences.
+- **When** I click a choice button, **I should see** the effects applied immediately (cash changes, notifications, etc.) and the game resume.
+- **When** multiple events are eligible on the same tick, **the system should** select the highest-priority event (priority >= 100 is guaranteed; otherwise weighted random by priority).
+- **When** an event has a cooldown, **the system should NOT** fire the same event again within the cooldown period.
+
+##### 12.2 Concrete Events (2a)
+- **When** it is summer, year 2+, **I may see** a "Heatwave Advisory" event. Choices: Emergency irrigation ($500, moisture boost) or Wait and hope (yield penalty for 14 days).
+- **When** it is summer, year 3+, **I may see** a "Water Allocation Cut" event. Choices: Accept higher costs (irrigation +50% for 90 days) or Cut irrigation (watering restricted 45 days).
+- **When** it is spring, crops are planted, **I may see** a "Late Frost Warning" event. Choices: Frost protection ($300) or Accept the risk (yield penalty for 7 days).
+
+##### 12.3 Foreshadowing
+- **When** an event with foreshadowing is approaching, **I should see** a notification N days before the event fires (e.g., "Weather service reports: high pressure building. Possible record heat next week.").
+- **When** foreshadowing has reliability < 1.0, **I may see** false alarms — the notification appears but the event does not fire. A follow-up notification should say the predicted event did not materialize.
+- **When** foreshadowing fires and the event follows, **I should see** the event panel auto-pause when the foreshadowed day arrives.
+
+##### 12.4 Event Effects
+- **When** an event choice applies a yield modifier, **I should see** affected crop harvests reflect the modifier during the effect duration.
+- **When** an event choice applies a watering restriction, **the system should** block WATER commands for the duration. Water buttons should be disabled with a tooltip explaining the restriction.
+- **When** multiple active effects stack on the same crop, **the system should** multiply them together (e.g., two 0.85 modifiers = 0.7225). Modifier product is clamped to [0.0, 10.0].
+- **When** an active effect's duration expires, **I should see** it stop affecting calculations immediately.
+
+#### 13. Emergency Loan
+
+##### 13.1 First Bankruptcy — Loan Offer
+- **When** my cash drops to $0 or below for the first time, **I should NOT** see a game-over screen. Instead, the game auto-pauses with a loan offer panel showing: the loan amount, 10% annual interest rate, and a warning that this is a one-time opportunity.
+- **When** the loan is offered, the amount **should be** automatically calculated by the engine: enough to cover my deficit plus a $5,000 buffer, rounded up to the nearest $1,000.
+- **When** I click "Accept Loan", **I should see** my cash increase by the loan amount, a debt counter appear in the top bar, and the game resume.
+- **When** I click "Decline Loan", **I should see** the game-over panel (same as Slice 1 bankruptcy).
+
+##### 13.2 Debt Mechanics
+- **When** I have outstanding debt, **I should see** it displayed in the top bar next to cash (e.g., "Cash: $12,000 | Debt: $8,000" with debt in red).
+- **When** I harvest a crop while in debt, **I should see** 20% of the gross harvest revenue automatically applied to debt repayment, with a notification explaining the deduction (e.g., "$200 applied to loan repayment. Remaining debt: $7,800").
+- **When** the year ends and I have debt, **I should see** interest paid and remaining debt in the year-end summary.
+- **When** my cash drops to $0 or below a second time (after already taking a loan), **I should see** the game-over panel — no second loans.
+- **When** my debt exceeds $100,000, **I should see** the game-over panel with a message about debt becoming unsustainable.
+
+#### 14. Auto-Pause Priorities (Slice 2 additions)
+
+| Reason | Priority | New in Slice 2? |
+|--------|----------|-----------------|
+| bankruptcy | 100 | No |
+| year_30 | 100 | No |
+| loan_offer | 95 | Yes |
+| event | 85 | Yes |
+| advisor | 82 | Yes |
+| harvest_ready | 80 | No |
+| water_stress | 60 | No |
+| year_end | 40 | No |
+
+#### 15. Save Versioning
+- **When** I load a v2 save, **the system should** load it normally.
+- **When** I load a v1 save (from Slice 1), **the system should** either fill missing fields with safe defaults and load, or show "Save from older version — please start a new game." Either is acceptable.
+
+---
+
+### Sub-Slice 2b: Perennial Crops
+
+#### 16. Perennial Planting
+
+##### 16.1 Crop Menu
+- **When** I open the plant menu, **I should see** perennial crops (Almonds, Pistachios) alongside annual crops, with their establishment cost shown (e.g., "$960/plot") and a warning: "Takes 3 years before first harvest."
+- **When** it is outside the perennial planting window (Jan-Mar), **I should see** perennial crops greyed out with tooltip: "Planting window: January–March."
+- **When** I don't have enough cash for the establishment cost, **I should see** the perennial crop greyed out with tooltip showing cost vs. available cash.
+
+##### 16.2 Establishment Period
+- **When** I plant almonds, **I should see** a tree indicator in the cell and "Establishing — Year 1/3" in the side panel.
+- **When** time passes during establishment, **I should see** the year counter increment at year boundaries (Year 1/3 → Year 2/3 → Year 3/3 → "Producing").
+- **When** a perennial crop is in establishment, **I should NOT** see a "Harvest" button or any harvest revenue.
+- **When** the year ends with perennials planted, **I should see** maintenance costs deducted ($200/plot for almonds, $180/plot for pistachios) in the year-end summary.
+
+##### 16.3 Dormancy
+- **When** winter arrives and I have perennials, **I should see** the perennial cells show a muted/dormant visual (distinct from growing state).
+- **When** a perennial is dormant, **I should NOT** see GDD accumulation or growth stage changes.
+- **When** spring arrives after dormancy, **I should see** the perennial resume normal growth.
+
+##### 16.4 Perennial Harvest
+- **When** a perennial crop reaches harvestable stage (after establishment), **I should see** the auto-pause and harvest option, same as annuals.
+- **When** I harvest a perennial crop, **I should see** revenue added to cash but the crop REMAINS in the cell (not cleared to empty). The cell shows the tree still present.
+- **When** a perennial crop becomes overripe, **I should see** the same 30-day grace period as annuals, BUT the crop survives (yield = 0 for that year, crop is not destroyed).
+
+##### 16.5 Perennial Removal
+- **When** I select a cell with a perennial crop, **I should see** a "Remove" button in the side panel (not available for annual crops).
+- **When** I click "Remove", **I should see** a confirmation dialog: "Remove almonds? This costs $500 and cannot be undone. The plot will be cleared for replanting."
+- **When** I confirm removal, **I should see** the removal cost deducted, the cell cleared to empty, and a notification confirming the removal.
+
+##### 16.6 Hard Boundary (NOT in 2b)
+- **I should NOT** see any chill-hour data, chill-hour warnings, or chill-related yield penalties in Sub-Slice 2b. Chill mechanics ship in 2c.
+- **I should NOT** see yield decline over time. Binary yield only: 0 during establishment, full production after.
+
+---
+
+### Sub-Slice 2c: Extension Agent Advisor + Chill Hours
+
+#### 17. Extension Agent Advisor
+
+##### 17.1 Advisor Appearance
+- **When** the extension agent's trigger conditions are met, **the system should** auto-pause and show an advisor panel with: the advisor's name ("Dr. Maria Santos"), role ("County Extension Agent"), and dialogue text with recommendations.
+- **When** the advisor panel appears, **I should see** 1-2 choice buttons (e.g., "Thanks for the advice" or "Tell me more about pistachios").
+- **When** I click a choice, **I should see** the advisor panel dismiss and the game resume.
+
+##### 17.2 Advisor Triggers
+- **When** my average soil nitrogen drops below 50 lbs/acre (year 2+), **I should see** the extension agent recommend crop rotation.
+- **When** I experience my first crop failure, **I should see** the extension agent recommend diversification.
+- **When** I have perennials planted and it's year 8+, **I should see** the extension agent warn about declining chill hours and suggest pistachios.
+- **When** my cash drops below $30,000 (year 4+), **I should see** the extension agent offer water conservation tips.
+- **When** my cash is above $40,000, I have no debt, and no perennials (year 3+), **I should see** the extension agent suggest planting perennial crops (one-time).
+
+##### 17.3 Advisor Cooldowns
+- **When** the extension agent has appeared recently (within cooldown period), **the system should NOT** show the same advisor message again. Each trigger has its own cooldown.
+- **When** I play a full 30-year game with poor practices (monoculture, no rotation), **I should see** the extension agent appear at least 3 times with relevant advice.
+
+#### 18. Chill Hours
+
+##### 18.1 Fog-of-War Reveal
+- **When** I start a new game, **I should NOT** see any chill-hour data in the side panel.
+- **When** the extension agent fires the chill-hour warning (trigger #3) OR I plant my first perennial, **I should see** chill-hour data appear in the side panel for perennial cells. This is permanent — once revealed, it stays visible.
+- **When** chill-hour data is revealed, **I should see** the current winter's accumulated chill hours and the crop's requirement (e.g., "Chill hours: 680 / 700 required").
+
+##### 18.2 Chill-Hour Mechanics
+- **When** winter arrives and I have perennials, **the system should** accumulate chill hours based on winter temperatures.
+- **When** a perennial's accumulated chill hours are below its requirement at spring, **I should see** a yield penalty proportional to the deficit.
+- **When** the climate scenario has declining chill hours over 30 years, **I should see** almonds (700 required) become unreliable before pistachios (600 required) — this is the core teachable moment.
+- **When** chill-hour deficit causes a yield penalty, **I should see** an explanation in the side panel or notification (e.g., "Insufficient winter chill: almond yield reduced to 60%.").
+
+##### 18.3 Chill Hours in Scenario Data
+- **When** the scenario generates winter weather, **the system should** use pre-defined chill hours that decline over 30 years: ~800 (years 1-5) → ~700 (years 6-15) → ~630 (years 16-25) → ~570 (years 26-30).
+
+#### 19. Stretch Events (only after Core passes stretch gate)
+
+##### 19.1 Market Price Fluctuation
+- **When** it is not winter, year 2+, **I may see** a "Tomato Market Surge" event. Single choice: Acknowledge (tomato price x1.4 for 60 days).
+- **When** a price modifier is active, **I should see** affected crop harvests reflect the modified price.
+
+##### 19.2 Regulatory Water Restriction
+- **When** it is summer, year 5+, **I may see** a "Groundwater Pumping Ban" event. Choices: Comply (no irrigation 30 days) or Buy surface water rights ($1,000).
+
+---
+
+### Slice 2 data-testid Coverage
+
+#### Event Panel
+- `event-panel` — event overlay container
+- `event-title` — event title heading
+- `event-description` — narrative description
+- `event-choice-{choiceId}` — each choice button (e.g., `event-choice-irrigate-extra`)
+- `event-choice-cost-{choiceId}` — cost display for a choice
+
+#### Advisor Panel
+- `advisor-panel` — advisor overlay container
+- `advisor-portrait` — emoji/portrait element
+- `advisor-name` — advisor's name
+- `advisor-role` — advisor's role subtitle
+- `advisor-message` — dialogue text
+- `advisor-choice-{choiceId}` — choice buttons
+
+#### Loan Panel
+- `loan-panel` — loan offer overlay
+- `loan-accept` — accept loan button
+- `loan-decline` — decline (game over) button
+- `loan-amount` — loan amount display
+- `loan-rate` — interest rate display
+- `topbar-debt` — debt display in top bar
+
+#### Perennial Indicators
+- `sidebar-perennial-age` — age display (e.g., "Year 2/3 — Establishing")
+- `sidebar-perennial-chill` — chill hours display (2c only)
+- `sidebar-perennial-status` — "Establishing" / "Producing" / "Dormant"
+- `action-remove-crop` — remove perennial button
+- `menu-crop-almonds` — almond option in crop menu
+- `menu-crop-pistachios` — pistachio option in crop menu
+
+---
+
+*Additional slices will be added to this document as Slice 2 is approved and implemented.*

@@ -1,6 +1,7 @@
 import { signal, computed, batch } from '@preact/signals';
 import type { GameState, Command, CommandResult, Cell, DailyWeather } from '../engine/types.ts';
 import { GRID_ROWS, GRID_COLS, IRRIGATION_COST_PER_CELL } from '../engine/types.ts';
+import { getIrrigationCostMultiplier } from '../engine/events/effects.ts';
 import { createInitialState, processCommand, simulateTick, dismissAutoPause, resetYearlyTracking, addNotification, dismissNotification, getAvailableCrops, executeBulkPlant, executeWater } from '../engine/game.ts';
 import { getCropDefinition } from '../data/crops.ts';
 import { SLICE_1_SCENARIO } from '../data/scenario.ts';
@@ -309,7 +310,9 @@ export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
       return;
     }
 
-    const totalCost = plantedCells.length * IRRIGATION_COST_PER_CELL;
+    const costMultiplier = getIrrigationCostMultiplier(_liveState);
+    const effectiveCostPerCell = IRRIGATION_COST_PER_CELL * costMultiplier;
+    const totalCost = plantedCells.length * effectiveCostPerCell;
 
     if (_liveState.economy.cash >= totalCost) {
       // Can afford all — confirm, then route through processCommand

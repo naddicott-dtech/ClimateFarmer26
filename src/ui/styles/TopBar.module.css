@@ -80,6 +80,17 @@
   animation: flash-red 0.6s ease-out;
 }
 
+.debtSection {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(220, 38, 38, 0.3);
+  color: #fca5a5;
+}
+
 .saveBtn {
   padding: 4px 10px;
   font-size: var(--font-size-sm);

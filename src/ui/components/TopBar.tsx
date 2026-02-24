@@ -100,6 +100,16 @@ export function TopBar() {
         ${Math.floor(economy.cash).toLocaleString()}
       </span>
 
+      {economy.debt > 0 && (
+        <span
+          class={styles.debtSection}
+          data-testid="topbar-debt"
+          aria-label={`Debt: $${Math.floor(economy.debt).toLocaleString()}`}
+        >
+          Debt: ${Math.floor(economy.debt).toLocaleString()}
+        </span>
+      )}
+
       <button
         data-testid="save-button"
         class={styles.saveBtn}

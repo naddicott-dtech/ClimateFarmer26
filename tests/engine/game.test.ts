@@ -543,9 +543,24 @@ describe('Auto-pause', () => {
     expect(state.speed).toBe(0);
   });
 
-  it('triggers bankruptcy on cash <= 0', () => {
+  it('offers emergency loan on first cash <= 0 (not hard bankruptcy)', () => {
     state.speed = 1;
     state.economy.cash = 0;
+    state.rngState = 42;
+
+    simulateTick(state, SLICE_1_SCENARIO);
+
+    // First insolvency should offer loan, not hard bankruptcy
+    const loanOffer = state.autoPauseQueue.find(e => e.reason === 'loan_offer');
+    expect(loanOffer).toBeDefined();
+    expect(state.gameOver).toBe(true); // temporarily true until loan is accepted
+  });
+
+  it('triggers hard bankruptcy on second insolvency (loan already taken)', () => {
+    state.speed = 1;
+    state.economy.cash = 0;
+    state.economy.totalLoansReceived = 1; // Already took a loan
+    state.economy.debt = 5000;
     state.rngState = 42;
 
     simulateTick(state, SLICE_1_SCENARIO);
@@ -564,6 +579,7 @@ describe('Auto-pause', () => {
     state.grid[0][0].crop = {
       cropId: 'silage-corn', plantedDay: 59, gddAccumulated: 500,
       waterStressDays: 0, growthStage: 'vegetative', overripeDaysRemaining: -1,
+      isPerennial: false, perennialAge: 0, perennialEstablished: false, isDormant: false,
     };
     state.grid[0][0].soil.moisture = 0.5; // Below 25% of 6.0 capacity
 
@@ -598,6 +614,7 @@ describe('Overripe lifecycle', () => {
     state.grid[0][0].crop = {
       cropId: 'silage-corn', plantedDay: 59, gddAccumulated: 3000,
       waterStressDays: 0, growthStage: 'harvestable', overripeDaysRemaining: -1,
+      isPerennial: false, perennialAge: 0, perennialEstablished: false, isDormant: false,
     };
 
     simulateTick(state, SLICE_1_SCENARIO);
@@ -619,7 +636,8 @@ describe('Overripe lifecycle', () => {
 
     state.grid[0][0].crop = {
       cropId: 'silage-corn', plantedDay: 59, gddAccumulated: 3000,
-      waterStressDays: 0, growthStage: 'overripe', overripeDaysRemaining: 1,
+      waterStressDays: 0, growthStage: 'overripe' as const, overripeDaysRemaining: 1,
+      isPerennial: false, perennialAge: 0, perennialEstablished: false, isDormant: false,
     };
 
     simulateTick(state, SLICE_1_SCENARIO);
@@ -633,6 +651,7 @@ describe('Overripe lifecycle', () => {
     const crop = {
       cropId: 'silage-corn', plantedDay: 0, gddAccumulated: 3000,
       waterStressDays: 0, growthStage: 'overripe' as const, overripeDaysRemaining: 15,
+      isPerennial: false, perennialAge: 0, perennialEstablished: false, isDormant: false,
     };
     expect(getYieldPercentage(crop)).toBe(50); // 15/30 = 50%
 
@@ -824,17 +843,17 @@ describe('Auto-pause priority ordering', () => {
     state.economy.cash = 0;
     state.rngState = 42;
 
-    // This tick should trigger both year_end and bankruptcy
+    // This tick should trigger both year_end and loan_offer (first insolvency)
     simulateTick(state, SLICE_1_SCENARIO);
 
     expect(state.autoPauseQueue.length).toBeGreaterThanOrEqual(2);
-    // Bankruptcy (priority 100) should come before year_end (priority 40)
+    // loan_offer (priority 95) should come before year_end (priority 40)
     const reasons = state.autoPauseQueue.map(e => e.reason);
-    const bankruptcyIdx = reasons.indexOf('bankruptcy');
+    const loanOfferIdx = reasons.indexOf('loan_offer');
     const yearEndIdx = reasons.indexOf('year_end');
-    expect(bankruptcyIdx).not.toBe(-1);
+    expect(loanOfferIdx).not.toBe(-1);
     expect(yearEndIdx).not.toBe(-1);
-    expect(bankruptcyIdx).toBeLessThan(yearEndIdx);
+    expect(loanOfferIdx).toBeLessThan(yearEndIdx);
   });
 
   it('AUTO_PAUSE_PRIORITY has correct relative ordering', () => {

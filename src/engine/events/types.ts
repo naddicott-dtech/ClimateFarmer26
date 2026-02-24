@@ -1,0 +1,110 @@
+// ============================================================================
+// Event/Storylet System Types — ClimateFarmer26 Slice 2a
+// Storylets, conditions, choices, effects, foreshadowing.
+// Pure types — no logic here.
+// ============================================================================
+
+import type { Season, NotificationType } from '../types.ts';
+
+// --- Conditions (preconditions for storylet eligibility) ---
+
+export type Condition =
+  | { type: 'min_year'; year: number }
+  | { type: 'max_year'; year: number }
+  | { type: 'season'; season: Season }
+  | { type: 'season_not'; season: Season }
+  | { type: 'cash_below'; amount: number }
+  | { type: 'cash_above'; amount: number }
+  | { type: 'has_crop'; cropId?: string }
+  | { type: 'avg_nitrogen_below'; level: number }
+  | { type: 'any_perennial_planted' }
+  | { type: 'consecutive_crop_failures'; count: number }
+  | { type: 'no_debt' }
+  | { type: 'has_flag'; flag: string }
+  | { type: 'random'; probability: number };
+
+// --- Effects (what happens when a choice is selected) ---
+
+export type Effect =
+  | { type: 'modify_cash'; amount: number }
+  | { type: 'modify_moisture_all'; amount: number }
+  | { type: 'modify_yield_modifier'; cropId: string; multiplier: number; durationDays: number }
+  | { type: 'modify_price_modifier'; cropId: string; multiplier: number; durationDays: number }
+  | { type: 'modify_irrigation_cost'; multiplier: number; durationDays: number }
+  | { type: 'add_notification'; message: string; notificationType: NotificationType }
+  | { type: 'restrict_watering'; durationDays: number }
+  | { type: 'set_flag'; flag: string; value: boolean };
+
+// --- Choices (player options within an event) ---
+
+export interface Choice {
+  id: string;
+  label: string;
+  description: string;
+  cost?: number;
+  effects: Effect[];
+  requiresCash?: number;
+}
+
+// --- Foreshadowing (advance warnings) ---
+
+export interface Foreshadowing {
+  signal: string;
+  daysBeforeEvent: number;
+  reliability: number; // 0-1; <1 means sometimes a false alarm
+  advisorSource?: string;
+}
+
+// --- Storylet (event template) ---
+
+export interface Storylet {
+  id: string;
+  type: 'climate' | 'market' | 'advisor' | 'regulatory';
+  title: string;
+  description: string;
+  preconditions: Condition[];
+  priority: number; // higher = more likely; >= 100 is guaranteed fire
+  cooldownDays: number;
+  maxOccurrences?: number;
+  foreshadowing?: Foreshadowing;
+  choices: Choice[];
+  tags: string[];
+}
+
+// --- Runtime state types ---
+
+/** An event currently awaiting player response */
+export interface ActiveEvent {
+  storyletId: string;
+  title: string;
+  description: string;
+  choices: Choice[];
+  firedOnDay: number;
+}
+
+/** History entry for cooldown/maxOccurrence tracking */
+export interface EventOccurrence {
+  storyletId: string;
+  day: number;
+  choiceId: string;
+}
+
+/** Temporary modifier active until expiry */
+export interface ActiveEffect {
+  effectType: 'yield_modifier' | 'price_modifier' | 'irrigation_cost_modifier' | 'watering_restriction';
+  cropId?: string; // '*' for all crops, or specific cropId
+  multiplier?: number; // for modifiers
+  expiresDay: number;
+  sourceEventId: string;
+}
+
+/** A foreshadowing notification pending resolution */
+export interface PendingForeshadow {
+  storyletId: string;
+  signal: string;
+  appearsOnDay: number;
+  eventFiresOnDay: number;
+  isFalseAlarm: boolean;
+  advisorSource?: string;
+  dismissed: boolean;
+}

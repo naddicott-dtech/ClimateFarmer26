@@ -60,7 +60,14 @@ function readSave(key: string): GameState | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as SaveGame;
-    if (!validateSave(parsed)) return null;
+    if (!validateSave(parsed)) {
+      // Try v1 migration
+      if (isV1Save(parsed)) {
+        const migrated = migrateV1ToV2(parsed);
+        if (migrated) return migrated;
+      }
+      return null;
+    }
 
     return parsed.state;
   } catch {
@@ -183,4 +190,58 @@ function validateSave(data: unknown): data is SaveGame {
   if (typeof economy.cash !== 'number' || !Number.isFinite(economy.cash)) return false;
 
   return true;
+}
+
+// ============================================================================
+// V1 → V2 Migration (best-effort, minimal)
+// ============================================================================
+
+function isV1Save(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const save = data as Record<string, unknown>;
+  return save.version === '1.0.0';
+}
+
+/**
+ * Migrate a v1 save to v2 by filling in Slice 2a defaults.
+ * Returns null if migration fails (caller should show "start new game").
+ */
+function migrateV1ToV2(data: unknown): GameState | null {
+  try {
+    const save = data as SaveGame;
+    const state = save.state as GameState & Record<string, unknown>;
+
+    // Fill missing economy fields
+    if (state.economy.debt === undefined) state.economy.debt = 0;
+    if (state.economy.totalLoansReceived === undefined) state.economy.totalLoansReceived = 0;
+    if (state.economy.interestPaidThisYear === undefined) state.economy.interestPaidThisYear = 0;
+
+    // Fill missing event system fields
+    if (!state.eventLog) state.eventLog = [];
+    if (state.activeEvent === undefined) state.activeEvent = null;
+    if (!state.pendingForeshadows) state.pendingForeshadows = [];
+    if (!state.activeEffects) state.activeEffects = [];
+    if (state.cropFailureStreak === undefined) state.cropFailureStreak = 0;
+    if (!state.flags) state.flags = {};
+    if (state.wateringRestricted === undefined) state.wateringRestricted = false;
+    if (state.wateringRestrictionEndsDay === undefined) state.wateringRestrictionEndsDay = 0;
+    if (state.irrigationCostMultiplier === undefined) state.irrigationCostMultiplier = 1.0;
+    if (state.eventRngState === undefined) state.eventRngState = 42; // fallback seed
+
+    // Fill missing perennial fields on crop instances
+    for (const row of state.grid) {
+      for (const cell of row) {
+        if (cell.crop) {
+          if (cell.crop.isPerennial === undefined) cell.crop.isPerennial = false;
+          if (cell.crop.perennialAge === undefined) cell.crop.perennialAge = 0;
+          if (cell.crop.perennialEstablished === undefined) cell.crop.perennialEstablished = false;
+          if (cell.crop.isDormant === undefined) cell.crop.isDormant = false;
+        }
+      }
+    }
+
+    return state as GameState;
+  } catch {
+    return null;
+  }
 }

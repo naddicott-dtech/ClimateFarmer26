@@ -295,11 +295,12 @@ test.describe('Time & Simulation', () => {
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-processing-tomatoes').click();
 
-    // Run at 4x speed — should eventually hit water stress or harvest ready
+    // Run at 4x speed — should eventually hit water stress, harvest ready, or event
     await page.getByTestId('speed-fastest').click();
 
-    // Wait for an auto-pause panel to appear (should happen within a few seconds of real time)
-    await expect(page.getByTestId('autopause-panel')).toBeVisible({ timeout: 15000 });
+    // Wait for any auto-pause panel to appear (standard, event, loan, or advisor)
+    const autoPausePanel = page.locator('[data-testid="autopause-panel"], [data-testid="event-panel"], [data-testid="loan-panel"], [data-testid="advisor-panel"]');
+    await expect(autoPausePanel.first()).toBeVisible({ timeout: 15000 });
 
     // Game should be paused
     await expect(page.getByTestId('speed-pause')).toHaveAttribute('aria-pressed', 'true');
@@ -579,11 +580,12 @@ test.describe('Auto-pause testids', () => {
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-processing-tomatoes').click();
 
-    // Run at max speed until we get an auto-pause
+    // Run at max speed until we get any auto-pause panel
     await page.getByTestId('speed-fastest').click();
-    await expect(page.getByTestId('autopause-panel')).toBeVisible({ timeout: 15000 });
+    const autoPausePanel = page.locator('[data-testid="autopause-panel"], [data-testid="event-panel"], [data-testid="loan-panel"], [data-testid="advisor-panel"]');
+    await expect(autoPausePanel.first()).toBeVisible({ timeout: 15000 });
 
-    // The secondary (dismiss) button should have the new testid
+    // The secondary (dismiss) button should have the testid
     await expect(page.getByTestId('autopause-dismiss')).toBeVisible();
   });
 });

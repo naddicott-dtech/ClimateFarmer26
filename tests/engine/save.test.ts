@@ -257,6 +257,48 @@ describe('Save/Load System', () => {
     });
   });
 
+  describe('v1 → v2 migration', () => {
+    it('migrates v1 save by filling Slice 2a defaults', () => {
+      // Create a v1-shaped save (missing Slice 2a fields)
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+
+      // Strip Slice 2a fields to simulate a v1 save
+      const v1State = { ...state } as Record<string, unknown>;
+      delete v1State.eventLog;
+      delete v1State.activeEvent;
+      delete v1State.pendingForeshadows;
+      delete v1State.activeEffects;
+      delete v1State.cropFailureStreak;
+      delete v1State.flags;
+      delete v1State.wateringRestricted;
+      delete v1State.wateringRestrictionEndsDay;
+      delete v1State.irrigationCostMultiplier;
+      delete v1State.eventRngState;
+
+      // Strip Slice 2a economy fields
+      const v1Economy = { ...state.economy } as Record<string, unknown>;
+      delete v1Economy.debt;
+      delete v1Economy.totalLoansReceived;
+      delete v1Economy.interestPaidThisYear;
+      (v1State as Record<string, unknown>).economy = v1Economy;
+
+      const v1Save = {
+        version: '1.0.0',
+        state: v1State,
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v1Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      expect(loaded!.eventLog).toEqual([]);
+      expect(loaded!.activeEvent).toBeNull();
+      expect(loaded!.economy.debt).toBe(0);
+      expect(loaded!.economy.totalLoansReceived).toBe(0);
+      expect(loaded!.wateringRestricted).toBe(false);
+    });
+  });
+
   describe('localStorage error handling', () => {
     it('handles localStorage quota exceeded', () => {
       vi.stubGlobal('localStorage', {

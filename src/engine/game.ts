@@ -1,6 +1,6 @@
 import type {
   GameState, Cell, SoilState, CropInstance, Command, CommandResult,
-  GameSpeed, DailyWeather, Notification, GrowthStage,
+  GameSpeed, DailyWeather, GrowthStage, Notification,
   ClimateScenario,
 } from './types.ts';
 import {
@@ -9,7 +9,12 @@ import {
   OM_MOISTURE_BONUS_PER_PERCENT, OVERRIPE_GRACE_DAYS, DAYS_PER_YEAR,
   MAX_YEARS, WATER_STRESS_AUTOPAUSE_THRESHOLD, IRRIGATION_COST_PER_CELL,
   WATER_DOSE_INCHES, STARTING_DAY, AUTO_PAUSE_PRIORITY,
+  EVENT_RNG_SEED_OFFSET, LOAN_INTEREST_RATE, LOAN_REPAYMENT_FRACTION,
+  LOAN_DEBT_CAP,
 } from './types.ts';
+import { evaluateEvents } from './events/selector.ts';
+import { applyEffects, expireActiveEffects, getYieldModifier, getPriceModifier, getIrrigationCostMultiplier } from './events/effects.ts';
+import { STORYLETS } from '../data/events.ts';
 import { totalDayToCalendar, isYearEnd, isSeasonChange, isInPlantingWindow, getSeasonName, getMonthName } from './calendar.ts';
 import { generateDailyWeather, updateExtremeEvents } from './weather.ts';
 import { getCropDefinition } from '../data/crops.ts';
@@ -45,11 +50,24 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     updateExtremeEvents(warmup, w, scenario, d, rng);
   }
 
+  // Initialize event RNG (separate stream, seeded from mainSeed + offset).
+  // No warmup needed: event evaluation starts at STARTING_DAY, and the event
+  // RNG is never consumed before then (unlike weather RNG which generates
+  // Jan-Feb weather during warmup).
+  const eventRng = new SeededRNG(scenario.seed + EVENT_RNG_SEED_OFFSET);
+
   return {
     calendar: totalDayToCalendar(STARTING_DAY),
     speed: 0,
     grid,
-    economy: { cash: STARTING_CASH, yearlyRevenue: 0, yearlyExpenses: 0 },
+    economy: {
+      cash: STARTING_CASH,
+      yearlyRevenue: 0,
+      yearlyExpenses: 0,
+      debt: 0,
+      totalLoansReceived: 0,
+      interestPaidThisYear: 0,
+    },
     notifications: [],
     autoPauseQueue: [],
     playerId,
@@ -61,6 +79,17 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     nextNotificationId: 1,
     gameOver: false,
     yearEndSummaryPending: false,
+    // Slice 2a: Event system
+    eventLog: [],
+    activeEvent: null,
+    pendingForeshadows: [],
+    activeEffects: [],
+    cropFailureStreak: 0,
+    flags: {},
+    wateringRestricted: false,
+    wateringRestrictionEndsDay: 0,
+    irrigationCostMultiplier: 1.0,
+    eventRngState: eventRng.getState(),
   };
 }
 
@@ -102,6 +131,13 @@ export function processCommand(state: GameState, command: Command, _scenario: Cl
       return processHarvestBulk(state, command.scope, command.index);
     case 'WATER':
       return processWater(state, command.scope, command.index);
+    case 'RESPOND_EVENT':
+      return processRespondEvent(state, command.eventId, command.choiceId);
+    case 'TAKE_LOAN':
+      return processTakeLoan(state);
+    case 'REMOVE_CROP':
+      // Slice 2b — stub for now, returns error
+      return { success: false, reason: 'Crop removal is not yet available.' };
     default: {
       const _exhaustive: never = command;
       throw new Error(`Unhandled command type: ${(_exhaustive as Command).type}`);
@@ -280,19 +316,27 @@ function processHarvestBulk(state: GameState, scope: 'all' | 'row' | 'col', inde
 }
 
 function processWater(state: GameState, scope: 'all' | 'row' | 'col', index?: number): CommandResult {
+  // Watering restriction check (from regulatory events)
+  if (state.wateringRestricted) {
+    return { success: false, reason: 'Watering is currently restricted by water allocation regulations.' };
+  }
+
   const cells = getCellsInScope(state, scope, index).filter(c => c.crop !== null);
   if (cells.length === 0) {
     return { success: false, reason: 'No planted plots to water.' };
   }
 
-  const totalCost = cells.length * IRRIGATION_COST_PER_CELL;
+  // Apply irrigation cost multiplier from active effects (e.g. water allocation cut)
+  const costMultiplier = getIrrigationCostMultiplier(state);
+  const effectiveCostPerCell = IRRIGATION_COST_PER_CELL * costMultiplier;
+  const totalCost = cells.length * effectiveCostPerCell;
 
   if (scope === 'all') {
     // Water Field: round down to complete rows if can't afford all
     if (state.economy.cash < totalCost) {
-      const affordableCells = Math.floor(state.economy.cash / IRRIGATION_COST_PER_CELL);
+      const affordableCells = Math.floor(state.economy.cash / effectiveCostPerCell);
       if (affordableCells <= 0) {
-        return { success: false, reason: `Not enough cash to water. Cost per plot: $${IRRIGATION_COST_PER_CELL}.` };
+        return { success: false, reason: `Not enough cash to water. Cost per plot: $${effectiveCostPerCell}.` };
       }
 
       const plantedByRow = groupByRow(cells);
@@ -301,7 +345,7 @@ function processWater(state: GameState, scope: 'all' | 'row' | 'col', index?: nu
       let costForRows = 0;
 
       for (const [, rowCells] of plantedByRow) {
-        const rowCost = rowCells.length * IRRIGATION_COST_PER_CELL;
+        const rowCost = rowCells.length * effectiveCostPerCell;
         if (costForRows + rowCost <= state.economy.cash) {
           rowsAffordable++;
           plotsInRows += rowCells.length;
@@ -335,7 +379,9 @@ function processWater(state: GameState, scope: 'all' | 'row' | 'col', index?: nu
 }
 
 export function executeWater(state: GameState, cells: Cell[]): CommandResult {
-  const totalCost = cells.length * IRRIGATION_COST_PER_CELL;
+  const costMultiplier = getIrrigationCostMultiplier(state);
+  const costPerCell = IRRIGATION_COST_PER_CELL * costMultiplier;
+  const totalCost = cells.length * costPerCell;
   state.economy.cash -= totalCost;
   state.economy.yearlyExpenses += totalCost;
 
@@ -344,6 +390,82 @@ export function executeWater(state: GameState, cells: Cell[]): CommandResult {
   }
 
   return { success: true, cost: totalCost, cellsAffected: cells.length };
+}
+
+// ============================================================================
+// Event Response
+// ============================================================================
+
+function processRespondEvent(state: GameState, eventId: string, choiceId: string): CommandResult {
+  if (!state.activeEvent) {
+    return { success: false, reason: 'No active event to respond to.' };
+  }
+  if (state.activeEvent.storyletId !== eventId) {
+    return { success: false, reason: 'Event ID mismatch.' };
+  }
+
+  const choice = state.activeEvent.choices.find(c => c.id === choiceId);
+  if (!choice) {
+    return { success: false, reason: `Invalid choice: ${choiceId}.` };
+  }
+
+  // Check if player can afford the choice
+  if (choice.requiresCash !== undefined && state.economy.cash < choice.requiresCash) {
+    return { success: false, reason: `Not enough cash. Requires $${choice.requiresCash}.` };
+  }
+
+  // Apply effects
+  applyEffects(state, choice.effects, eventId);
+
+  // Log the event
+  state.eventLog.push({
+    storyletId: eventId,
+    day: state.calendar.totalDay,
+    choiceId,
+  });
+
+  // Clear active event
+  state.activeEvent = null;
+
+  return { success: true };
+}
+
+// ============================================================================
+// Loan System
+// ============================================================================
+
+/**
+ * Compute the loan amount offered to the player.
+ * Amount covers current deficit plus $5,000 buffer, rounded up to nearest $1,000.
+ */
+export function computeLoanAmount(cash: number): number {
+  return Math.ceil((Math.abs(cash) + 5000) / 1000) * 1000;
+}
+
+function processTakeLoan(state: GameState): CommandResult {
+  // TAKE_LOAN is only valid while a loan_offer auto-pause is active
+  const hasLoanOffer = state.autoPauseQueue.some(e => e.reason === 'loan_offer');
+  if (!hasLoanOffer) {
+    return { success: false, reason: 'No loan offer is currently available.' };
+  }
+
+  if (state.economy.totalLoansReceived >= 1) {
+    return { success: false, reason: 'You have already received an emergency loan.' };
+  }
+
+  const amount = computeLoanAmount(state.economy.cash);
+  state.economy.cash += amount;
+  state.economy.debt = amount;
+  state.economy.totalLoansReceived = 1;
+
+  addNotification(state, 'loan',
+    `Emergency loan of $${amount.toLocaleString()} received. 10% annual interest. 20% of harvest revenue will go toward repayment.`);
+
+  // Clear the game over state (loan saves the farm)
+  state.gameOver = false;
+  state.gameOverReason = undefined;
+
+  return { success: true };
 }
 
 // ============================================================================
@@ -384,6 +506,9 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     const seasonName = getSeasonName(state.calendar.season);
     addNotification(state, 'season_change', `${seasonName} — Year ${state.calendar.year}`);
   }
+
+  // Expire active effects (remove where totalDay >= expiresDay)
+  expireActiveEffects(state);
 
   // Simulate each cell
   let anyHarvestReady = false;
@@ -429,6 +554,52 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     });
   }
 
+  // Event evaluation (uses separate event RNG)
+  const eventRng = new SeededRNG(state.eventRngState);
+  const eventResult = evaluateEvents(state, STORYLETS, eventRng);
+  state.eventRngState = eventRng.getState();
+
+  // Process foreshadowing
+  for (const foreshadow of eventResult.newForeshadows) {
+    state.pendingForeshadows.push(foreshadow);
+    addNotification(state, 'foreshadowing', foreshadow.signal);
+  }
+
+  // Fire selected event
+  if (eventResult.fireEvent) {
+    const storylet = eventResult.fireEvent;
+    state.activeEvent = {
+      storyletId: storylet.id,
+      title: storylet.title,
+      description: storylet.description,
+      choices: storylet.choices,
+      firedOnDay: newTotalDay,
+    };
+    state.autoPauseQueue.push({
+      reason: storylet.type === 'advisor' ? 'advisor' : 'event',
+      message: storylet.title,
+    });
+  }
+
+  // Loan interest accrual (daily simple interest)
+  if (state.economy.debt > 0) {
+    const dailyInterest = state.economy.debt * (LOAN_INTEREST_RATE / DAYS_PER_YEAR);
+    state.economy.debt += dailyInterest;
+    state.economy.interestPaidThisYear += dailyInterest;
+
+    // Debt spiral safety cap
+    if (state.economy.debt > LOAN_DEBT_CAP) {
+      state.gameOver = true;
+      state.gameOverReason = 'debt_spiral';
+      state.speed = 0;
+      state.autoPauseQueue.push({
+        reason: 'bankruptcy',
+        message: `Your debt has exceeded $${LOAN_DEBT_CAP.toLocaleString()}. The bank has foreclosed on your farm.`,
+        data: { debt: state.economy.debt },
+      });
+    }
+  }
+
   // Year end check
   if (isYearEnd(newTotalDay)) {
     state.yearEndSummaryPending = true;
@@ -441,24 +612,46 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         expenses: state.economy.yearlyExpenses,
         netProfit: state.economy.yearlyRevenue - state.economy.yearlyExpenses,
         cash: state.economy.cash,
+        debt: state.economy.debt,
+        interestPaid: state.economy.interestPaidThisYear,
       },
     });
   }
 
-  // Bankruptcy check
-  if (state.economy.cash <= 0) {
-    state.gameOver = true;
-    state.gameOverReason = 'bankruptcy';
-    state.speed = 0;
-    state.autoPauseQueue.push({
-      reason: 'bankruptcy',
-      message: "You've run out of money.",
-      data: {
-        cash: state.economy.cash,
-        yearlyRevenue: state.economy.yearlyRevenue,
-        yearlyExpenses: state.economy.yearlyExpenses,
-      },
-    });
+  // Bankruptcy check (modified for Slice 2: loan offer on first insolvency)
+  if (state.economy.cash <= 0 && !state.gameOver) {
+    if (state.economy.totalLoansReceived === 0) {
+      // First insolvency: offer emergency loan
+      const loanAmount = computeLoanAmount(state.economy.cash);
+      state.autoPauseQueue.push({
+        reason: 'loan_offer',
+        message: `You've run out of money. The bank is offering an emergency loan of $${loanAmount.toLocaleString()}.`,
+        data: {
+          loanAmount,
+          interestRate: LOAN_INTEREST_RATE,
+          cash: state.economy.cash,
+        },
+      });
+      // Temporarily set gameOver (TAKE_LOAN clears it; declining = permanent)
+      state.gameOver = true;
+      state.gameOverReason = 'bankruptcy';
+      state.speed = 0;
+    } else {
+      // Second insolvency: hard game over
+      state.gameOver = true;
+      state.gameOverReason = 'bankruptcy';
+      state.speed = 0;
+      state.autoPauseQueue.push({
+        reason: 'bankruptcy',
+        message: "You've run out of money again. With an outstanding loan, the bank can no longer help.",
+        data: {
+          cash: state.economy.cash,
+          debt: state.economy.debt,
+          yearlyRevenue: state.economy.yearlyRevenue,
+          yearlyExpenses: state.economy.yearlyExpenses,
+        },
+      });
+    }
   }
 
   // Sort auto-pause queue by priority (most urgent first per SPEC §3.6)
@@ -603,18 +796,43 @@ function harvestCell(state: GameState, cell: Cell): number {
     yieldAmount *= overripeFactor;
   }
 
+  // Apply event yield modifier
+  const yieldMod = getYieldModifier(state, crop.cropId);
+  yieldAmount *= yieldMod;
+
   yieldAmount = Math.max(0, yieldAmount);
 
-  const revenue = yieldAmount * cropDef.basePrice;
+  // Apply event price modifier
+  const priceMod = getPriceModifier(state, crop.cropId);
+  const actualPrice = cropDef.basePrice * priceMod;
+
+  const grossRevenue = yieldAmount * actualPrice;
   const laborCost = cropDef.laborCostPerAcre;
-  const netRevenue = revenue - laborCost;
 
-  state.economy.cash += netRevenue;
-  state.economy.yearlyRevenue += revenue;
+  // Step 1-2: Add gross revenue to cash and yearly tracking
+  state.economy.cash += grossRevenue;
+  state.economy.yearlyRevenue += grossRevenue;
   state.economy.yearlyExpenses += laborCost;
+  state.economy.cash -= laborCost;
 
-  addNotification(state, 'harvest',
-    `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${cropDef.basePrice}/${cropDef.yieldUnit} = $${revenue.toFixed(0)} (labor: $${laborCost})`);
+  // Step 3: Loan repayment — 20% of GROSS harvest revenue
+  let repayment = 0;
+  if (state.economy.debt > 0) {
+    repayment = Math.min(grossRevenue * LOAN_REPAYMENT_FRACTION, state.economy.debt);
+    state.economy.cash -= repayment;
+    state.economy.debt -= repayment;
+    state.economy.yearlyExpenses += repayment;
+  }
+
+  const netRevenue = grossRevenue - laborCost - repayment;
+
+  if (repayment > 0) {
+    addNotification(state, 'harvest',
+      `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost}, loan repayment: $${repayment.toFixed(0)})`);
+  } else {
+    addNotification(state, 'harvest',
+      `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost})`);
+  }
 
   cell.crop = null;
 
@@ -629,6 +847,7 @@ function harvestCell(state: GameState, cell: Cell): number {
 export function resetYearlyTracking(state: GameState): void {
   state.economy.yearlyRevenue = 0;
   state.economy.yearlyExpenses = 0;
+  state.economy.interestPaidThisYear = 0;
   state.yearEndSummaryPending = false;
 }
 
@@ -644,6 +863,10 @@ function createCropInstance(cropId: string, plantedDay: number): CropInstance {
     waterStressDays: 0,
     growthStage: 'seedling',
     overripeDaysRemaining: -1,
+    isPerennial: false,
+    perennialAge: 0,
+    perennialEstablished: false,
+    isDormant: false,
   };
 }
 
@@ -703,7 +926,22 @@ export function dismissNotification(state: GameState, notificationId: number): v
 }
 
 export function dismissAutoPause(state: GameState): void {
-  state.autoPauseQueue.shift();
+  const dismissed = state.autoPauseQueue.shift();
+
+  // If dismissing an event/advisor auto-pause without responding,
+  // clear the activeEvent to prevent deadlock (evaluateEvents blocks
+  // while activeEvent is set).
+  if (dismissed && (dismissed.reason === 'event' || dismissed.reason === 'advisor')) {
+    if (state.activeEvent) {
+      // Log the event as dismissed (no choice made)
+      state.eventLog.push({
+        storyletId: state.activeEvent.storyletId,
+        day: state.calendar.totalDay,
+        choiceId: '__dismissed__',
+      });
+      state.activeEvent = null;
+    }
+  }
 }
 
 /** Get available crops for the current planting window */

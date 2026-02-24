@@ -133,14 +133,14 @@ type Command =
   | { type: "SET_AUTOMATION"; day: number; scope: "cell" | "row" | "col" | "farm"; policy: AutomationPolicy; row?: number; col?: number }
   | { type: "RESPOND_EVENT"; day: number; eventId: string; choiceId: string }
   | { type: "BUY_INSURANCE"; day: number }
-  | { type: "TAKE_LOAN"; day: number; amount: number }
+  | { type: "TAKE_LOAN"; day: number }
   | { type: "SET_COVER_CROP"; day: number; row: number; col: number; coverCropId: string | null }
   | { type: "SET_SPEED"; day: number; speed: 0 | 0.5 | 1 | 2 | 4 };
 ```
 
 The engine validates each command before execution (Do you have enough cash? Is the cell empty? Is the tech available?). Invalid commands are rejected with a typed reason. The discriminated union ensures exhaustive handling — the TypeScript compiler flags any unhandled command type.
 
-**Note on scope:** The full discriminated union is defined here for architectural completeness. Slice 1 implements only: `PLANT_CROP`, `PLANT_BULK`, `HARVEST`, `HARVEST_BULK`, `WATER`, and `SET_SPEED`. Other command variants are added in the slice where their system is built.
+**Note on scope:** The full discriminated union is defined here for architectural completeness. Slice 1 implements only: `PLANT_CROP`, `PLANT_BULK`, `HARVEST`, `HARVEST_BULK`, `WATER`, and `SET_SPEED`. Slice 2 adds: `RESPOND_EVENT`, `TAKE_LOAN` (parameterless — amount is engine-computed), and `REMOVE_CROP`. Other command variants are added in the slice where their system is built.
 
 **Benefits:**
 - **Testability:** Issue a sequence of commands in headless tests to reproduce any game state
@@ -413,10 +413,12 @@ interface EconomyState {
 }
 ```
 
-**Bankruptcy:** Cash + available credit < 0.
-- **First bankruptcy:** Bank offers emergency loan (high interest, secured against future crops). Credit rating drops. Student can recover.
-- **Repeated bankruptcy / maxed credit:** Game over. Forced to sell farm.
+**Bankruptcy (Slice 2):** Cash ≤ $0.
+- **First insolvency:** Bank offers one emergency loan (fixed 10% annual interest, parameterless TAKE_LOAN — amount engine-computed). Auto-repayment: 20% of gross harvest revenue per cell at harvest time.
+- **Second insolvency OR debt > $100k:** Hard game over.
 - **Graceful end:** Reach year 30 → retirement event with final score.
+
+**Note:** The full EconomyState above shows the complete architecture. Slice 2 adds only: `debt`, `totalLoansReceived` (0 or 1), `interestPaidThisYear`. Fields like `creditRating`, `insurancePremiumRate`, `insuranceActive` are deferred to Slice 3+.
 
 **Insurance:** Premium rate increases with claim history. After too many claims, insurance becomes unavailable ("uninsurable"). This creates real consequences for repeated climate losses without adaptation.
 
@@ -707,10 +709,16 @@ The thinnest playable game. A student can plant crops, watch them grow, harvest,
 
 **Acceptance gate:** A student can play through 5 in-game years, planting and harvesting annual crops, and their cash balance reflects realistic costs/revenues. Save/resume works. All controls are keyboard-accessible. All tests pass. Runs at 30fps on Chromebook.
 
-### Slice 2: Events & Perennials
-The game becomes strategic. Things happen that require decisions. Long-term investments become possible.
+### Slice 2: Events, Perennials, Loans & Advisor
+The game becomes strategic. Things happen that require decisions. Long-term investments become possible. First advisor provides educational guidance.
 
-**Adds:** Storylet/event system, 3-5 climate events, foreshadowing, 1 advisor (extension agent), perennial crop lifecycle (almonds + pistachios), basic notifications.
+**Core (must ship):** Storylet/event engine + foreshadowing + 1 advisor (extension agent) + perennial crops (almonds, pistachios) + 3 climate events + minimal emergency loan + chill-hour tracking (fog-of-war reveal).
+
+**Stretch (only after Core passes all gates):** Market price fluctuation events OR a 2nd advisor.
+
+**Deferred to Slice 3:** Tech tree, remaining advisors, insurance, credit systems, perennial decline phase, age-based yield curve.
+
+**Sub-sliced as:** 2a (event engine + loans + 3 events) → 2b (perennials) → 2c (advisor + chill hours + stretch events).
 
 ### Slice 3: Depth & Discovery
 The fog-of-war tech tree, full nutrient model, and the rest of the crop roster.
@@ -733,10 +741,10 @@ Everything needed to hand this to students with confidence.
 - [x] Bankruptcy: Cash ≤ $0 = game over in Slice 1 (no credit/loans until Slice 2).
 - [ ] Performance test setup: how do we simulate Chromebook performance in CI? (Chrome DevTools throttling profile) — deferred to implementation
 
-### Blocking for Slice 2 (must decide before that slice)
-- [ ] Loan terms and credit rating mechanics (needed when events can cause financial stress)
-- [ ] Insurance pricing model (base rate, claim multiplier, uninsurable threshold)
-- [ ] Advisor character names, portraits, and personality details
+### Resolved for Slice 2 (see DECISIONS.md — Slice 2 Design Decisions)
+- [x] Loan terms: One-time emergency loan, fixed 10% annual interest, parameterless TAKE_LOAN command (engine-computed amount), 20% of gross harvest revenue auto-repayment. No credit rating or insurance in Slice 2.
+- [x] Advisor: Extension Agent only ("Dr. Maria Santos", reliability 0.95). Remaining advisors deferred to Slice 3.
+- [x] Perennial lifecycle: Binary yield (0 during establishment, 1.0 after). No chill-hour logic until Sub-Slice 2c. No decline phase until Slice 3.
 
 ### Deferrable (decide during later slices)
 - [ ] Scoring formula for retirement (Slice 4 — endgame feature)

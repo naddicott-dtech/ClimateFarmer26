@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import {
   autoPauseQueue, handleDismissAutoPause,
   harvestBulk, waterBulk, returnToTitle,
-  gameState,
+  gameState, dispatch,
 } from '../../adapter/signals.ts';
 import type { AutoPauseEvent } from '../../engine/types.ts';
 import styles from '../styles/Overlay.module.css';
@@ -45,24 +45,43 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
       case 'year_30':
         returnToTitle();
         break;
+      case 'loan_offer':
+        dispatch({ type: 'TAKE_LOAN' });
+        handleDismissAutoPause();
+        break;
+      case 'event':
+      case 'advisor':
+        // Event/advisor panels are handled by EventPanel component.
+        // Dismiss just closes the auto-pause overlay.
+        handleDismissAutoPause();
+        break;
     }
   }
 
   function handleSecondary() {
+    if (event.reason === 'loan_offer') {
+      // Declining the loan = game over stays true
+      handleDismissAutoPause();
+      return;
+    }
     handleDismissAutoPause();
   }
 
   const config = getEventConfig(event, state);
 
-  // Conditional data-testids per SPEC §11
+  // Conditional data-testids per SPEC §11 + §14
   const panelTestId =
     event.reason === 'bankruptcy' ? 'gameover-panel' :
     event.reason === 'year_30' ? 'year30-panel' :
+    event.reason === 'loan_offer' ? 'loan-panel' :
+    event.reason === 'event' ? 'event-panel' :
+    event.reason === 'advisor' ? 'advisor-panel' :
     'autopause-panel';
 
   const primaryTestId =
     event.reason === 'bankruptcy' ? 'gameover-new-game' :
     event.reason === 'year_30' ? 'year30-new-game' :
+    event.reason === 'loan_offer' ? 'loan-accept' :
     'autopause-action-primary';
 
   return (
@@ -168,6 +187,29 @@ function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types
       return {
         title: 'Congratulations!',
         primaryLabel: 'Start New Game',
+      };
+
+    case 'loan_offer': {
+      const data = event.data as Record<string, number> | undefined;
+      return {
+        title: 'Emergency Loan Offer',
+        primaryLabel: `Accept Loan ($${(data?.loanAmount ?? 0).toLocaleString()})`,
+        secondaryLabel: 'Decline (Game Over)',
+      };
+    }
+
+    case 'event':
+      return {
+        title: event.message || 'Event',
+        primaryLabel: 'View Details',
+        secondaryLabel: 'Dismiss',
+      };
+
+    case 'advisor':
+      return {
+        title: event.message || 'Advisor',
+        primaryLabel: 'View Details',
+        secondaryLabel: 'Dismiss',
       };
 
     default:
