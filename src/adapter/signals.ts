@@ -556,6 +556,10 @@ function gameLoop(now: number): void {
     _liveState.economy.cash = amount;
     publishState();
   },
+  /**
+   * Set the calendar to a specific total day. Test setup only — does not
+   * resync RNG, resimulate weather/crops, or trigger auto-saves.
+   */
   setDay(totalDay: number) {
     if (!_liveState) return;
     _liveState.calendar = totalDayToCalendar(totalDay);
@@ -569,6 +573,11 @@ function gameLoop(now: number): void {
   setTotalLoansReceived(count: number) {
     if (!_liveState) return;
     _liveState.economy.totalLoansReceived = count;
+    publishState();
+  },
+  setFlag(flag: string, value: boolean) {
+    if (!_liveState) return;
+    _liveState.flags[flag] = value;
     publishState();
   },
   /** Inject an event directly — bypasses RNG/conditions. For testing. */

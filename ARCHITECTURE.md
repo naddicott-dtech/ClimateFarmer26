@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Technical Design Document (Draft)
 
-> **Status: DRAFT — Under discussion. Not approved for implementation.**
+> **Status: Living document. Slice 1-2 implemented and reviewed. Slice 3+ sections are forward-looking design.**
 > Cross-references: `reference/SIMULATION_PATTERNS.md`, `reference/BackgroundDeepResearch.md`
 
 ## 1. Overview
@@ -418,7 +418,7 @@ interface EconomyState {
 - **Second insolvency OR debt > $100k:** Hard game over.
 - **Graceful end:** Reach year 30 → retirement event with final score.
 
-**Note:** The full EconomyState above shows the complete architecture. Slice 2 adds only: `debt`, `totalLoansReceived` (0 or 1), `interestPaidThisYear`. Fields like `creditRating`, `insurancePremiumRate`, `insuranceActive` are deferred to Slice 3+.
+**Implementation note (Slice 2):** The actual EconomyState in `types.ts` currently has: `cash`, `debt`, `totalLoansReceived` (0 or 1), `interestPaidThisYear`, `yearlyRevenue`, `yearlyExpenses`. Fields like `creditRating`, `insurancePremiumRate`, `insuranceActive` are deferred to Slice 3+.
 
 **Insurance:** Premium rate increases with claim history. After too many claims, insurance becomes unavailable ("uninsurable"). This creates real consequences for repeated climate losses without adaptation.
 
@@ -498,7 +498,19 @@ interface SaveGame {
 
 ## 6. Data Files Structure
 
-All game content lives in JSON files under a `data/` directory:
+Game content lives in data modules under `src/data/`:
+
+**Current implementation (Slice 2):**
+```
+src/data/
+  crops.ts          # 5 crop definitions (3 annual + 2 perennial)
+  scenario.ts       # 1 climate scenario (30 years, seasonal params + chillHours)
+  events.ts         # STORYLETS array (3 climate + 5 advisor events)
+```
+
+All content is defined as typed TypeScript constants, validated at compile time by `tsc --strict`. This provides the data-driven benefits (adding content = editing data, not engine logic) with compile-time type safety.
+
+**Future target (Slice 3+):** As content grows (12 crops, 5-8 scenarios, tech tree, glossary), consider migrating to JSON files with Zod runtime validation. Proposed structure:
 
 ```
 data/
@@ -528,7 +540,7 @@ data/
     tech-costs.json     # prices for upgrades/investments
 ```
 
-**Schema validation:** All JSON files validated against TypeScript interfaces at build time (or with Zod schemas at load time). Malformed data files fail fast with clear errors.
+Migration to JSON is optional — the current TS approach works well and provides stronger guarantees. Revisit when content volume makes it worthwhile (e.g., if teachers need to edit content without touching TypeScript).
 
 ## 7. UI Layout (Conceptual)
 
@@ -709,16 +721,14 @@ The thinnest playable game. A student can plant crops, watch them grow, harvest,
 
 **Acceptance gate:** A student can play through 5 in-game years, planting and harvesting annual crops, and their cash balance reflects realistic costs/revenues. Save/resume works. All controls are keyboard-accessible. All tests pass. Runs at 30fps on Chromebook.
 
-### Slice 2: Events, Perennials, Loans & Advisor
+### Slice 2: Events, Perennials, Loans & Advisor ✅ COMPLETE
 The game becomes strategic. Things happen that require decisions. Long-term investments become possible. First advisor provides educational guidance.
 
-**Core (must ship):** Storylet/event engine + foreshadowing + 1 advisor (extension agent) + perennial crops (almonds, pistachios) + 3 climate events + minimal emergency loan + chill-hour tracking (fog-of-war reveal).
+**Delivered:** Storylet/event engine + foreshadowing + 1 advisor (extension agent, 5 storylets) + perennial crops (almonds, pistachios) + 3 climate events + emergency loan + chill-hour tracking (fog-of-war reveal) + save migration (V1→V2→V3). 300 unit tests, 65 browser tests, 32.38KB gzipped.
 
-**Stretch (only after Core passes all gates):** Market price fluctuation events OR a 2nd advisor.
+**Deferred to Slice 3:** Stretch events (tomato market surge, groundwater pumping ban), tech tree, remaining advisors, insurance, credit systems, perennial decline phase, age-based yield curve, K+Zn nutrients, cover crops, additional crops and scenarios.
 
-**Deferred to Slice 3:** Tech tree, remaining advisors, insurance, credit systems, perennial decline phase, age-based yield curve.
-
-**Sub-sliced as:** 2a (event engine + loans + 3 events) → 2b (perennials) → 2c (advisor + chill hours + stretch events).
+**Sub-sliced as:** 2a (event engine + loans + 3 events) → 2b (perennials) → 2c (advisor + chill hours). Each independently reviewed.
 
 ### Slice 3: Depth & Discovery
 The fog-of-war tech tree, full nutrient model, and the rest of the crop roster.
@@ -741,10 +751,12 @@ Everything needed to hand this to students with confidence.
 - [x] Bankruptcy: Cash ≤ $0 = game over in Slice 1 (no credit/loans until Slice 2).
 - [ ] Performance test setup: how do we simulate Chromebook performance in CI? (Chrome DevTools throttling profile) — deferred to implementation
 
-### Resolved for Slice 2 (see DECISIONS.md — Slice 2 Design Decisions)
+### Resolved for Slice 2 (see DECISIONS.md — Slice 2 Design Decisions) ✅
 - [x] Loan terms: One-time emergency loan, fixed 10% annual interest, parameterless TAKE_LOAN command (engine-computed amount), 20% of gross harvest revenue auto-repayment. No credit rating or insurance in Slice 2.
-- [x] Advisor: Extension Agent only ("Dr. Maria Santos", reliability 0.95). Remaining advisors deferred to Slice 3.
-- [x] Perennial lifecycle: Binary yield (0 during establishment, 1.0 after). No chill-hour logic until Sub-Slice 2c. No decline phase until Slice 3.
+- [x] Advisor: Extension Agent only ("Dr. Maria Santos"). 5 advisor storylets with tiered priorities (100 for critical, 90 for suggestions). maxOccurrences caps prevent dominating event cadence.
+- [x] Perennial lifecycle: Binary yield (0 during establishment, 1.0 after). Chill-hour tracking added in 2c with fog-of-war reveal. No decline phase until Slice 3.
+- [x] Chill hours: Pre-defined per year in scenario data (800→700→630→570). Daily accumulation during dormancy. Yield penalty at harvest: `clamp(accumulated/required, 0, 1)`. Almonds fail before pistachios as climate warms.
+- [x] Save migration: V1→V2→V3 chain with explicit version detection. Both `readSave()` and `listManualSaves()` use the same path.
 
 ### Deferrable (decide during later slices)
 - [ ] Scoring formula for retirement (Slice 4 — endgame feature)

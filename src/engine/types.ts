@@ -75,6 +75,7 @@ export interface YearClimate {
     winter: SeasonParams;
   };
   waterAllocation: number;    // 0-1 fraction of normal allocation (future: caps irrigation availability)
+  chillHours: number;          // total chill hours available this winter (declines over 30 years)
 }
 
 export interface ClimateScenario {
@@ -152,6 +153,7 @@ export interface CropInstance {
   perennialEstablished: boolean;
   isDormant: boolean;
   harvestedThisSeason: boolean;
+  chillHoursAccumulated: number;
 }
 
 export interface SoilState {
@@ -295,7 +297,10 @@ export const NITROGEN_MODERATE_THRESHOLD = 40;
 export const IRRIGATION_COST_PER_CELL = 5; // $ per cell per watering
 export const WATER_DOSE_INCHES = 3.0; // inches per watering action (~14 days worth at typical ET)
 export const STARTING_DAY = 59; // March 1 (0-indexed totalDay) — Spring start per SPEC
-export const SAVE_VERSION = '2.0.0';
+export const SAVE_VERSION = '3.0.0';
+
+/** Number of days in the dormant season (Dec + Jan + Feb = 90). Tied to SEASON_MAP. */
+export const DORMANCY_DAYS = 90;
 
 // Loan constants
 export const LOAN_INTEREST_RATE = 0.10; // 10% annual

@@ -42,6 +42,15 @@ export function applyEffects(
         }
         break;
 
+      case 'modify_nitrogen_all':
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const soil = state.grid[r][c].soil;
+            soil.nitrogen = Math.max(0, Math.min(soil.nitrogen + effect.amount, 200));
+          }
+        }
+        break;
+
       case 'modify_yield_modifier':
         state.activeEffects.push({
           effectType: 'yield_modifier',

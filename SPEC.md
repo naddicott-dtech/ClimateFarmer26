@@ -1,6 +1,6 @@
 # SPEC.md — Acceptance Tests & Requirements
 
-> **Status: DRAFT — Slice 1 only. Not approved for implementation.**
+> **Status: Living document. Slice 1 locked. Slice 2 sections implemented and reviewed.**
 > Format: **When** [user action], **I should see** [expected result].
 > Negative cases use: **When** [action], **I should NOT see** [bad outcome] / **the system should** [prevent it].
 
@@ -585,7 +585,7 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 - **When** chill-hour data is revealed, **I should see** the current winter's accumulated chill hours and the crop's requirement (e.g., "Chill hours: 680 / 700 required").
 
 ##### 18.2 Chill-Hour Mechanics
-- **When** winter arrives and I have perennials, **the system should** accumulate chill hours based on winter temperatures.
+- **When** winter arrives and I have perennials, **the system should** accumulate chill hours daily during dormancy, using pre-defined yearly chill values from the scenario data (see §18.3).
 - **When** a perennial's accumulated chill hours are below its requirement at spring, **I should see** a yield penalty proportional to the deficit.
 - **When** the climate scenario has declining chill hours over 30 years, **I should see** almonds (700 required) become unreliable before pistachios (600 required) — this is the core teachable moment.
 - **When** chill-hour deficit causes a yield penalty, **I should see** an explanation in the side panel or notification (e.g., "Insufficient winter chill: almond yield reduced to 60%.").

@@ -20,6 +20,7 @@ export type Condition =
   | { type: 'any_perennial_planted' }
   | { type: 'consecutive_crop_failures'; count: number }
   | { type: 'no_debt' }
+  | { type: 'no_perennial_planted' }
   | { type: 'has_flag'; flag: string }
   | { type: 'random'; probability: number };
 
@@ -28,6 +29,7 @@ export type Condition =
 export type Effect =
   | { type: 'modify_cash'; amount: number }
   | { type: 'modify_moisture_all'; amount: number }
+  | { type: 'modify_nitrogen_all'; amount: number }
   | { type: 'modify_yield_modifier'; cropId: string; multiplier: number; durationDays: number }
   | { type: 'modify_price_modifier'; cropId: string; multiplier: number; durationDays: number }
   | { type: 'modify_irrigation_cost'; multiplier: number; durationDays: number }

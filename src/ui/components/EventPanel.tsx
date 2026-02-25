@@ -61,7 +61,7 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
             return (
               <button
                 key={choice.id}
-                data-testid={`event-choice-${choice.id}`}
+                data-testid={`${isAdvisor ? 'advisor' : 'event'}-choice-${choice.id}`}
                 class={`${styles.choiceBtn} ${!canAfford ? styles.choiceBtnDisabled : ''}`}
                 onClick={() => handleChoice(choice)}
                 disabled={!canAfford}
@@ -72,7 +72,7 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
                 {choice.cost !== undefined && choice.cost > 0 && (
                   <div
                     class={`${styles.choiceCost} ${!canAfford ? styles.choiceCostUnaffordable : ''}`}
-                    data-testid={`event-choice-cost-${choice.id}`}
+                    data-testid={`${isAdvisor ? 'advisor' : 'event'}-choice-cost-${choice.id}`}
                   >
                     ${choice.cost.toLocaleString()}
                   </div>

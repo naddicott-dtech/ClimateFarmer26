@@ -183,3 +183,25 @@ Format: **Date — Decision — Rationale**
 2026-02-24 — Three sub-slices: 2a (events + loans) → 2b (perennials) → 2c (advisor + chill hours) — Each independently shippable and testable. Infrastructure first (2a), then content on top (2b, 2c).
 
 2026-02-24 — Hard split contingency for Sub-Slice 2a — 6 internal checkpoints are hard stop-lines. If checkpoints 1-3 (types compile, events fire in simulateTick, event panel UI works) don't pass within reasonable effort, split 2a into: 2a1 (event engine + loan mechanics, pure engine, no UI beyond auto-pause) and 2a2 (event panel UI + foreshadowing + concrete event content).
+
+### Sub-Slice 2c: Advisor + Chill Hours
+
+2026-02-25 — Chill hours are pre-defined per year in scenario data, not computed from daily temps — Matches SPEC §18.3. Values: 800 (years 1-5), 700 (6-15), 630 (16-25), 570 (26-30). Declining chill creates the central teaching moment: almonds (700 required) fail before pistachios (600 required) as climate warms.
+
+2026-02-25 — Daily chill accumulation during dormancy (`yearChillHours / 90`) — Students see the number grow daily, which is more educational than a lump sum at end of winter. Total at end of winter ≈ scenario target (within rounding). Resets at dormancy entry, preserved at spring awakening for harvest calculation.
+
+2026-02-25 — Canonical chill penalty formula in `harvestCell()` — `chillFactor = clamp(accumulated / required, 0, 1)`. Three explicit cases: (1) `chillHoursRequired` undefined → skip (annuals), (2) `chillHoursRequired === 0` → no penalty, (3) otherwise → proportional penalty. Non-established perennials also skip (haven't experienced a winter yet).
+
+2026-02-25 — Fog-of-war via `state.flags['chillHoursRevealed']` — No new GameState field needed. The existing flags map + `set_flag` effect handle both reveal triggers: planting first perennial (automatic) and advisor chill-warning event choice. Keeps the surprise intact for students who haven't encountered perennials yet.
+
+2026-02-25 — Tiered advisor priorities — Critical educational advisors (soil-nitrogen, crop-failure, chill-warning) at priority 100 = guaranteed fire when eligible. "Suggestion" advisors (drought-recovery, perennial-opportunity) at priority 90 = very high but don't starve climate/regulatory events. All advisors have `maxOccurrences` caps to prevent dominating event cadence over a 30-year game.
+
+2026-02-25 — `modify_nitrogen_all` effect type — Modifies soil nitrogen across all grid cells, clamped to [0, 200]. Added for the advisor-soil-nitrogen "buy fertilizer" choice. Generic enough for future fertilizer events/tech.
+
+2026-02-25 — Save migration V2→V3 with explicit routing — `isV2Save()` detection → `migrateV2ToV3()` (adds `chillHoursAccumulated: 0` to all crop instances). V1→V2→V3 chaining for oldest saves. Both `readSave()` and `listManualSaves()` use the same migration path.
+
+2026-02-25 — `simulateCrop` receives `scenario` parameter — One call site to update (in `simulateTick`). Cleaner than storing redundant climate data on GameState. Enables chill hour lookup from `scenario.years[year-1].chillHours`.
+
+2026-02-25 — Dynamic testid prefixes for advisor vs event panels — `advisor-choice-*` for advisor storylets, `event-choice-*` for climate/regulatory events. Enables targeted Playwright selectors without ambiguity. No existing tests broken (no advisor events existed before 2c).
+
+2026-02-25 — Stretch events deferred from 2c — `tomato-market-surge` and `groundwater-pumping-ban` were planned for 2c but deferred per Neal's pre-flight feedback. Canonical specs inlined in KNOWN_ISSUES.md and HANDOFF.md (see "Deferred from Slice 2 → Slice 3"). SPEC.md §19 has the acceptance tests.

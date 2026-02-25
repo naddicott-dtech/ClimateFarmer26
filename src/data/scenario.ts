@@ -39,8 +39,17 @@ function makeYear(year: number): YearClimate {
   // Years 10+ get occasional extra heat
   const extraHeat = year >= 10 ? 0.02 : 0;
 
+  // Chill hours decline over 30 years — the core teachable moment for perennials.
+  // Almonds need 700, pistachios need 600. By year ~16+, almonds start failing.
+  const chillHours =
+    year <= 5  ? 800 :
+    year <= 15 ? 700 :
+    year <= 25 ? 630 :
+                 570;
+
   return {
     year,
+    chillHours,
     seasons: {
       spring: makeSeasonParams({
         avgTempHigh: 75 + warmingOffset,

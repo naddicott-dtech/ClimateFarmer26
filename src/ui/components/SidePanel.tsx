@@ -129,6 +129,12 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
                       {cropDef.yearsToEstablish - crop.perennialAge} year{cropDef.yearsToEstablish - crop.perennialAge !== 1 ? 's' : ''} until first harvest
                     </span>
                   )}
+                  {gameState.value?.flags['chillHoursRevealed'] && cropDef.chillHoursRequired !== undefined && cropDef.chillHoursRequired > 0 && (
+                    <ChillHourBar
+                      accumulated={crop.chillHoursAccumulated}
+                      required={cropDef.chillHoursRequired}
+                    />
+                  )}
                 </div>
               )}
               {cropDef && (
@@ -247,6 +253,32 @@ function SoilBar({ label, testId, value, max, unit, color }: {
         <div class={styles.barFill} style={{ width: `${pct}%`, background: color }} />
       </div>
       <span class={styles.soilValue}>{display}</span>
+    </div>
+  );
+}
+
+function ChillHourBar({ accumulated, required }: { accumulated: number; required: number }) {
+  const pct = required > 0 ? Math.min(100, (accumulated / required) * 100) : 100;
+  const deficit = required - accumulated;
+  const hasDeficit = deficit > 0;
+
+  return (
+    <div data-testid="sidebar-perennial-chill" class={styles.chillInfo}>
+      <span class={styles.chillLabel}>Chill Hours</span>
+      <div class={styles.chillBarContainer}>
+        <div
+          class={styles.chillBarFill}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span class={styles.chillValue}>
+        {Math.round(accumulated)}/{required}
+      </span>
+      {hasDeficit && (
+        <span class={styles.chillWarning} data-testid="sidebar-chill-deficit">
+          Deficit: {Math.round(deficit)} hrs
+        </span>
+      )}
     </div>
   );
 }

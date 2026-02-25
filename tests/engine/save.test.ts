@@ -299,6 +299,134 @@ describe('Save/Load System', () => {
     });
   });
 
+  describe('v2 manual save appears in listManualSaves', () => {
+    it('old-version manual saves are listed after migration', () => {
+      // Create a V2-format manual save directly in localStorage
+      const state = createInitialState('old-player', SLICE_1_SCENARIO);
+      const v2Save = {
+        version: '2.0.0',
+        state,
+        timestamp: Date.now(),
+      };
+      mockStorage['climateFarmer_save_OldSlot'] = JSON.stringify(v2Save);
+
+      const saves = listManualSaves();
+      expect(saves.length).toBeGreaterThanOrEqual(1);
+      expect(saves.some(s => s.slotName === 'OldSlot')).toBe(true);
+    });
+  });
+
+  describe('v2 → v3 migration', () => {
+    it('migrates v2 save by adding chillHoursAccumulated to crops', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      // Plant a crop, then strip the v3 field to simulate a v2 save
+      processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'processing-tomatoes' }, SLICE_1_SCENARIO);
+
+      const v2State = JSON.parse(JSON.stringify(state));
+      // Remove chillHoursAccumulated from the crop instance
+      delete v2State.grid[0][0].crop.chillHoursAccumulated;
+
+      const v2Save = {
+        version: '2.0.0',
+        state: v2State,
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v2Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      expect(loaded!.grid[0][0].crop).not.toBeNull();
+      expect(loaded!.grid[0][0].crop!.chillHoursAccumulated).toBe(0);
+    });
+
+    it('v2 save without crops migrates cleanly', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      const v2Save = {
+        version: '2.0.0',
+        state: JSON.parse(JSON.stringify(state)),
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v2Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      expect(loaded!.playerId).toBe('test-player');
+    });
+  });
+
+  describe('v1 → v2 → v3 migration chain', () => {
+    it('migrates v1 save all the way to v3 with chillHoursAccumulated', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      // Plant a crop
+      processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+
+      // Build a v1-shaped save (strip v2a AND v3 fields)
+      const v1State = JSON.parse(JSON.stringify(state));
+      delete v1State.eventLog;
+      delete v1State.activeEvent;
+      delete v1State.pendingForeshadows;
+      delete v1State.activeEffects;
+      delete v1State.cropFailureStreak;
+      delete v1State.flags;
+      delete v1State.wateringRestricted;
+      delete v1State.wateringRestrictionEndsDay;
+      delete v1State.irrigationCostMultiplier;
+      delete v1State.eventRngState;
+      delete v1State.economy.debt;
+      delete v1State.economy.totalLoansReceived;
+      delete v1State.economy.interestPaidThisYear;
+      // Also strip v3 fields
+      delete v1State.grid[0][0].crop.chillHoursAccumulated;
+
+      const v1Save = {
+        version: '1.0.0',
+        state: v1State,
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v1Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      // v2 fields present
+      expect(loaded!.eventLog).toEqual([]);
+      expect(loaded!.economy.debt).toBe(0);
+      // v3 fields present
+      expect(loaded!.grid[0][0].crop!.chillHoursAccumulated).toBe(0);
+    });
+  });
+
+  describe('v3 save round-trip', () => {
+    it('preserves chillHoursAccumulated through save/load', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+      // Simulate some chill accumulation
+      state.grid[0][0].crop!.chillHoursAccumulated = 350;
+      state.flags['chillHoursRevealed'] = true;
+
+      autoSave(state);
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      expect(loaded!.grid[0][0].crop!.chillHoursAccumulated).toBe(350);
+      expect(loaded!.flags['chillHoursRevealed']).toBe(true);
+    });
+  });
+
+  describe('corrupt/unknown version saves', () => {
+    it('returns null for unknown future version', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      autoSave(state);
+      const raw = JSON.parse(mockStorage[AUTOSAVE_KEY]);
+      raw.version = '4.0.0';
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(raw);
+      expect(loadAutoSave()).toBeNull();
+    });
+
+    it('returns null for completely corrupt save', () => {
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify({ version: '2.0.0', state: 'not-an-object' });
+      expect(loadAutoSave()).toBeNull();
+    });
+  });
+
   describe('localStorage error handling', () => {
     it('handles localStorage quota exceeded', () => {
       vi.stubGlobal('localStorage', {

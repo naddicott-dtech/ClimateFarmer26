@@ -62,10 +62,17 @@ function readSave(key: string): GameState | null {
 
     const parsed = JSON.parse(raw) as SaveGame;
     if (!validateSave(parsed)) {
-      // Try v1 migration
+      // Try v2 → v3 migration
+      if (isV2Save(parsed)) {
+        return migrateV2ToV3(parsed);
+      }
+      // Try v1 → v2 → v3 chain
       if (isV1Save(parsed)) {
-        const migrated = migrateV1ToV2(parsed);
-        if (migrated) return migrated;
+        const v2State = migrateV1ToV2(parsed);
+        if (v2State) {
+          const v2Save = { version: '2.0.0', state: v2State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
+          return migrateV2ToV3(v2Save);
+        }
       }
       return null;
     }
@@ -113,14 +120,30 @@ export function listManualSaves(): SaveSlotInfo[] {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const parsed = JSON.parse(raw) as SaveGame;
-      if (!validateSave(parsed)) continue;
+      const savedTimestamp = parsed.timestamp ?? Date.now();
+
+      // Try current-version validation first, then migration for older saves
+      let state: GameState | null = null;
+      if (validateSave(parsed)) {
+        state = parsed.state;
+      } else if (isV2Save(parsed)) {
+        state = migrateV2ToV3(parsed);
+      } else if (isV1Save(parsed)) {
+        const v2State = migrateV1ToV2(parsed);
+        if (v2State) {
+          const v2Save = { version: '2.0.0', state: v2State, timestamp: savedTimestamp } as unknown as SaveGame;
+          state = migrateV2ToV3(v2Save);
+        }
+      }
+
+      if (!state) continue;
 
       saves.push({
         slotName: key.slice(MANUAL_SAVE_PREFIX.length),
-        timestamp: parsed.timestamp,
-        playerId: parsed.state.playerId,
-        day: parsed.state.calendar.totalDay,
-        year: parsed.state.calendar.year,
+        timestamp: savedTimestamp,
+        playerId: state.playerId,
+        day: state.calendar.totalDay,
+        year: state.calendar.year,
       });
     } catch {
       // Skip corrupted saves
@@ -191,6 +214,42 @@ function validateSave(data: unknown): data is SaveGame {
   if (typeof economy.cash !== 'number' || !Number.isFinite(economy.cash)) return false;
 
   return true;
+}
+
+// ============================================================================
+// V2 → V3 Migration (adds chill hours to crop instances)
+// ============================================================================
+
+function isV2Save(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const save = data as Record<string, unknown>;
+  return save.version === '2.0.0';
+}
+
+/**
+ * Migrate a v2 save to v3 by adding chillHoursAccumulated to all crop instances.
+ * Returns null if migration fails.
+ */
+function migrateV2ToV3(data: unknown): GameState | null {
+  try {
+    const save = data as SaveGame;
+    const state = save.state as GameState & Record<string, unknown>;
+
+    // Add chillHoursAccumulated to all crop instances
+    for (const row of state.grid) {
+      for (const cell of row) {
+        if (cell.crop) {
+          if ((cell.crop as unknown as Record<string, unknown>).chillHoursAccumulated === undefined) {
+            cell.crop.chillHoursAccumulated = 0;
+          }
+        }
+      }
+    }
+
+    return state as GameState;
+  } catch {
+    return null;
+  }
 }
 
 // ============================================================================

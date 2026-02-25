@@ -362,11 +362,12 @@ describe('Perennial Harvest', () => {
 
   it('produces full yield after establishment', () => {
     const crop = state.grid[0][0].crop!;
-    // Simulate established state
+    // Simulate established state with full chill hours
     crop.perennialAge = 3;
     crop.perennialEstablished = true;
     crop.growthStage = 'harvestable';
     crop.waterStressDays = 0;
+    crop.chillHoursAccumulated = 700; // full chill requirement for almonds
 
     const cashBefore = state.economy.cash;
     processCommand(state, {

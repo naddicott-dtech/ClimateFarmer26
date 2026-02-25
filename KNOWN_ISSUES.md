@@ -92,13 +92,43 @@
 
 40. **HIGH: Flaky event panel browser tests** — Event panel tests relied on `dismissAutoPausesUntil` waiting for natural RNG-driven events (probabilistic timing). Failed 1/5 under stress. Fixed: `triggerEvent` debug hook injects events directly, making event panel structure/interaction tests deterministic. Foreshadow test kept as natural-flow (tests the whole pipeline). Stress-tested 30/30 passes.
 
+### Resolved from Slice 2c Senior Engineer Review (2026-02-25)
+
+41. **MEDIUM: "Apply Nitrogen Fertilizer" advisor choice was a no-op** — The `advisor-soil-nitrogen` storylet's "buy fertilizer" choice had `modify_cash: -400` but no effect on soil nitrogen. Students paid $400 for nothing. Fixed: added `modify_nitrogen_all` effect type to the effect system. Buy-fertilizer choice now applies +60 nitrogen to all cells, clamped to [0, 200].
+
+42. **MEDIUM: Manual-save migration not surfaced in Load Game list** — `readSave()` had V1→V2→V3 migration, but `listManualSaves()` used `validateSave()` (exact version match only). Old-version manual saves were invisible in the Load Game menu despite being loadable. Fixed: `listManualSaves()` now uses the same migration chain as `readSave()`.
+
+43. **LOW: Chill accumulation ~1.1% under target** — Dormancy entry day did an early `return` before the accumulation block, so 89/90 dormancy days accumulated chill. Over a winter with 800 target chill hours, the actual total was ~791. Fixed: removed early return; dormancy entry day now falls through to the accumulation block.
+
+44. **LOW (hygiene): playwright-report tracked in git** — Generated `playwright-report/` and `test-results/` directories were not in `.gitignore`. Fixed: added both to `.gitignore`.
+
 ### Deferred — Accepted for Slice 1
 
 30. **Deep save validation** — Nested field tampering (e.g., modifying crop.gddAccumulated inside a valid grid structure) is not caught by `validateSave()`. Acceptable risk for classroom use — students are not adversarial. Could add deep schema validation in a future slice if needed.
 
-### Deferred to Later Discussion
+### Deferred from Slice 2 → Slice 3
 
-- **Advanced accessibility** (colorblind modes, full screen reader support) — Deferrable to Slice 3-4. Baseline accessibility (keyboard navigation, ARIA labels, focus indicators) is in Slice 1.
-- **Sound / music** — Not essential for classroom use. Defer.
+- **Stretch events (tomato-market-surge, groundwater-pumping-ban)** — Designed during Sub-Slice 2c but deferred per Neal's pre-flight feedback. Canonical specs (not yet in code):
+  - **Tomato Market Surge:** type=market, conditions: not winter + year 2+ + 10% random, priority 45, cooldown 365 days. Single choice: Acknowledge → tomato price ×1.4 for 60 days (per SPEC.md §19.1).
+  - **Groundwater Pumping Ban:** type=regulatory, conditions: summer + year 5+ + 12% random, priority 55, cooldown 730 days. Choices: Comply (no irrigation 30 days) OR Buy surface water rights ($1,000) (per SPEC.md §19.2).
+  - Low implementation effort — event data structure and effect types already exist.
+- **Perennial decline phase** — Trees should lose productivity after peak years (ARCHITECTURE.md §5.7). Currently binary yield (0 during establishment, 1.0 after establishment forever). Need age-dependent yield curve with decline.
+- **Age-based yield curves** — Real orchards ramp up production over years 1-6, peak, then decline. Currently a step function (0 → 1.0 at establishment).
+- **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started. Needed for crop visibility gating, irrigation upgrades, nutrient monitoring.
+- **Remaining 3 advisors** — Financial Advisor/Banker (loans, insurance, investment), Weather Service (forecasts, sometimes wrong), Farming Community (tips, gossip, unreliable). See ARCHITECTURE.md §5.9.
+- **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums that increase with claims. Only a one-time emergency loan exists currently.
+- **K + Zn nutrients** — Only nitrogen is modeled. Potassium (quality/defense) and Zinc (critical checkpoint) are in ARCHITECTURE.md §5.6 but not implemented.
+- **Cover crops** — Off-season strategies (legume, mustard, resident vegetation) that affect N/erosion/OM. See ARCHITECTURE.md §8.
+- **Additional crops** — 7 more crops from the 12-crop roster: Grapes, Citrus, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule. See ARCHITECTURE.md §8.
+- **Additional climate scenarios** — Only 1 scenario exists ("Slice 1 Baseline"). Need 5-8 for classroom use to prevent students from memorizing the weather track.
+
+### Deferred to Slice 4 / Later Discussion
+
+- **Automation policies** — Replant-same, harvest-when-ready, water-when-dry. Unlocked via tech tree.
+- **Glossary / Information Index** — In-game educational reference with progressive disclosure.
+- **Solar lease event chain** — Multi-phase storylet (option → construction → operations → agrivoltaics).
+- **Completion code + Google Form** — End-of-game reporting for teacher assessment.
+- **Advanced accessibility** (colorblind modes, full screen reader support) — Baseline keyboard nav + ARIA in Slice 1.
+- **Sound / music** — Not essential for classroom use.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.
 - **README.md** — Not yet created. App is fully runnable (`npm run dev`, `npm test`, `npm run build`). Defer until closer to classroom deployment.

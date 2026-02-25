@@ -57,9 +57,20 @@ async function dismissAutoPausesUntil(page: Page, targetTestId: string, timeoutM
 
     // Handle non-target event panels (pick first choice to dismiss)
     if (targetTestId !== 'event-panel') {
-      const firstChoice = page.locator('[data-testid^="event-choice-"]').first();
-      if (await firstChoice.isVisible().catch(() => false)) {
-        await firstChoice.click();
+      const firstEventChoice = page.locator('[data-testid^="event-choice-"]').first();
+      if (await firstEventChoice.isVisible().catch(() => false)) {
+        await firstEventChoice.click();
+        await page.getByTestId('speed-fastest').click().catch(() => {});
+        await page.waitForTimeout(50);
+        continue;
+      }
+    }
+
+    // Handle non-target advisor panels (pick first choice to dismiss)
+    if (targetTestId !== 'advisor-panel') {
+      const firstAdvisorChoice = page.locator('[data-testid^="advisor-choice-"]').first();
+      if (await firstAdvisorChoice.isVisible().catch(() => false)) {
+        await firstAdvisorChoice.click();
         await page.getByTestId('speed-fastest').click().catch(() => {});
         await page.waitForTimeout(50);
         continue;
@@ -1040,6 +1051,7 @@ test.describe('Perennial Crops', () => {
         perennialEstablished: true,
         isDormant: false,
         harvestedThisSeason: false,
+        chillHoursAccumulated: 700,
       };
     });
     // Publish the state change
@@ -1081,6 +1093,7 @@ test.describe('Perennial Crops', () => {
         perennialEstablished: false,
         isDormant: true,
         harvestedThisSeason: false,
+        chillHoursAccumulated: 200,
       };
       // Set season to winter
       state.calendar.season = 'winter';
@@ -1091,5 +1104,208 @@ test.describe('Perennial Crops', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Almonds');
     await expect(page.getByTestId('sidebar-perennial-status')).toContainText('Dormant');
+  });
+});
+
+// ==========================================================================
+// §16 — Slice 2c: Advisor Panel
+// ==========================================================================
+
+test.describe('Advisor Panel', () => {
+  test('advisor panel shows name, role, and advisor-choice testids', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Inject an advisor event via debug hook
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    // Verify advisor panel structure
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await expect(page.getByTestId('advisor-name')).toHaveText('Dr. Maria Santos');
+    await expect(page.getByTestId('advisor-role')).toHaveText('County Extension Agent');
+    await expect(page.getByTestId('event-title')).toHaveText('Soil Health Check');
+
+    // Choices should use advisor-choice-* testids
+    await expect(page.getByTestId('advisor-choice-buy-fertilizer')).toBeVisible();
+    await expect(page.getByTestId('advisor-choice-acknowledge')).toBeVisible();
+  });
+
+  test('advisor choice with cost shows cost and advisor-choice-cost testid', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    // Fertilizer costs $400
+    await expect(page.getByTestId('advisor-choice-cost-buy-fertilizer')).toBeVisible();
+    await expect(page.getByTestId('advisor-choice-cost-buy-fertilizer')).toContainText('400');
+  });
+
+  test('clicking advisor choice dismisses the panel', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('advisor-crop-failure');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // Click the first choice
+    await page.getByTestId('advisor-choice-diversify-advice').click();
+
+    // Panel should close
+    await expect(page.getByTestId('advisor-panel')).not.toBeVisible();
+  });
+
+  test('non-advisor event still uses event-choice testids', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('heatwave-advisory');
+    });
+
+    await expect(page.getByTestId('event-panel')).toBeVisible();
+    await expect(page.getByTestId('event-choice-emergency-irrigation')).toBeVisible();
+  });
+});
+
+// ==========================================================================
+// §17 — Slice 2c: Chill Hours in Sidebar
+// ==========================================================================
+
+test.describe('Chill Hours Sidebar', () => {
+  test('chill hours not visible before fog-of-war reveal', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set up an established perennial but do NOT reveal chill hours
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      if (!state) return;
+      const cell = state.grid[0][0];
+      cell.crop = {
+        cropId: 'almonds',
+        plantedDay: 0,
+        gddAccumulated: 3000,
+        waterStressDays: 0,
+        growthStage: 'harvestable',
+        overripeDaysRemaining: -1,
+        isPerennial: true,
+        perennialAge: 4,
+        perennialEstablished: true,
+        isDormant: false,
+        harvestedThisSeason: false,
+        chillHoursAccumulated: 500,
+      };
+      // Ensure flag is NOT set
+      state.flags['chillHoursRevealed'] = false;
+      debug.setCash(state.economy.cash); // triggers publishState
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-perennial-status')).toBeVisible();
+    await expect(page.getByTestId('sidebar-perennial-chill')).not.toBeVisible();
+  });
+
+  test('chill hours visible after flag is set', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set up an established perennial WITH chill hours revealed
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      if (!state) return;
+      const cell = state.grid[0][0];
+      cell.crop = {
+        cropId: 'almonds',
+        plantedDay: 0,
+        gddAccumulated: 3000,
+        waterStressDays: 0,
+        growthStage: 'harvestable',
+        overripeDaysRemaining: -1,
+        isPerennial: true,
+        perennialAge: 4,
+        perennialEstablished: true,
+        isDormant: false,
+        harvestedThisSeason: false,
+        chillHoursAccumulated: 500,
+      };
+      debug.setFlag('chillHoursRevealed', true);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-perennial-chill')).toBeVisible();
+    // Should show accumulated/required
+    await expect(page.getByTestId('sidebar-perennial-chill')).toContainText('500');
+    await expect(page.getByTestId('sidebar-perennial-chill')).toContainText('700');
+  });
+
+  test('chill deficit warning shows when chill hours insufficient', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      if (!state) return;
+      const cell = state.grid[0][0];
+      cell.crop = {
+        cropId: 'almonds',
+        plantedDay: 0,
+        gddAccumulated: 3000,
+        waterStressDays: 0,
+        growthStage: 'harvestable',
+        overripeDaysRemaining: -1,
+        isPerennial: true,
+        perennialAge: 4,
+        perennialEstablished: true,
+        isDormant: false,
+        harvestedThisSeason: false,
+        chillHoursAccumulated: 400,
+      };
+      debug.setFlag('chillHoursRevealed', true);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-chill-deficit')).toBeVisible();
+    await expect(page.getByTestId('sidebar-chill-deficit')).toContainText('300');
+  });
+
+  test('planting a perennial reveals chill hours via fog-of-war', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set day to January so perennials can be planted
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(0);
+    });
+
+    // Verify flag is not set initially
+    const flagBefore = await page.evaluate(() => {
+      const state = (window as Record<string, any>).__gameDebug.getState();
+      return state?.flags['chillHoursRevealed'] ?? false;
+    });
+    expect(flagBefore).toBe(false);
+
+    // Plant almonds
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Flag should now be set
+    const flagAfter = await page.evaluate(() => {
+      const state = (window as Record<string, any>).__gameDebug.getState();
+      return state?.flags['chillHoursRevealed'] ?? false;
+    });
+    expect(flagAfter).toBe(true);
   });
 });

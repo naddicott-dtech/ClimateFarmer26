@@ -64,6 +64,15 @@ export function evaluateCondition(
       }
       return false;
     }
+    case 'no_perennial_planted': {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const crop = state.grid[r][c].crop;
+          if (crop && crop.isPerennial) return false;
+        }
+      }
+      return true;
+    }
     case 'consecutive_crop_failures':
       return state.cropFailureStreak >= condition.count;
     case 'no_debt':

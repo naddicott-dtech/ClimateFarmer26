@@ -134,6 +134,28 @@ describe('Event condition evaluation', () => {
     expect(evaluateCondition({ type: 'any_perennial_planted' }, state, rng)).toBe(true);
   });
 
+  it('no_perennial_planted: true when no perennial crop exists', () => {
+    expect(evaluateCondition({ type: 'no_perennial_planted' }, state, rng)).toBe(true);
+
+    // Plant an annual — should still be true
+    state.grid[0][0].crop = {
+      cropId: 'silage-corn', plantedDay: 59, gddAccumulated: 0,
+      waterStressDays: 0, growthStage: 'seedling', overripeDaysRemaining: -1,
+      isPerennial: false, perennialAge: 0, perennialEstablished: false, isDormant: false,
+      harvestedThisSeason: false, chillHoursAccumulated: 0,
+    };
+    expect(evaluateCondition({ type: 'no_perennial_planted' }, state, rng)).toBe(true);
+
+    // Plant a perennial — now false
+    state.grid[1][0].crop = {
+      cropId: 'almonds', plantedDay: 59, gddAccumulated: 0,
+      waterStressDays: 0, growthStage: 'seedling', overripeDaysRemaining: -1,
+      isPerennial: true, perennialAge: 0, perennialEstablished: false, isDormant: false,
+      harvestedThisSeason: false, chillHoursAccumulated: 0,
+    };
+    expect(evaluateCondition({ type: 'no_perennial_planted' }, state, rng)).toBe(false);
+  });
+
   it('consecutive_crop_failures: true when streak >= count', () => {
     state.cropFailureStreak = 2;
     expect(evaluateCondition({ type: 'consecutive_crop_failures', count: 2 }, state, rng)).toBe(true);
@@ -485,6 +507,38 @@ describe('Event effects', () => {
 
     expect(state.activeEffects).toHaveLength(1);
     expect(state.activeEffects[0].effectType).toBe('irrigation_cost_modifier');
+  });
+
+  it('modify_nitrogen_all increases nitrogen across all cells', () => {
+    // Set all cells to low nitrogen
+    for (const row of state.grid) {
+      for (const cell of row) {
+        cell.soil.nitrogen = 30;
+      }
+    }
+
+    applyEffects(state, [{ type: 'modify_nitrogen_all', amount: 60 }], 'test');
+
+    for (const row of state.grid) {
+      for (const cell of row) {
+        expect(cell.soil.nitrogen).toBe(90);
+      }
+    }
+  });
+
+  it('modify_nitrogen_all clamps to [0, 200]', () => {
+    // Test upper cap
+    for (const row of state.grid) {
+      for (const cell of row) {
+        cell.soil.nitrogen = 180;
+      }
+    }
+    applyEffects(state, [{ type: 'modify_nitrogen_all', amount: 100 }], 'test');
+    expect(state.grid[0][0].soil.nitrogen).toBe(200);
+
+    // Test lower cap
+    applyEffects(state, [{ type: 'modify_nitrogen_all', amount: -999 }], 'test');
+    expect(state.grid[0][0].soil.nitrogen).toBe(0);
   });
 });
 

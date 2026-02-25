@@ -10,7 +10,7 @@ import {
   MAX_YEARS, WATER_STRESS_AUTOPAUSE_THRESHOLD, IRRIGATION_COST_PER_CELL,
   WATER_DOSE_INCHES, STARTING_DAY, AUTO_PAUSE_PRIORITY,
   EVENT_RNG_SEED_OFFSET, LOAN_INTEREST_RATE, LOAN_REPAYMENT_FRACTION,
-  LOAN_DEBT_CAP,
+  LOAN_DEBT_CAP, DORMANCY_DAYS,
 } from './types.ts';
 import { evaluateEvents } from './events/selector.ts';
 import { applyEffects, expireActiveEffects, getYieldModifier, getPriceModifier, getIrrigationCostMultiplier } from './events/effects.ts';
@@ -172,6 +172,11 @@ function processPlantCrop(state: GameState, row: number, col: number, cropId: st
   state.economy.yearlyExpenses += cost;
   cell.crop = createCropInstance(cropId, state.calendar.totalDay);
 
+  // Reveal chill hours when first perennial is planted
+  if (cropDef.type === 'perennial' && !state.flags['chillHoursRevealed']) {
+    state.flags['chillHoursRevealed'] = true;
+  }
+
   return { success: true, cost, cellsAffected: 1 };
 }
 
@@ -281,6 +286,14 @@ export function executeBulkPlant(
 
   for (const cell of cells) {
     cell.crop = createCropInstance(cropId, state.calendar.totalDay);
+  }
+
+  // Reveal chill hours when first perennial is bulk-planted
+  if (!state.flags['chillHoursRevealed']) {
+    const def = getCropDefinition(cropId);
+    if (def.type === 'perennial') {
+      state.flags['chillHoursRevealed'] = true;
+    }
   }
 
   return { success: true, cost: totalCost, cellsAffected: cells.length };
@@ -549,7 +562,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
 
       // Crop simulation
       if (cell.crop) {
-        simulateCrop(cell, weather, state);
+        simulateCrop(cell, weather, state, scenario);
 
         if (cell.crop && cell.crop.growthStage === 'harvestable' &&
             !(cell.crop.isPerennial && cell.crop.harvestedThisSeason)) {
@@ -756,7 +769,7 @@ function simulateSoil(cell: Cell, weather: DailyWeather): void {
 // Crop Simulation
 // ============================================================================
 
-function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState): void {
+function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState, scenario: ClimateScenario): void {
   const crop = cell.crop!;
   const cropDef = getCropDefinition(crop.cropId);
 
@@ -764,10 +777,13 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState): void
   if (crop.isPerennial && cropDef.dormantSeasons) {
     const shouldBeDormant = cropDef.dormantSeasons.includes(state.calendar.season);
     if (shouldBeDormant && !crop.isDormant) {
-      // Enter dormancy
+      // Enter dormancy: reset chill accumulation for this winter
       crop.isDormant = true;
+      crop.chillHoursAccumulated = 0;
+      // Fall through to dormant block below for first day's accumulation
     } else if (!shouldBeDormant && crop.isDormant) {
       // Spring awakening: exit dormancy, reset GDD for new growing season
+      // Chill hours are PRESERVED — they represent last winter's total
       crop.isDormant = false;
       crop.gddAccumulated = 0;
       crop.waterStressDays = 0;
@@ -777,6 +793,13 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState): void
       crop.overripeDaysRemaining = -1;
     }
     if (crop.isDormant) {
+      // Accumulate chill hours during dormancy (if crop requires chill)
+      if (cropDef.chillHoursRequired !== undefined) {
+        const yearIndex = Math.max(0, Math.min(state.calendar.year - 1, scenario.years.length - 1));
+        const yearChillHours = scenario.years[yearIndex].chillHours;
+        const dailyChill = yearChillHours / DORMANCY_DAYS;
+        crop.chillHoursAccumulated += dailyChill;
+      }
       // No GDD accumulation, no growth during dormancy. Reduced water use via kc.
       return;
     }
@@ -885,6 +908,22 @@ function harvestCell(state: GameState, cell: Cell): number {
   const yieldMod = getYieldModifier(state, crop.cropId);
   yieldAmount *= yieldMod;
 
+  // Chill hour penalty for established perennials
+  // Canonical formula: clamp(accumulated / required, 0, 1)
+  // Skip if: chillHoursRequired is undefined (annuals), or not established (yield already 0)
+  if (cropDef.chillHoursRequired !== undefined && crop.isPerennial && crop.perennialEstablished) {
+    const chillFactor = cropDef.chillHoursRequired === 0
+      ? 1.0
+      : Math.min(1.0, Math.max(0, crop.chillHoursAccumulated / cropDef.chillHoursRequired));
+    yieldAmount *= chillFactor;
+    if (chillFactor < 1.0) {
+      const deficit = cropDef.chillHoursRequired - crop.chillHoursAccumulated;
+      const pctLoss = Math.round((1 - chillFactor) * 100);
+      addNotification(state, 'info',
+        `${cropDef.name}: insufficient chill hours (${Math.round(crop.chillHoursAccumulated)}/${cropDef.chillHoursRequired}). Yield reduced by ${pctLoss}% (deficit: ${Math.round(deficit)} hours).`);
+    }
+  }
+
   yieldAmount = Math.max(0, yieldAmount);
 
   // Apply event price modifier
@@ -965,6 +1004,7 @@ function createCropInstance(cropId: string, plantedDay: number): CropInstance {
     perennialEstablished: false,
     isDormant: false,
     harvestedThisSeason: false,
+    chillHoursAccumulated: 0,
   };
 }
 

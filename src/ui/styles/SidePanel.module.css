@@ -218,6 +218,51 @@
   font-style: italic;
 }
 
+/* Chill hour info */
+.chillInfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chillLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.chillBarContainer {
+  flex: 1;
+  min-width: 60px;
+  height: 10px;
+  background: var(--color-bg-dark);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.chillBarFill {
+  height: 100%;
+  background: var(--color-info);
+  border-radius: 5px;
+  transition: width 0.3s;
+}
+
+.chillValue {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.chillWarning {
+  width: 100%;
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  font-style: italic;
+}
+
 /* Remove button */
 .actionBtnRemove {
   background: var(--color-bg);
