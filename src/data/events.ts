@@ -140,6 +140,71 @@ export const STORYLETS: readonly Storylet[] = [
     tags: ['climate', 'frost'],
   },
 
+  // --- Slice 3a1: Stretch Events ---
+
+  {
+    id: 'tomato-market-surge',
+    type: 'market',
+    title: 'Tomato Market Surge',
+    description: 'Processing tomato prices have spiked due to supply shortages in other growing regions. If you have tomatoes in the field, this could be a windfall.',
+    preconditions: [
+      { type: 'season_not', season: 'winter' },
+      { type: 'min_year', year: 2 },
+      { type: 'random', probability: 0.10 },
+    ],
+    priority: 45,
+    cooldownDays: 365,
+    choices: [
+      {
+        id: 'acknowledge-surge',
+        label: 'Good to Know',
+        description: 'Tomato prices will be 40% higher for the next 60 days.',
+        effects: [
+          { type: 'modify_price_modifier', cropId: 'processing-tomatoes', multiplier: 1.4, durationDays: 60 },
+          { type: 'add_notification', message: 'Tomato prices surged! Processing tomato revenue increased by 40% for 60 days.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['market', 'tomatoes'],
+  },
+
+  {
+    id: 'groundwater-pumping-ban',
+    type: 'regulatory',
+    title: 'Groundwater Pumping Ban',
+    description: 'The state has imposed an emergency ban on groundwater pumping in your district due to critically low aquifer levels. You must decide how to handle the next 30 days without well water.',
+    preconditions: [
+      { type: 'season', season: 'summer' },
+      { type: 'min_year', year: 5 },
+      { type: 'random', probability: 0.12 },
+    ],
+    priority: 55,
+    cooldownDays: 730,
+    choices: [
+      {
+        id: 'comply',
+        label: 'Comply with the Ban',
+        description: 'No irrigation for 30 days. Your crops will rely on whatever moisture is in the soil.',
+        effects: [
+          { type: 'restrict_watering', durationDays: 30 },
+          { type: 'add_notification', message: 'Groundwater pumping banned for 30 days. No irrigation available.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'buy-rights',
+        label: 'Buy Surface Water Rights',
+        description: 'Purchase surface water rights from the state. Costs $1,000 but keeps your irrigation running.',
+        cost: 1000,
+        requiresCash: 1000,
+        effects: [
+          { type: 'modify_cash', amount: -1000 },
+          { type: 'add_notification', message: 'You purchased surface water rights for $1,000. Irrigation continues normally.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['regulatory', 'water', 'groundwater'],
+  },
+
   // --- 2c Advisor Events ---
 
   {

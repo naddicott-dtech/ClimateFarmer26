@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Technical Design Document (Draft)
 
-> **Status: Living document. Slice 1-2 implemented and reviewed. Slice 3+ sections are forward-looking design.**
+> **Status: Living document. Slice 1-2 implemented and reviewed. Slice 3 in progress.**
 > Cross-references: `reference/SIMULATION_PATTERNS.md`, `reference/BackgroundDeepResearch.md`
 
 ## 1. Overview
@@ -140,7 +140,7 @@ type Command =
 
 The engine validates each command before execution (Do you have enough cash? Is the cell empty? Is the tech available?). Invalid commands are rejected with a typed reason. The discriminated union ensures exhaustive handling — the TypeScript compiler flags any unhandled command type.
 
-**Note on scope:** The full discriminated union is defined here for architectural completeness. Slice 1 implements only: `PLANT_CROP`, `PLANT_BULK`, `HARVEST`, `HARVEST_BULK`, `WATER`, and `SET_SPEED`. Slice 2 adds: `RESPOND_EVENT`, `TAKE_LOAN` (parameterless — amount is engine-computed), and `REMOVE_CROP`. Other command variants are added in the slice where their system is built.
+**Note on scope:** The full discriminated union is defined here for architectural completeness. Slice 1 implements: `PLANT_CROP`, `PLANT_BULK`, `HARVEST`, `HARVEST_BULK`, `WATER`, and `SET_SPEED`. Slice 2 adds: `RESPOND_EVENT`, `TAKE_LOAN` (parameterless — amount is engine-computed), and `REMOVE_CROP`. Slice 3 adds: `SET_COVER_CROP` (single cell) and `SET_COVER_CROP_BULK` (field/row/col scope, DD-1 pattern). Other command variants are added in the slice where their system is built.
 
 **Benefits:**
 - **Testability:** Issue a sequence of commands in headless tests to reproduce any game state
@@ -278,7 +278,7 @@ interface Cell {
   crop: CropInstance | null;         // what's planted
   soil: SoilState;                   // nutrients, OM, water
   status: "farmable" | "solar_option" | "solar_construction" | "solar_active";
-  coverCrop: CoverCropType | null;   // off-season choice
+  coverCropId: string | null;         // off-season choice (Slice 3: 'legume-cover' or null)
   automationPolicy: AutomationPolicy | null; // e.g., "replant_same"
 }
 
@@ -370,6 +370,12 @@ interface CropDefinition {
   productiveLifespan?: number;
   removalCost?: number;
   chillHoursRequired?: number;
+  yieldCurve?: {                       // Slice 3: age-based yield factor
+    rampUpYears: number;               // years post-establishment to reach peak (3)
+    declineStartYear: number;          // years post-establishment when decline begins
+    endOfLifeYear: number;             // years post-establishment when floor is reached
+    declineFloor: number;              // minimum yield fraction (0.2)
+  };
 
   // Cover crop interactions
   canDoubleCrop?: boolean;
@@ -392,7 +398,8 @@ zincFactor = if soilZn < threshold AND flowering → catastrophic loss (0.1-0.3)
              else 1.0
 climateFactor = heatStressPenalty * frostPenalty * smokeePenalty
 
-actualYield = baseYield * waterFactor * nitrogenFactor * zincFactor * climateFactor
+ageFactor = getPerennialAgeFactor(crop, cropDef)  // Slice 3: ramp→peak→decline
+actualYield = baseYield * waterFactor * nitrogenFactor * zincFactor * climateFactor * ageFactor
 actualPrice = basePrice * potassiumFactor * marketConditions
 revenue = actualYield * actualPrice
 ```
@@ -418,7 +425,7 @@ interface EconomyState {
 - **Second insolvency OR debt > $100k:** Hard game over.
 - **Graceful end:** Reach year 30 → retirement event with final score.
 
-**Implementation note (Slice 2):** The actual EconomyState in `types.ts` currently has: `cash`, `debt`, `totalLoansReceived` (0 or 1), `interestPaidThisYear`, `yearlyRevenue`, `yearlyExpenses`. Fields like `creditRating`, `insurancePremiumRate`, `insuranceActive` are deferred to Slice 3+.
+**Implementation note (Slice 2-3):** The actual EconomyState in `types.ts` currently has: `cash`, `debt`, `totalLoansReceived` (0 or 1), `interestPaidThisYear`, `yearlyRevenue`, `yearlyExpenses`. Slice 3 adds `frostProtectionEndsDay` to GameState (not economy — it's a game mechanic field). Fields like `creditRating`, `insurancePremiumRate`, `insuranceActive` are deferred to Slice 4+.
 
 **Insurance:** Premium rate increases with claim history. After too many claims, insurance becomes unavailable ("uninsurable"). This creates real consequences for repeated climate losses without adaptation.
 
@@ -426,14 +433,14 @@ interface EconomyState {
 
 4 advisor characters, each a made-up person with a real-world-grounded role:
 
-| Advisor | Role | Reliability | Trigger Pattern |
-|---------|------|-------------|-----------------|
-| County Extension Agent | Crops, soil, tech recommendations | High (almost always correct) | Soil health drops, crop failures, new tech available |
-| Financial Advisor / Banker | Loans, insurance, investment | High for facts, debatable for strategy | Financial stress, tax season, high cash, insurance renewal |
-| Weather Service / Local News | Forecasts, extreme event warnings | Medium (sometimes wrong — false alarms) | Seasonal forecasts, approaching events, foreshadowing |
-| Farming Community (online/co-op) | Tips, market gossip, anecdotes | Low-Medium (sometimes right, sometimes noise) | Random/periodic, market rumors, peer experience |
+| Advisor | Role | Reliability | Trigger Pattern | Status |
+|---------|------|-------------|-----------------|--------|
+| Dr. Maria Santos (County Extension Agent) | Crops, soil, tech recommendations | High (almost always correct) | Soil health drops, crop failures, new tech available | Slice 2c: 5 storylets implemented |
+| NWS Fresno (Weather Service) | Forecasts, extreme event warnings | Medium (sometimes wrong — false alarms) | Seasonal forecasts, approaching events | Slice 3c: 3 storylets (heat forecast, frost alert, drought outlook) |
+| Financial Advisor / Banker | Loans, insurance, investment | High for facts, debatable for strategy | Financial stress, tax season, high cash, insurance renewal | Deferred to Slice 4+ |
+| Farming Community (online/co-op) | Tips, market gossip, anecdotes | Low-Medium (sometimes right, sometimes noise) | Random/periodic, market rumors, peer experience | Deferred to Slice 4+ |
 
-Advisors appear as **game-pausing overlay panels** with character portrait, dialogue, and 2–3 choices. Advisor appearances are storylets in the event system — same mechanism, tagged as `type: "advisor"`.
+Advisors appear as **game-pausing overlay panels** with character portrait, dialogue, and 2–3 choices. Advisor appearances are storylets in the event system — same mechanism, tagged as `type: "advisor"`. Each advisor has a unique `advisorId` on its storylets for UI character routing (Slice 3c).
 
 ### 5.10 Glossary / Information Index
 
@@ -500,12 +507,13 @@ interface SaveGame {
 
 Game content lives in data modules under `src/data/`:
 
-**Current implementation (Slice 2):**
+**Current implementation (Slice 3):**
 ```
 src/data/
-  crops.ts          # 5 crop definitions (3 annual + 2 perennial)
+  crops.ts          # 7 crop definitions (4 annual + 3 perennial)
+  cover-crops.ts    # Cover crop definitions (Slice 3b)
   scenario.ts       # 1 climate scenario (30 years, seasonal params + chillHours)
-  events.ts         # STORYLETS array (3 climate + 5 advisor events)
+  events.ts         # STORYLETS array (5 climate/market/regulatory + 9 advisor events)
 ```
 
 All content is defined as typed TypeScript constants, validated at compile time by `tsc --strict`. This provides the data-driven benefits (adding content = editing data, not engine logic) with compile-time type safety.
@@ -579,15 +587,17 @@ All grid cells, buttons, panels, and interactive elements have `data-testid` att
 ## 8. Crop Roster (Classroom-Ready Build)
 
 ### Current San Joaquin Valley Crops
-| Crop | Type | Strategic Role | Key Mechanic |
-|------|------|---------------|-------------|
-| Processing Tomatoes | Annual | High-value, heavy N feeder | Rotation essential; depletes soil fast |
-| Silage Corn | Annual | Reliable feed crop | Can double-crop with winter forage |
-| Grapes | Perennial | High-value, versatile | Heat-sensitive >105°F; smoke taint risk from wildfires |
-| Almonds | Perennial | Current king, highest value | Water-intensive; needs chill hours (declining with climate) |
-| Pistachios | Perennial | Climate-adapted nut | Salt/drought tolerant; the natural replacement for almonds |
-| Citrus (Navels) | Perennial | Stable, moderate value | Benefits from warming (fewer frosts); needs irrigation |
-| Stone Fruit (Peaches) | Perennial | High value, high labor | Needs chill hours; labor-intensive harvest |
+| Crop | Type | Strategic Role | Key Mechanic | Status |
+|------|------|---------------|-------------|--------|
+| Processing Tomatoes | Annual | High-value, heavy N feeder | Rotation essential; depletes soil fast | Slice 1 |
+| Silage Corn | Annual | Reliable feed crop | Can double-crop with winter forage | Slice 1 |
+| Winter Wheat | Annual | Low-value, low-maintenance | Winter crop; rotation partner | Slice 1 |
+| Sorghum | Annual | Drought-tolerant survival crop | ky=0.50 (half of tomatoes); $660/acre | Slice 3a1 |
+| Almonds | Perennial | Current king, highest value | Water-intensive; needs chill hours (declining with climate) | Slice 2b |
+| Pistachios | Perennial | Climate-adapted nut | Salt/drought tolerant; the natural replacement for almonds | Slice 2b |
+| Citrus (Navels) | Perennial | Stable, moderate value, never declines | Evergreen (no dormancy, no chill hours); $4,900/acre | Slice 3a1 |
+| Grapes | Perennial | High-value, versatile | Heat-sensitive >105°F; smoke taint risk from wildfires | Deferred |
+| Stone Fruit (Peaches) | Perennial | High value, high labor | Needs chill hours; labor-intensive harvest | Deferred |
 
 ### Future / Adaptive Crops (unlocked via tech tree events)
 | Crop | Type | Strategic Role | Unlock Trigger |
@@ -599,13 +609,57 @@ All grid cells, buttons, panels, and interactive elements have `data-testid` att
 | Guayule | Perennial | Low-water industrial (rubber) | Multiple water crises + research investment |
 
 ### Cover Crops / Off-Season Strategies
-| Option | N Effect | Erosion Effect | OM Effect | Notes |
-|--------|----------|---------------|-----------|-------|
-| Legume cover (Clover/Vetch) | +50-100 lbs/ac | -50% | +0.1%/yr | Best for N-depleted fields |
-| Mustard | neutral | -40% | +0.05%/yr | Breaks hardpan, pest suppression |
-| Resident vegetation (managed) | neutral | -30% | +0.03%/yr | Free; just mow |
-| Bare / clean cultivation | none | none | -0.05%/yr | Cheapest short-term; worst long-term |
-| Winter cash crop (double-crop) | varies | -20% | neutral | Revenue but delays spring planting |
+
+**Slice 3b implements:** Legume cover (Clover/Vetch mix) with fall-only planting window and spring auto-incorporate.
+
+| Option | N Effect | OM Effect | Moisture Effect | Winter ET | Cost | Status |
+|--------|----------|-----------|-----------------|-----------|------|--------|
+| Legume cover (Clover/Vetch) | +50 lbs/ac | +0.10% | -0.5in at incorporate | 0.2× (replaces bare 0.3×) | $30/plot | Slice 3b |
+| Bare / clean cultivation | none | -decomposition | none | 0.3× (bare soil) | free | Default |
+| Mustard | neutral | +0.05% | TBD | TBD | TBD | Deferred |
+| Resident vegetation | neutral | +0.03% | TBD | TBD | free | Deferred |
+
+**Cover crop lifecycle:** Plant in fall (months 9-11) → grows over winter (halts OM decomposition) → auto-incorporated at winter→spring transition (applies N + OM bonuses, moisture drawdown).
+
+**Eligible cells:** Empty cells OR cells with dormant perennials (understory planting).
+
+**ET rules with cover crops:**
+```
+empty + no cover    → ET = et0 × 0.3  (bare soil)
+empty + cover       → ET = et0 × 0.2  (cover replaces bare)
+crop + no cover     → ET = et0 × getCropCoefficient(crop)
+crop + cover        → ET = et0 × max(getCropCoefficient(crop), 0.2)
+dormant + cover     → ET = et0 × max(0.2, 0.2) = 0.2
+```
+
+### Perennial Yield Curves (Slice 3a2)
+
+**3-phase piecewise-linear curve:**
+```
+Phase 1: Establishing (age < yearsToEstablish) → yield = 0
+Phase 2: Ramp (rampUpYears post-establishment) → 0.6 → 0.8 → 1.0
+Phase 3: Peak → yield = 1.0
+Phase 4: Decline (linear to floor) → 1.0 → declineFloor
+Phase 5: Past lifespan → yield = declineFloor
+```
+
+**Locked formula (getPerennialAgeFactor):**
+```
+yp = perennialAge - yearsToEstablish   // productive years
+if yp < rampUpYears:
+  if rampUpYears <= 1: return 1.0
+  return 0.6 + 0.4 × (yp / (rampUpYears - 1))
+if yp < declineStartYear: return 1.0
+if yp >= endOfLifeYear: return declineFloor
+return 1.0 - (1.0 - declineFloor) × ((yp - declineStartYear) / (endOfLifeYear - declineStartYear))
+```
+
+**Crop curve data:**
+| Crop | rampUpYears | declineStartYear | endOfLifeYear | declineFloor |
+|------|-------------|------------------|---------------|-------------|
+| Almonds | 3 | 15 | 22 | 0.2 |
+| Pistachios | 3 | 17 | 25 | 0.2 |
+| Citrus | 3 | 28 | 35 | 0.3 |
 
 ## 9. Key Design Patterns Applied
 
@@ -730,10 +784,16 @@ The game becomes strategic. Things happen that require decisions. Long-term inve
 
 **Sub-sliced as:** 2a (event engine + loans + 3 events) → 2b (perennials) → 2c (advisor + chill hours). Each independently reviewed.
 
-### Slice 3: Depth & Discovery
-The fog-of-war tech tree, full nutrient model, and the rest of the crop roster.
+### Slice 3: Depth & Discovery ← IN PROGRESS
+Adaptation tradeoffs, perennial lifecycle, cover crop system, and weather advisor.
 
-**Adds:** K + Zn nutrients, tech tree (event-driven unlocks), remaining advisors, cover crops, all 12 crops, more events, more scenarios.
+**Sub-slices:**
+- 3a1: Stretch events (tomato surge, pumping ban) + 2 new crops (sorghum, citrus navels) + citrus harvest cadence fix
+- 3a2: Perennial yield curves (ramp→peak→decline) + decline advisor + phase UI
+- 3b: Cover crop system (legume + bare, fall planting, spring auto-incorporate) + V3→V4 save migration
+- 3c: Weather Service advisor (NWS Fresno, 3 storylets) + frost protection mechanism + advisor UI routing
+
+**Explicitly deferred to Slice 4+:** Tech tree, K+Zn nutrients, insurance/credit expansion, multi-scenario, remaining advisors (Financial, Community), automation policies.
 
 ### Slice 4: Classroom Polish
 Everything needed to hand this to students with confidence.

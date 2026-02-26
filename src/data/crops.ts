@@ -104,6 +104,39 @@ export const CROPS: Record<string, CropDefinition> = {
     shortDescription: 'Cool-season grain. Low water needs, light on soil. Plant in fall, harvest in spring.',
   },
 
+  // --- Slice 3a1: Sorghum ---
+
+  'sorghum': {
+    id: 'sorghum',
+    name: 'Sorghum',
+    type: 'annual',
+
+    gddBase: 50,
+    gddToMaturity: 2200,   // ~100 days in SJV summer
+    plantingWindow: { startMonth: 4, endMonth: 6 }, // April–June
+
+    waterUsePerDay: 0.15,  // lowest of warm-season crops
+    cropCoefficients: [
+      { stage: 'seedling', kc: 0.3 },
+      { stage: 'vegetative', kc: 0.6 },
+      { stage: 'flowering', kc: 0.9 },
+      { stage: 'mature', kc: 0.7 },
+      { stage: 'harvestable', kc: 0.35 },
+      { stage: 'overripe', kc: 0.2 },
+    ],
+    ky: 0.50,              // very drought-tolerant — half of tomatoes
+
+    nitrogenUptake: 80,    // lbs/acre — light feeder
+
+    yieldPotential: 110,   // bushels/acre
+    yieldUnit: 'bu',
+    basePrice: 6,          // $/bushel → $660/acre
+    seedCostPerAcre: 35,
+    laborCostPerAcre: 45,
+
+    shortDescription: 'Drought-tolerant warm-season grain. Low profit but survives conditions that kill corn and tomatoes.',
+  },
+
   // --- Slice 2b Perennials ---
 
   'almonds': {
@@ -180,6 +213,47 @@ export const CROPS: Record<string, CropDefinition> = {
     chillHoursRequired: 600, // NOT used until 2c
 
     shortDescription: 'Perennial tree crop. 4-year establishment, very drought-tolerant. Alternate bearing — reliable long-term investment.',
+  },
+
+  // --- Slice 3a1: Citrus Navels ---
+
+  'citrus-navels': {
+    id: 'citrus-navels',
+    name: 'Citrus Navels',
+    type: 'perennial',
+
+    gddBase: 55,
+    gddToMaturity: 2800,
+    plantingWindow: { startMonth: 2, endMonth: 4 }, // February–April
+
+    waterUsePerDay: 0.20,  // needs year-round irrigation — evergreen
+    cropCoefficients: [
+      { stage: 'seedling', kc: 0.4 },
+      { stage: 'vegetative', kc: 0.65 },
+      { stage: 'flowering', kc: 0.85 },
+      { stage: 'mature', kc: 0.75 },
+      { stage: 'harvestable', kc: 0.5 },
+      { stage: 'overripe', kc: 0.3 },
+    ],
+    ky: 0.80,              // moderate water sensitivity
+
+    nitrogenUptake: 100,
+
+    yieldPotential: 350,   // boxes/acre
+    yieldUnit: 'boxes',
+    basePrice: 14,         // $/box → $4,900/acre
+    seedCostPerAcre: 800,  // establishment cost
+    laborCostPerAcre: 250,
+
+    yearsToEstablish: 3,
+    removalCost: 400,
+    annualMaintenanceCost: 150,
+    // Evergreen: no dormancy, no chill hours
+    // dormantSeasons: undefined
+    // chillHoursRequired: undefined
+    productiveLifespan: 35,
+
+    shortDescription: 'Evergreen perennial. Stable income, no chill-hour risk, never declines — but less profitable than almonds at peak.',
   },
 };
 

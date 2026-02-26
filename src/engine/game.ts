@@ -653,6 +653,9 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
               cell.crop.perennialAge >= def.yearsToEstablish) {
             cell.crop.perennialEstablished = true;
           }
+          // Reset harvestedThisSeason for ALL perennials at year-end
+          // (handles both dormant perennials and evergreen citrus)
+          cell.crop.harvestedThisSeason = false;
           // Deduct annual maintenance
           if (def.annualMaintenanceCost) {
             state.economy.cash -= def.annualMaintenanceCost;

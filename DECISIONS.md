@@ -205,3 +205,69 @@ Format: **Date — Decision — Rationale**
 2026-02-25 — Dynamic testid prefixes for advisor vs event panels — `advisor-choice-*` for advisor storylets, `event-choice-*` for climate/regulatory events. Enables targeted Playwright selectors without ambiguity. No existing tests broken (no advisor events existed before 2c).
 
 2026-02-25 — Stretch events deferred from 2c — `tomato-market-surge` and `groundwater-pumping-ban` were planned for 2c but deferred per Neal's pre-flight feedback. Canonical specs inlined in KNOWN_ISSUES.md and HANDOFF.md (see "Deferred from Slice 2 → Slice 3"). SPEC.md §19 has the acceptance tests.
+
+## Slice 3 Design Decisions
+
+### Scope & Strategy
+
+2026-02-25 — Slice 3 scoped to one classroom objective — "Students learn that climate adaptation requires tradeoffs — there's no single right answer, and different strategies work in different conditions." All features must serve this objective.
+
+2026-02-25 — 4 sub-slices: 3a1 → 3a2 → 3b → 3c — Split from original 3-part plan after senior engineer review. 3a1 (stretch events + new crops) and 3a2 (yield curves) were originally one sub-slice, split to reduce risk.
+
+2026-02-25 — Explicit Slice 4+ deferrals — Tech tree, K+Zn nutrients, insurance/credit expansion, multi-scenario, Financial/Community advisors, automation policies, glossary, solar lease, sound. No crop unlock gating (all crops available from game start).
+
+### Sub-slice 3a1: New Crops + Events
+
+2026-02-25 — Sorghum as drought-tolerant annual — ky=0.50 (half of tomatoes), $660/acre revenue. Strategic niche: "survival crop" that survives drought conditions killing corn/tomatoes. Lower profit in good times, lower loss in bad times. Teaches risk-return tradeoff.
+
+2026-02-25 — Citrus Navels as stable perennial — $4,900/acre (350 boxes × $14/box, grounded in USDA CA 2024 data). Less profitable than almonds at peak ($6,250) but never declines and never loses chill hours. Evergreen: no dormancy, no chill accumulation/penalty, year-round water consumption.
+
+2026-02-25 — Citrus harvest cadence fix — Evergreen citrus has no dormancy exit path, so `harvestedThisSeason` was never reset. Fix: reset `harvestedThisSeason = false` for ALL perennials at year-end boundary (alongside `perennialAge++`). Handles both dormant and evergreen perennials uniformly.
+
+2026-02-25 — Double-harvest regression guard — Year-end `harvestedThisSeason` reset must not enable same-day double-harvest around year-end auto-pause order. Explicit regression test required.
+
+2026-02-25 — Groundwater pumping ban has no foreshadowing — Matches canonical SPEC.md §19.2 and HANDOFF.md (neither mentions foreshadowing). Real-world sudden regulatory action. If foreshadowing is wanted later, update SPEC first.
+
+2026-02-25 — `market` type already in Storylet union — No engine type changes needed for tomato-market-surge. Effect types (`modify_price_modifier`, `restrict_watering`, `modify_cash`) all exist from Slice 2.
+
+### Sub-slice 3a2: Yield Curves
+
+2026-02-25 — 3-phase piecewise-linear yield curve — Ramp (0.6→0.8→1.0 over rampUpYears) → Peak (1.0) → Decline (linear to declineFloor). Formula: `0.6 + 0.4 × (yp / (rampUpYears - 1))` for ramp. Edge case: `rampUpYears ≤ 1` → instant peak. `declineStartYear == endOfLifeYear` → instant drop to floor (no division by zero).
+
+2026-02-25 — Yield curve data is on CropDefinition, not CropInstance — No save migration needed. `perennialAge` is already saved. The formula computes from age + definition at harvest time.
+
+2026-02-25 — Almond/Pistachio/Citrus curve constants locked — Almonds: ramp=3, declineStart=15, eol=22, floor=0.2. Pistachios: ramp=3, declineStart=17, eol=25, floor=0.2. Citrus: ramp=3, declineStart=28, eol=35, floor=0.3 (never declines in 30-year game).
+
+2026-02-25 — ageFactor applied last in harvest yield chain — Order: baseYield × waterFactor × nFactor × yieldMod × chillFactor × ageFactor. Applied after chill factor, before final clamp.
+
+2026-02-25 — Decline advisor (Dr. Santos) — `advisor-orchard-decline`: fires when any established perennial enters decline phase. New condition type: `has_declining_perennial`. Priority 90, maxOccurrences 2, cooldown 730 days.
+
+### Sub-slice 3b: Cover Crops
+
+2026-02-25 — Single cover crop for Slice 3: legume-cover — Clover/Vetch mix. $30/plot, +50N, +0.10% OM, -0.5in moisture at spring incorporation. Winter ET: 0.2× (replaces bare soil 0.3×). Not a free buff: costs money, draws down spring moisture.
+
+2026-02-25 — Fall-only planting window (months 9-11) — Eligible cells: empty OR dormant perennials (understory planting). Rejected: non-dormant crops. Must actively choose each fall (no auto-plant).
+
+2026-02-25 — Spring auto-incorporate at winter→spring transition — Apply N (clamped 0-200), OM, moisture drawdown. Clear coverCropId. Notification with exact numbers.
+
+2026-02-25 — Cover crop ET formula — `ET = et0 × max(getCropCoefficient(crop), coverCrop.winterETMultiplier)` for cells with crops; `ET = et0 × coverCrop.winterETMultiplier` for empty cells with cover. Dormant perennial + cover: max(0.2, 0.2) = 0.2 — cover doesn't add water cost.
+
+2026-02-25 — Cover crop halts OM decomposition — When `coverCropId` is set, OM decomposition is skipped during winter simulation. Cover crop roots protect soil.
+
+2026-02-25 — DD-1 pattern for cover crop bulk ops — Same partial-offer / complete-rows pattern as existing plant/water bulk operations. Consistency with established UX.
+
+### Save Migration
+
+2026-02-25 — Single V3→V4 migration in sub-slice 3b — One version bump for all Slice 3 state additions: `coverCropId: null` on all cells + `frostProtectionEndsDay: 0` on GameState. SAVE_VERSION bumps to `'4.0.0'`. Both `readSave()` and `listManualSaves()` use the migration chain (lesson from issue #42).
+
+### Sub-slice 3c: Weather Service Advisor
+
+2026-02-25 — Weather Service advisor: NWS Fresno — Explicitly imperfect (unlike reliable Dr. Santos). Each storylet includes confidence language: "High confidence", "Moderate confidence", "Low confidence". Teaches forecast uncertainty.
+
+2026-02-25 — `advisorId` field on Storylet for character routing — Extension agent storylets get `advisorId: 'extension-agent'`, weather storylets get `advisorId: 'weather-service'`. EventPanel renders appropriate character based on advisorId.
+
+2026-02-25 — 3 weather storylets — heat-forecast (summer, high confidence, $200 pre-irrigate), frost-alert (spring, moderate confidence, $150 frost protection), drought-outlook (spring, year 5+, low confidence, informational).
+
+2026-02-25 — Frost protection: dedicated `frostProtectionEndsDay` state field — Active when `totalDay < frostProtectionEndsDay`. Natural expiry (no tick processing needed). Only consumed by late-frost-warning "accept-risk" choice (0.70→0.85 penalty). Full-protection ($300) choice does NOT consume it. Non-frost events never check it. Overlapping activations: `max(current, new)`.
+
+2026-02-25 — Frost interaction centralized in single helper — `applyFrostProtection(state, choiceId)` returns `{ multiplier, consumed }`. Called from `processRespondEvent`. All frost logic in one function, not spread across event handlers.

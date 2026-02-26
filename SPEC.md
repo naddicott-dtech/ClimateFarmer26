@@ -1,6 +1,6 @@
 # SPEC.md — Acceptance Tests & Requirements
 
-> **Status: Living document. Slice 1 locked. Slice 2 sections implemented and reviewed.**
+> **Status: Living document. Slice 1 locked. Slice 2 implemented and reviewed. Slice 3 in progress.**
 > Format: **When** [user action], **I should see** [expected result].
 > Negative cases use: **When** [action], **I should NOT see** [bad outcome] / **the system should** [prevent it].
 
@@ -26,7 +26,7 @@ These defaults are used throughout the tests below. If any change, the test valu
 | Starting soil moisture | 4.0 inches (of 6.0 capacity) | Spring start with reasonable water; ~14 days before first watering needed in dry weather |
 | Climate scenario | 1 scenario bundled ("Slice 1 Baseline") | Mild-to-moderate difficulty; includes one dry summer (Year 3) for drama |
 | Speed on launch | Paused (0x) | Game starts paused so student can read the UI and choose first action |
-| Crops available | Processing Tomatoes, Silage Corn, Winter Wheat | The 3 Slice 1 annuals |
+| Crops available | Processing Tomatoes, Silage Corn, Winter Wheat, Almonds, Pistachios (Slice 2), Sorghum, Citrus Navels (Slice 3) | All unlocked from game start — no tech gating |
 
 ---
 
@@ -593,14 +593,218 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 ##### 18.3 Chill Hours in Scenario Data
 - **When** the scenario generates winter weather, **the system should** use pre-defined chill hours that decline over 30 years: ~800 (years 1-5) → ~700 (years 6-15) → ~630 (years 16-25) → ~570 (years 26-30).
 
-#### 19. Stretch Events (only after Core passes stretch gate)
+#### 19. Stretch Events (Slice 3 — sub-slice 3a1)
 
 ##### 19.1 Market Price Fluctuation
-- **When** it is not winter, year 2+, **I may see** a "Tomato Market Surge" event. Single choice: Acknowledge (tomato price x1.4 for 60 days).
+- **When** it is not winter, year 2+, **I may see** a "Tomato Market Surge" event (type: market, priority 45, cooldown 365 days, 10% random chance).
+- **When** the event fires, **I should see** a single choice: Acknowledge → tomato price x1.4 for 60 days.
 - **When** a price modifier is active, **I should see** affected crop harvests reflect the modified price.
+- **When** I harvest tomatoes during a price surge, **I should see** revenue at 1.4x base price.
+- **When** the 60-day duration expires, **I should see** tomato prices return to normal.
 
 ##### 19.2 Regulatory Water Restriction
-- **When** it is summer, year 5+, **I may see** a "Groundwater Pumping Ban" event. Choices: Comply (no irrigation 30 days) or Buy surface water rights ($1,000).
+- **When** it is summer, year 5+, **I may see** a "Groundwater Pumping Ban" event (type: regulatory, priority 55, cooldown 730 days, 12% random chance).
+- **When** the event fires, **I should see** two choices: Comply (no irrigation 30 days) or Buy surface water rights ($1,000).
+- **When** I choose Comply, **I should NOT** be able to water any plots for 30 days.
+- **When** I choose Buy surface water rights, **I should see** $1,000 deducted and watering remains available.
+- **This event has no foreshadowing** — matches real-world sudden regulatory action.
+
+---
+
+## Slice 3: Depth & Discovery
+
+### Sub-slice 3a1: New Crops
+
+#### 20. Sorghum (Annual)
+
+##### 20.1 Planting & Growth
+- **When** I open the plant menu during April-June, **I should see** Sorghum available with cost $35/plot.
+- **When** I plant sorghum, **I should see** it grow based on GDD accumulation (base 50°F, 2200 GDD to maturity).
+- **When** I plant sorghum outside April-June, **I should see** sorghum greyed out with tooltip: "Planting window: April-June."
+
+##### 20.2 Drought Tolerance
+- **When** I compare sorghum to corn under identical water stress, **I should see** sorghum suffer less yield loss (ky=0.50 vs corn's ky=1.00).
+- **When** water is scarce, sorghum is the "survival crop" — lower revenue ($660/acre) but survives conditions that kill tomatoes/corn.
+
+##### 20.3 Economics
+- **When** I harvest sorghum at full yield, **I should see** revenue of $660/plot (110 bu × $6/bu).
+- **When** I harvest sorghum under severe water stress, **I should see** reduced yield but proportionally less loss than tomatoes or corn.
+
+#### 21. Citrus Navels (Perennial)
+
+##### 21.1 Planting & Establishment
+- **When** I open the plant menu during February-April, **I should see** Citrus Navels available with cost $800/plot and warning: "Takes 3 years before first harvest."
+- **When** I plant citrus, **I should see** "Establishing — Year 1/3" in the side panel.
+- **When** 3 years pass, **I should see** citrus become "Producing" (established).
+
+##### 21.2 Evergreen Behavior (No Dormancy)
+- **When** winter arrives and I have citrus, **I should NOT** see the dormant visual state. Citrus is evergreen — it stays green year-round.
+- **When** citrus is in winter, **I should see** it continue consuming water (no dormancy kc reduction).
+- **I should NOT** see chill-hour accumulation or chill penalties for citrus (no `chillHoursRequired`).
+
+##### 21.3 Harvest Cadence
+- **When** I harvest citrus in year 1 of production, **I should see** the harvest succeed and `harvestedThisSeason` set.
+- **When** the year boundary passes (year-end), **I should see** `harvestedThisSeason` reset for all perennials (including citrus).
+- **When** year 2 arrives after harvest, **I should be able to** harvest citrus again.
+- **When** I harvest citrus and the year-end tick occurs on the same day, **I should NOT** be able to harvest twice on that day (double-harvest regression guard).
+
+##### 21.4 Economics
+- **When** I harvest citrus at full yield, **I should see** revenue of $4,900/plot (350 boxes × $14/box).
+- **When** I compare citrus to almonds, citrus is less profitable at peak ($4,900 vs $6,250) but never declines and never loses chill hours.
+- **When** I have citrus in year 20+, **I should see** stable production while almonds suffer chill-hour deficits.
+
+##### 21.5 Maintenance & Removal
+- **When** the year ends with citrus planted, **I should see** maintenance costs deducted ($150/plot).
+- **When** I click "Remove" on citrus, **I should see** a confirmation dialog with removal cost ($400).
+
+### Sub-slice 3a2: Perennial Yield Curves
+
+#### 22. Age-Based Yield Factor
+
+##### 22.1 Ramp Phase
+- **When** an almond tree becomes established (age 3, productive year 0), **I should see** yield at 60% of potential.
+- **When** the almond tree reaches age 4 (productive year 1), **I should see** yield at 80%.
+- **When** the almond tree reaches age 5 (productive year 2), **I should see** yield at 100% (peak).
+
+##### 22.2 Peak Phase
+- **When** an almond tree is ages 6-17, **I should see** yield consistently at 100%.
+- **When** a pistachio tree is ages 7-20, **I should see** yield consistently at 100%.
+- **When** citrus is ages 6-30+, **I should see** yield consistently at 100% (never declines in 30-year game).
+
+##### 22.3 Decline Phase
+- **When** an almond tree reaches age 18, **I should see** yield begin declining linearly from 100%.
+- **When** an almond tree reaches age 25+, **I should see** yield at floor (20%) — tree is past prime but still alive.
+- **When** a pistachio tree reaches age 21, **I should see** decline begin.
+- **When** a pistachio tree reaches age 29+, **I should see** yield at floor (20%).
+
+##### 22.4 Phase Labels in Side Panel
+- **When** I select a perennial cell, **I should see** one of: "Establishing", "Ramping Up (X%)", "Peak Production", "Declining", "Past Prime" based on tree age.
+- **When** a perennial is in peak phase, **I should see** "Years until decline: N" information.
+- **When** a perennial is declining, **I should see** "Replacement recommended" guidance.
+
+##### 22.5 Decline Advisor
+- **When** any established perennial enters the decline phase, **I should see** Dr. Santos advise: "Your trees are getting old. Consider planting replacement trees soon." (priority 90, max 2 occurrences, cooldown 730 days).
+
+##### 22.6 Yield Factor Integration
+- **When** I harvest a perennial, **the system should** apply: baseYield × waterFactor × nFactor × yieldMod × chillFactor × ageFactor. The age factor is the last multiplicative factor before final clamp.
+
+### Sub-slice 3b: Cover Crops
+
+#### 23. Cover Crop Planting
+
+##### 23.1 Planting Window
+- **When** it is fall (months 9-11, September-November), **I should see** a "Plant Cover Crop" button in the side panel.
+- **When** it is NOT fall, **I should NOT** see the cover crop planting option.
+
+##### 23.2 Eligible Cells
+- **When** I try to plant a cover crop on an empty cell, **the system should** allow it.
+- **When** I try to plant a cover crop on a cell with a dormant perennial, **the system should** allow it (understory planting — real orchard practice).
+- **When** I try to plant a cover crop on a cell with a growing (non-dormant) annual or perennial, **the system should** reject it.
+
+##### 23.3 Cost
+- **When** I plant a legume cover crop, **I should see** $30 deducted per plot.
+- **When** I plant cover crops on the full field (64 plots), **I should see** $1,920 deducted total.
+
+##### 23.4 Bulk Operations
+- **When** I click "Plant Cover Crop — Field" and can't afford all 64 plots, **I should see** the DD-1 partial-offer pattern: round down to complete rows.
+- **When** I click "Plant Cover Crop — Row/Col", **it should** be all-or-nothing for that scope.
+
+#### 24. Cover Crop Winter Behavior
+
+##### 24.1 ET Rules
+- **When** a cover crop is planted on an empty cell, **the system should** use ET = et0 × 0.2 (instead of bare-soil 0.3).
+- **When** a cover crop is planted alongside a dormant perennial, **the system should** use ET = et0 × max(crop_kc, 0.2). For dormant perennial (kc=0.2): max(0.2, 0.2) = 0.2.
+- **When** a cell has a cover crop, **the system should** halt OM decomposition during winter (cover crop roots protect soil).
+
+##### 24.2 Visual Indicator
+- **When** a cell has a cover crop planted, **I should see** a visual indicator on the farm cell (subtle green tint or clover icon).
+
+#### 25. Cover Crop Incorporation (Spring)
+
+##### 25.1 Auto-Incorporate
+- **When** the season changes from winter to spring, **the system should** automatically incorporate all cover crops.
+- **When** cover crops are incorporated, **I should see** a notification: "Cover crops incorporated on N plots: +50 lbs/ac nitrogen, +0.10% organic matter, -0.5in moisture."
+
+##### 25.2 Soil Effects
+- **When** a legume cover crop is incorporated, **I should see** nitrogen increase by +50 (clamped to [0, 200]).
+- **When** a legume cover crop is incorporated, **I should see** organic matter increase by +0.10%.
+- **When** a legume cover crop is incorporated, **I should see** moisture decrease by 0.5 inches (tradeoff — fields start spring drier).
+
+##### 25.3 Post-Incorporation
+- **When** cover crops are incorporated, **the system should** clear `coverCropId` on all affected cells.
+- **When** spring arrives after incorporation, **the cell should** be available for normal planting.
+
+#### 26. Save Migration (V3 → V4)
+- **When** I load a v3 save, **the system should** migrate it to v4 by adding `coverCropId: null` to all cells and `frostProtectionEndsDay: 0` to GameState.
+- **When** I view manual saves from a v3 game, **the system should** show them in the Load Game list (migration applied in `listManualSaves` too).
+- **When** I load a v1 or v2 save, **the system should** chain migrations: V1→V2→V3→V4.
+
+### Sub-slice 3c: Weather Service Advisor
+
+#### 27. Weather Service Character
+
+##### 27.1 Advisor Appearance
+- **When** a weather service storylet fires, **I should see** the advisor panel with name "NWS Fresno", role "National Weather Service — Fresno Office", and subtitle "Forecast accuracy varies by timeframe".
+- **When** I see a weather advisor event, **I should see** confidence language in the description ("High confidence", "Moderate confidence", or "Low confidence").
+
+##### 27.2 Character Routing
+- **When** an extension agent (Dr. Santos) storylet fires, **I should see** the Dr. Santos character in the advisor panel.
+- **When** a weather service storylet fires, **I should see** the NWS Fresno character in the advisor panel. These are distinct advisor characters.
+
+#### 28. Weather Storylets
+
+##### 28.1 Heat Forecast
+- **When** it is summer, year 2+, and I have crops, **I may see** a "Heat Forecast" (priority 85, cooldown 180 days, max 4 occurrences, 25% random). Description includes "High confidence."
+- **When** I choose "Pre-irrigate Fields", **I should see** $200 deducted and +1.5 inches moisture added to all cells.
+- **When** I choose "Monitor Conditions", **I should see** an informational notification only.
+
+##### 28.2 Frost Alert
+- **When** it is spring and I have crops, **I may see** a "Frost Alert" (priority 85, cooldown 365 days, max 3 occurrences, 20% random). Description includes "Moderate confidence."
+- **When** I choose "Deploy Frost Protection", **I should see** $150 deducted and a "Frost Protection Active (14 days)" indicator.
+- **When** I choose "Wait and See", **I should see** an informational notification only.
+
+##### 28.3 Drought Outlook
+- **When** it is spring, year 5+, **I may see** a "Drought Outlook" (priority 80, cooldown 730 days, max 2 occurrences, 15% random). Description includes "Low confidence."
+- **When** I choose "Plan for Drought", **I should see** an informational notification mentioning sorghum as a drought-tolerant option.
+- **When** I choose "Too Uncertain to Act", **I should see** an informational notification.
+
+#### 29. Frost Protection Mechanism
+
+##### 29.1 Activation
+- **When** I choose "Deploy Frost Protection" from the weather-frost-alert, **I should see** `frostProtectionEndsDay` set to current day + 14.
+- **When** frost protection is active, **I should see** "Frost Protection Active (X days remaining)" in the UI.
+
+##### 29.2 Interaction with Late Frost Warning
+- **When** a late-frost-warning event fires while frost protection is active, and I choose "Accept the Risk", **I should see** a yield penalty of 0.85 (not the full 0.70). A notification explains: "Your frost protection reduced crop losses."
+- **When** frost protection is consumed by a frost event, **I should see** `frostProtectionEndsDay` reset to 0 (protection used up).
+
+##### 29.3 Full Protection Overrides
+- **When** a late-frost-warning event fires while frost protection is active, and I choose "Frost Protection" ($300 full protection), **I should see** no yield penalty and the weather protection is NOT consumed (remains active for future frost events).
+
+##### 29.4 Natural Expiry
+- **When** frost protection expires naturally (14 days pass with no frost event), **it should** become inactive silently. No notification, no yield effect. UI indicator disappears.
+
+##### 29.5 Non-Frost Events
+- **When** a heatwave or other non-frost event fires while frost protection is active, **the system should NOT** consume or modify frost protection. Only late-frost-warning events interact with it.
+
+### Slice 3 data-testid Coverage
+
+#### New Crops
+- `menu-crop-sorghum` — sorghum option in crop menu
+- `menu-crop-citrus-navels` — citrus option in crop menu
+
+#### Perennial Phase
+- `sidebar-perennial-phase` — phase label ("Establishing", "Ramping Up", "Peak", "Declining", "Past Prime")
+- `sidebar-perennial-decline-info` — decline timing info ("Years until decline: N" or "Replacement recommended")
+
+#### Cover Crops
+- `action-plant-cover-crop` — single-cell cover crop button
+- `action-plant-cover-crop-bulk` — bulk cover crop button
+- `farm-cell-cover-{row}-{col}` — cover crop indicator on farm cell
+
+#### Weather Advisor
+- `advisor-panel-weather` — weather advisor panel (distinct from extension agent)
+- `frost-protection-status` — frost protection active indicator
 
 ---
 
