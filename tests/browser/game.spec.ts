@@ -1309,3 +1309,202 @@ test.describe('Chill Hours Sidebar', () => {
     expect(flagAfter).toBe(true);
   });
 });
+
+// ==========================================================================
+// §20 — Slice 3a1: New Crops (Sorghum + Citrus Navels)
+// ==========================================================================
+
+test.describe('New Crops — Sorghum', () => {
+  test('sorghum appears in crop menu during April-June planting window', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Advance to April (day 90 = April 1)
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(90);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await expect(page.getByTestId('menu-crop-sorghum')).toBeVisible();
+  });
+
+  test('sorghum is disabled in crop menu during March (outside window)', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Game starts in March — sorghum window is April-June
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await expect(page.getByTestId('menu-crop-sorghum')).toBeVisible();
+    await expect(page.getByTestId('menu-crop-sorghum')).toBeDisabled();
+  });
+
+  test('planting sorghum shows crop in sidebar', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Advance to April
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(90);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-sorghum').click();
+
+    // Sidebar should show sorghum info
+    await expect(page.getByTestId('sidebar-crop-name')).toContainText('Sorghum');
+  });
+});
+
+test.describe('New Crops — Citrus Navels', () => {
+  test('citrus navels appears in crop menu during Feb-April planting window', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Game starts in March — within citrus Feb-April window
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await expect(page.getByTestId('menu-crop-citrus-navels')).toBeVisible();
+  });
+
+  test('planting citrus shows perennial status in sidebar', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant citrus (March is in window)
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-citrus-navels').click();
+
+    // Sidebar should show perennial info
+    await expect(page.getByTestId('sidebar-perennial-status')).toBeVisible();
+    await expect(page.getByTestId('sidebar-perennial-status')).toContainText('Establishing');
+    await expect(page.getByTestId('sidebar-crop-name')).toContainText('Citrus Navels');
+  });
+
+  test('citrus planting reveals chill hours fog-of-war (perennial flag)', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant citrus
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-citrus-navels').click();
+
+    // chillHoursRevealed flag should be set (same as other perennials)
+    const flag = await page.evaluate(() => {
+      const state = (window as Record<string, any>).__gameDebug.getState();
+      return state?.flags['chillHoursRevealed'] ?? false;
+    });
+    expect(flag).toBe(true);
+  });
+});
+
+// ==========================================================================
+// §21 — Slice 3a1: Stretch Events (via debug injection)
+// ==========================================================================
+
+test.describe('Stretch Events', () => {
+  test('tomato market surge event renders with single choice', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Inject the event via debug hook
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('tomato-market-surge');
+    });
+
+    // Event panel should appear
+    await expect(page.getByTestId('event-panel')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('event-panel')).toContainText('Tomato Market Surge');
+
+    // Single choice
+    await expect(page.getByTestId('event-choice-acknowledge-surge')).toBeVisible();
+  });
+
+  test('groundwater pumping ban event renders with two choices', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Inject the event via debug hook
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('groundwater-pumping-ban');
+    });
+
+    // Event panel should appear
+    await expect(page.getByTestId('event-panel')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('event-panel')).toContainText('Groundwater Pumping Ban');
+
+    // Two choices
+    await expect(page.getByTestId('event-choice-comply')).toBeVisible();
+    await expect(page.getByTestId('event-choice-buy-rights')).toBeVisible();
+  });
+
+  test('choosing a stretch event choice dismisses the panel', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Trigger tomato surge
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('tomato-market-surge');
+    });
+
+    await expect(page.getByTestId('event-panel')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('event-choice-acknowledge-surge').click();
+
+    // Panel should dismiss
+    await expect(page.getByTestId('event-panel')).not.toBeVisible();
+  });
+});
+
+// ==========================================================================
+// §22 — Slice 3a2: Perennial Yield Curve Phase Display
+// ==========================================================================
+
+test.describe('Perennial Yield Curve UI', () => {
+  test('establishing perennial shows "Establishing" phase label', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant almonds (game starts in March, almonds window Jan-Mar)
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Phase should show "Establishing"
+    await expect(page.getByTestId('sidebar-perennial-phase')).toBeVisible();
+    await expect(page.getByTestId('sidebar-perennial-phase')).toContainText('Establishing');
+  });
+
+  test('peak perennial shows phase and years until decline', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant almonds and set to established peak
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Use debug to set perennial to established at peak age
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      const crop = state.grid[0][0].crop;
+      if (crop) {
+        crop.perennialEstablished = true;
+        crop.perennialAge = 10; // peak (yp=7 for almonds)
+      }
+      debug.publish();
+    });
+
+    // Click cell again to refresh sidebar
+    await page.getByTestId('farm-cell-0-1').click();
+    await page.getByTestId('farm-cell-0-0').click();
+
+    await expect(page.getByTestId('sidebar-perennial-phase')).toContainText('Peak Production');
+    await expect(page.getByTestId('sidebar-perennial-decline-info')).toBeVisible();
+    await expect(page.getByTestId('sidebar-perennial-decline-info')).toContainText('until decline');
+  });
+});

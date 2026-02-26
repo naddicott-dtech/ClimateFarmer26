@@ -271,3 +271,13 @@ Format: **Date — Decision — Rationale**
 2026-02-25 — Frost protection: dedicated `frostProtectionEndsDay` state field — Active when `totalDay < frostProtectionEndsDay`. Natural expiry (no tick processing needed). Only consumed by late-frost-warning "accept-risk" choice (0.70→0.85 penalty). Full-protection ($300) choice does NOT consume it. Non-frost events never check it. Overlapping activations: `max(current, new)`.
 
 2026-02-25 — Frost interaction centralized in single helper — `applyFrostProtection(state, choiceId)` returns `{ multiplier, consumed }`. Called from `processRespondEvent`. All frost logic in one function, not spread across event handlers.
+
+### Art & Visual Assets
+
+2026-02-26 — Art asset pipeline: placeholders now, real art later — Single placeholder PNG copied/renamed for all advisor portraits. ASSETS.md manifest tracks all assets with IDs, paths, dimensions, status, and licensing. Implementation in 3c (advisor UI). Broader visuals (crop icons, cell art) deferred to post-3c visual pass.
+
+2026-02-26 — File naming convention: `{asset-id}_{width}x{height}.png` — Embeds target pixel dimensions in filename so artists know exact spec without consulting docs. Example: `extension-agent_128x128.png`.
+
+2026-02-26 — Advisor portraits: 128x128 PNG, transparent background — Renders at 64x64 CSS pixels for retina Chromebook sharpness. Under 20KB each. Mapped by `advisorId` with fallback chain: specific portrait -> default -> text-only.
+
+2026-02-26 — Student art contributions require written consent — Credit artists in README. All contributions must meet dimension/transparency specs and be optimized before commit.

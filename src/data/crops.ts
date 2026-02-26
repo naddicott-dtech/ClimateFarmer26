@@ -172,7 +172,8 @@ export const CROPS: Record<string, CropDefinition> = {
     annualMaintenanceCost: 200,
     dormantSeasons: ['winter'],
     productiveLifespan: 22,
-    chillHoursRequired: 700, // NOT used until 2c
+    chillHoursRequired: 700,
+    yieldCurve: { rampUpYears: 3, declineStartYear: 15, endOfLifeYear: 22, declineFloor: 0.2 },
 
     shortDescription: 'Perennial tree crop. High establishment cost, no revenue for 3 years, then strong annual income. Goes dormant in winter.',
   },
@@ -210,7 +211,8 @@ export const CROPS: Record<string, CropDefinition> = {
     annualMaintenanceCost: 180,
     dormantSeasons: ['winter'],
     productiveLifespan: 25,
-    chillHoursRequired: 600, // NOT used until 2c
+    chillHoursRequired: 600,
+    yieldCurve: { rampUpYears: 3, declineStartYear: 17, endOfLifeYear: 25, declineFloor: 0.2 },
 
     shortDescription: 'Perennial tree crop. 4-year establishment, very drought-tolerant. Alternate bearing — reliable long-term investment.',
   },
@@ -252,6 +254,7 @@ export const CROPS: Record<string, CropDefinition> = {
     // dormantSeasons: undefined
     // chillHoursRequired: undefined
     productiveLifespan: 35,
+    yieldCurve: { rampUpYears: 3, declineStartYear: 28, endOfLifeYear: 35, declineFloor: 0.3 },
 
     shortDescription: 'Evergreen perennial. Stable income, no chill-hour risk, never declines — but less profitable than almonds at peak.',
   },

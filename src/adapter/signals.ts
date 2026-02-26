@@ -603,4 +603,8 @@ function gameLoop(now: number): void {
   getState() {
     return _liveState;
   },
+  /** Force a state publish after direct _liveState mutations. Test utility. */
+  publish() {
+    publishState();
+  },
 };

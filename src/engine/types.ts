@@ -129,8 +129,14 @@ export interface CropDefinition {
   removalCost?: number;               // cost to clear a perennial from a cell
   annualMaintenanceCost?: number;     // deducted at year-end per perennial cell
   dormantSeasons?: Season[];          // seasons where crop goes dormant (typically ['winter'])
-  productiveLifespan?: number;        // display only in 2b (almonds: 22, pistachios: 25)
-  chillHoursRequired?: number;        // data placeholder — NOT used until 2c
+  productiveLifespan?: number;        // almonds: 22, pistachios: 25, citrus: 35
+  chillHoursRequired?: number;        // chill hours needed for full yield
+  yieldCurve?: {                      // Piecewise-linear yield curve for perennials
+    rampUpYears: number;              // years post-establishment to reach peak (3)
+    declineStartYear: number;         // years post-establishment when decline begins
+    endOfLifeYear: number;            // years post-establishment when floor is reached
+    declineFloor: number;             // minimum yield fraction (0.2-0.3)
+  };
 
   // Display
   shortDescription: string;

@@ -205,6 +205,40 @@ export const STORYLETS: readonly Storylet[] = [
     tags: ['regulatory', 'water', 'groundwater'],
   },
 
+  // --- Slice 3a2: Orchard Decline Advisor ---
+
+  {
+    id: 'advisor-orchard-decline',
+    type: 'advisor',
+    title: 'Aging Orchard Assessment',
+    description: "I've been looking at your older trees, and some of them are past their prime. Yields are declining and will continue to drop. It might be time to think about replanting — either with younger trees of the same variety, or something new entirely.",
+    preconditions: [
+      { type: 'has_declining_perennial' },
+    ],
+    priority: 90,
+    cooldownDays: 730,
+    maxOccurrences: 2,
+    choices: [
+      {
+        id: 'plan-replacement',
+        label: 'Plan Replacement',
+        description: 'Get advice on timing and costs for replanting aging orchards.',
+        effects: [
+          { type: 'add_notification', message: "Dr. Santos: \"Removing old trees costs $400-500 per plot. Plan your replanting during the dormant season to minimize lost production.\"", notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'keep-producing',
+        label: 'Keep Them Going',
+        description: 'Continue harvesting at reduced yields rather than investing in new trees.',
+        effects: [
+          { type: 'add_notification', message: "Dr. Santos: \"That's reasonable — even old trees produce some income. Just know that yields will keep dropping.\"", notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'perennials', 'decline'],
+  },
+
   // --- 2c Advisor Events ---
 
   {

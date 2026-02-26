@@ -218,6 +218,18 @@
   font-style: italic;
 }
 
+.perennialPhase {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.perennialDeclineInfo {
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  font-style: italic;
+}
+
 /* Chill hour info */
 .chillInfo {
   display: flex;

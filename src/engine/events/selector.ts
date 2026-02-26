@@ -7,6 +7,7 @@ import type { GameState } from '../types.ts';
 import type { Storylet, Condition, PendingForeshadow } from './types.ts';
 import { SeededRNG } from '../rng.ts';
 import { GRID_ROWS, GRID_COLS } from '../types.ts';
+import { getCropDefinition } from '../../data/crops.ts';
 
 export interface EvaluateEventsResult {
   fireEvent: Storylet | null;
@@ -79,6 +80,21 @@ export function evaluateCondition(
       return state.economy.debt === 0;
     case 'has_flag':
       return state.flags[condition.flag] === true;
+    case 'has_declining_perennial': {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const crop = state.grid[r][c].crop;
+          if (crop && crop.isPerennial && crop.perennialEstablished) {
+            const def = getCropDefinition(crop.cropId);
+            if (def.yieldCurve) {
+              const yp = crop.perennialAge - (def.yearsToEstablish ?? 0);
+              if (yp >= def.yieldCurve.declineStartYear) return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
     case 'random':
       return rng.next() < condition.probability;
     default: {

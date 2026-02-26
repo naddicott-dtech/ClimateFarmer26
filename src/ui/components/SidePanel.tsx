@@ -4,7 +4,7 @@ import {
   plantBulk, cropMenuOpen, availableCrops, confirmDialog,
 } from '../../adapter/signals.ts';
 import { getCropDefinition } from '../../data/crops.ts';
-import { getGrowthProgress, getYieldPercentage } from '../../engine/game.ts';
+import { getGrowthProgress, getYieldPercentage, getPerennialPhase, getPerennialAgeFactor } from '../../engine/game.ts';
 import {
   GRID_ROWS, GRID_COLS, NITROGEN_HIGH_THRESHOLD,
   NITROGEN_MODERATE_THRESHOLD,
@@ -116,13 +116,48 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
               {crop.isPerennial && cropDef && (
                 <div data-testid="sidebar-perennial-status" class={styles.perennialInfo}>
                   {crop.perennialEstablished ? (
-                    <span data-testid="sidebar-perennial-age" class={styles.perennialLabel}>
-                      {crop.isDormant ? 'Dormant' : 'Producing'} — Year {crop.perennialAge} of {cropDef.productiveLifespan ?? '?'}
-                    </span>
+                    <>
+                      <span data-testid="sidebar-perennial-age" class={styles.perennialLabel}>
+                        {crop.isDormant ? 'Dormant' : 'Producing'} — Year {crop.perennialAge} of {cropDef.productiveLifespan ?? '?'}
+                      </span>
+                      <span data-testid="sidebar-perennial-phase" class={styles.perennialPhase}>
+                        {getPerennialPhase(crop, cropDef)}
+                        {cropDef.yieldCurve && (() => {
+                          const factor = getPerennialAgeFactor(crop, cropDef);
+                          if (factor < 1.0) return ` (${Math.round(factor * 100)}%)`;
+                          return null;
+                        })()}
+                      </span>
+                      {cropDef.yieldCurve && (() => {
+                        const yp = crop.perennialAge - (cropDef.yearsToEstablish ?? 0);
+                        const phase = getPerennialPhase(crop, cropDef);
+                        if (phase === 'Peak Production' && cropDef.yieldCurve.declineStartYear > yp) {
+                          const yearsUntilDecline = cropDef.yieldCurve.declineStartYear - yp;
+                          return (
+                            <span data-testid="sidebar-perennial-decline-info" class={styles.perennialDeclineInfo}>
+                              {yearsUntilDecline} year{yearsUntilDecline !== 1 ? 's' : ''} until decline
+                            </span>
+                          );
+                        }
+                        if (phase === 'Declining' || phase === 'Past Prime') {
+                          return (
+                            <span data-testid="sidebar-perennial-decline-info" class={styles.perennialDeclineInfo}>
+                              Replacement recommended
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </>
                   ) : (
-                    <span data-testid="sidebar-perennial-age" class={styles.perennialLabel}>
-                      {crop.isDormant ? 'Dormant' : 'Establishing'} — Year {crop.perennialAge}/{cropDef.yearsToEstablish ?? '?'}
-                    </span>
+                    <>
+                      <span data-testid="sidebar-perennial-age" class={styles.perennialLabel}>
+                        {crop.isDormant ? 'Dormant' : 'Establishing'} — Year {crop.perennialAge}/{cropDef.yearsToEstablish ?? '?'}
+                      </span>
+                      <span data-testid="sidebar-perennial-phase" class={styles.perennialPhase}>
+                        {getPerennialPhase(crop, cropDef)}
+                      </span>
+                    </>
                   )}
                   {!crop.perennialEstablished && cropDef.yearsToEstablish && !crop.isDormant && (
                     <span class={styles.perennialEstablishing}>

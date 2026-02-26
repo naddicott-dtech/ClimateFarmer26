@@ -22,6 +22,7 @@ export type Condition =
   | { type: 'no_debt' }
   | { type: 'no_perennial_planted' }
   | { type: 'has_flag'; flag: string }
+  | { type: 'has_declining_perennial' }
   | { type: 'random'; probability: number };
 
 // --- Effects (what happens when a choice is selected) ---

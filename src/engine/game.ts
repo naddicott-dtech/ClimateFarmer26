@@ -1,5 +1,5 @@
 import type {
-  GameState, Cell, SoilState, CropInstance, Command, CommandResult,
+  GameState, Cell, SoilState, CropInstance, CropDefinition, Command, CommandResult,
   GameSpeed, DailyWeather, GrowthStage, Notification,
   ClimateScenario,
 } from './types.ts';
@@ -878,10 +878,64 @@ function getCropCoefficient(crop: CropInstance): number {
 }
 
 // ============================================================================
+// Perennial Yield Curve
+// ============================================================================
+
+/**
+ * Piecewise-linear age factor for perennial yield.
+ * Phase 1: Ramp (0.6→0.8→1.0 over rampUpYears)
+ * Phase 2: Peak (1.0)
+ * Phase 3: Decline (linear from 1.0 to declineFloor)
+ * Phase 4: Floor (declineFloor, tree still alive)
+ */
+export function getPerennialAgeFactor(crop: CropInstance, cropDef: CropDefinition): number {
+  if (!crop.isPerennial || !crop.perennialEstablished) return 1.0;
+  if (!cropDef.yieldCurve) return 1.0;
+
+  const yp = crop.perennialAge - (cropDef.yearsToEstablish ?? 0);
+  const curve = cropDef.yieldCurve;
+
+  if (yp < 0) return 0;
+
+  // Ramp phase: 0.6 + 0.4 * (yp / (rampUpYears - 1))
+  if (yp < curve.rampUpYears) {
+    if (curve.rampUpYears <= 1) return 1.0;
+    return 0.6 + 0.4 * (yp / (curve.rampUpYears - 1));
+  }
+
+  // Peak phase
+  if (yp < curve.declineStartYear) return 1.0;
+
+  // Past end of life → floor
+  if (yp >= curve.endOfLifeYear) return curve.declineFloor;
+
+  // Decline phase: linear from 1.0 to declineFloor
+  const declineDuration = curve.endOfLifeYear - curve.declineStartYear;
+  if (declineDuration === 0) return curve.declineFloor;
+  const yearsInDecline = yp - curve.declineStartYear;
+  return 1.0 - (1.0 - curve.declineFloor) * (yearsInDecline / declineDuration);
+}
+
+/** UI phase label for perennial crops. */
+export function getPerennialPhase(crop: CropInstance, cropDef: CropDefinition): string {
+  if (!crop.perennialEstablished) return 'Establishing';
+  if (!cropDef.yieldCurve) return 'Peak Production';
+
+  const yp = crop.perennialAge - (cropDef.yearsToEstablish ?? 0);
+  const curve = cropDef.yieldCurve;
+
+  if (yp < 0) return 'Establishing';
+  if (yp < curve.rampUpYears) return 'Ramping Up';
+  if (yp < curve.declineStartYear) return 'Peak Production';
+  if (yp >= curve.endOfLifeYear) return 'Past Prime';
+  return 'Declining';
+}
+
+// ============================================================================
 // Harvest Calculation
 // ============================================================================
 
-function harvestCell(state: GameState, cell: Cell): number {
+export function harvestCell(state: GameState, cell: Cell): number {
   const crop = cell.crop!;
   const cropDef = getCropDefinition(crop.cropId);
 
@@ -926,6 +980,10 @@ function harvestCell(state: GameState, cell: Cell): number {
         `${cropDef.name}: insufficient chill hours (${Math.round(crop.chillHoursAccumulated)}/${cropDef.chillHoursRequired}). Yield reduced by ${pctLoss}% (deficit: ${Math.round(deficit)} hours).`);
     }
   }
+
+  // Perennial age factor (ramp → peak → decline → floor)
+  const ageFactor = getPerennialAgeFactor(crop, cropDef);
+  yieldAmount *= ageFactor;
 
   yieldAmount = Math.max(0, yieldAmount);
 
