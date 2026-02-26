@@ -18,7 +18,9 @@ import { STORYLETS } from '../data/events.ts';
 import { totalDayToCalendar, isYearEnd, isSeasonChange, isInPlantingWindow, getSeasonName, getMonthName } from './calendar.ts';
 import { generateDailyWeather, updateExtremeEvents } from './weather.ts';
 import { getCropDefinition, getAllCropIds } from '../data/crops.ts';
+import { getCoverCropDefinition } from '../data/cover-crops.ts';
 import { SeededRNG } from './rng.ts';
+import { logCommand, logEventFired, logEventChoice, logLoanOffer, logLoanTaken, logYearEnd, logGameOver, logHarvest } from './playtest-log.ts';
 
 // ============================================================================
 // Game State Creation
@@ -34,6 +36,7 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
         col,
         crop: null,
         soil: createInitialSoil(),
+        coverCropId: null,
       });
     }
     grid.push(rowCells);
@@ -90,6 +93,7 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     wateringRestrictionEndsDay: 0,
     irrigationCostMultiplier: 1.0,
     eventRngState: eventRng.getState(),
+    frostProtectionEndsDay: 0,
   };
 }
 
@@ -118,30 +122,55 @@ function assertFinite(value: number, label: string): void {
 // ============================================================================
 
 export function processCommand(state: GameState, command: Command, _scenario: ClimateScenario): CommandResult {
+  const cashBefore = state.economy.cash;
+  let result: CommandResult;
+
   switch (command.type) {
     case 'SET_SPEED':
-      return processSetSpeed(state, command.speed);
+      result = processSetSpeed(state, command.speed);
+      break;
     case 'PLANT_CROP':
-      return processPlantCrop(state, command.cellRow, command.cellCol, command.cropId);
+      result = processPlantCrop(state, command.cellRow, command.cellCol, command.cropId);
+      break;
     case 'PLANT_BULK':
-      return processPlantBulk(state, command.scope, command.cropId, command.index);
+      result = processPlantBulk(state, command.scope, command.cropId, command.index);
+      break;
     case 'HARVEST':
-      return processHarvest(state, command.cellRow, command.cellCol);
+      result = processHarvest(state, command.cellRow, command.cellCol);
+      break;
     case 'HARVEST_BULK':
-      return processHarvestBulk(state, command.scope, command.index);
+      result = processHarvestBulk(state, command.scope, command.index);
+      break;
     case 'WATER':
-      return processWater(state, command.scope, command.index);
+      result = processWater(state, command.scope, command.index);
+      break;
     case 'RESPOND_EVENT':
-      return processRespondEvent(state, command.eventId, command.choiceId);
+      result = processRespondEvent(state, command.eventId, command.choiceId);
+      break;
     case 'TAKE_LOAN':
-      return processTakeLoan(state);
+      result = processTakeLoan(state);
+      break;
     case 'REMOVE_CROP':
-      return processRemoveCrop(state, command.cellRow, command.cellCol);
+      result = processRemoveCrop(state, command.cellRow, command.cellCol);
+      break;
+    case 'SET_COVER_CROP':
+      result = processSetCoverCrop(state, command.cellRow, command.cellCol, command.coverCropId);
+      break;
+    case 'SET_COVER_CROP_BULK':
+      result = processSetCoverCropBulk(state, command.scope, command.coverCropId, command.index);
+      break;
     default: {
       const _exhaustive: never = command;
       throw new Error(`Unhandled command type: ${(_exhaustive as Command).type}`);
     }
   }
+
+  // Skip SET_SPEED to avoid noise
+  if (command.type !== 'SET_SPEED') {
+    logCommand(state, command, result.success, result.reason, cashBefore);
+  }
+
+  return result;
 }
 
 function processSetSpeed(state: GameState, speed: GameSpeed): CommandResult {
@@ -430,6 +459,8 @@ function processRespondEvent(state: GameState, eventId: string, choiceId: string
     return { success: false, reason: `Not enough cash. Requires $${choice.requiresCash}.` };
   }
 
+  const cashBefore = state.economy.cash;
+
   // Apply effects
   applyEffects(state, choice.effects, eventId);
 
@@ -439,6 +470,8 @@ function processRespondEvent(state: GameState, eventId: string, choiceId: string
     day: state.calendar.totalDay,
     choiceId,
   });
+
+  logEventChoice(state, eventId, choiceId, cashBefore);
 
   // Clear active event
   state.activeEvent = null;
@@ -477,6 +510,8 @@ function processTakeLoan(state: GameState): CommandResult {
   addNotification(state, 'loan',
     `Emergency loan of $${amount.toLocaleString()} received. 10% annual interest. 20% of harvest revenue will go toward repayment.`);
 
+  logLoanTaken(state, amount);
+
   // Clear the game over state (loan saves the farm)
   state.gameOver = false;
   state.gameOverReason = undefined;
@@ -508,6 +543,207 @@ function processRemoveCrop(state: GameState, row: number, col: number): CommandR
 }
 
 // ============================================================================
+// Cover Crop Commands
+// ============================================================================
+
+/** Check if a cell is eligible for cover crop planting (empty or deciduous perennial). */
+function isCoverCropEligible(cell: Cell): boolean {
+  if (!cell.crop) return true;
+  if (!cell.crop.isPerennial) return false;
+  const def = getCropDefinition(cell.crop.cropId);
+  return (def.dormantSeasons?.length ?? 0) > 0;
+}
+
+/**
+ * Execute bulk cover crop planting on pre-validated cells.
+ * Called from adapter partial-offer confirm callback.
+ */
+export function executeBulkCoverCrop(
+  state: GameState,
+  cells: Cell[],
+  coverCropId: string,
+  costPerCell: number,
+): CommandResult {
+  const totalCost = cells.length * costPerCell;
+  state.economy.cash -= totalCost;
+  state.economy.yearlyExpenses += totalCost;
+
+  for (const cell of cells) {
+    cell.coverCropId = coverCropId;
+  }
+
+  return { success: true, cost: totalCost, cellsAffected: cells.length };
+}
+
+function processSetCoverCrop(state: GameState, row: number, col: number, coverCropId: string | null): CommandResult {
+  const cell = getCell(state, row, col);
+  if (!cell) return { success: false, reason: 'Invalid cell position.' };
+
+  // Clearing cover crop is always allowed
+  if (coverCropId === null) {
+    cell.coverCropId = null;
+    return { success: true };
+  }
+
+  // Planting rules
+  if (state.calendar.season !== 'fall') {
+    return { success: false, reason: 'Cover crops can only be planted in fall (September–November).' };
+  }
+
+  if (cell.coverCropId) {
+    return { success: false, reason: 'This plot already has a cover crop.' };
+  }
+
+  // Eligible: empty cell OR perennial that will go dormant (deciduous orchard understory).
+  // In fall, deciduous perennials are still technically "growing" but about to shed leaves.
+  // Real agriculture: cover crops are sown under orchards in fall before leaf drop.
+  if (cell.crop) {
+    if (!cell.crop.isPerennial) {
+      return { success: false, reason: 'Cannot plant cover crop on a cell with an annual crop.' };
+    }
+    const def = getCropDefinition(cell.crop.cropId);
+    if (!def.dormantSeasons || def.dormantSeasons.length === 0) {
+      return { success: false, reason: 'Cannot plant cover crop under an evergreen perennial.' };
+    }
+  }
+
+  const def = getCoverCropDefinition(coverCropId);
+  if (state.economy.cash < def.seedCostPerAcre) {
+    return { success: false, reason: `Not enough cash. Cost: $${def.seedCostPerAcre}, Available: $${Math.floor(state.economy.cash)}.` };
+  }
+
+  state.economy.cash -= def.seedCostPerAcre;
+  state.economy.yearlyExpenses += def.seedCostPerAcre;
+  cell.coverCropId = coverCropId;
+  return { success: true, cost: def.seedCostPerAcre };
+}
+
+function processSetCoverCropBulk(
+  state: GameState,
+  scope: 'all' | 'row' | 'col',
+  coverCropId: string | null,
+  index?: number,
+): CommandResult {
+  // Clearing is always allowed
+  if (coverCropId === null) {
+    let cleared = 0;
+    forEachCellInScope(state, scope, index, (cell) => {
+      if (cell.coverCropId) {
+        cell.coverCropId = null;
+        cleared++;
+      }
+    });
+    return { success: true, cellsAffected: cleared };
+  }
+
+  if (state.calendar.season !== 'fall') {
+    return { success: false, reason: 'Cover crops can only be planted in fall (September–November).' };
+  }
+
+  const def = getCoverCropDefinition(coverCropId);
+
+  // Count eligible cells: empty OR deciduous perennial (has dormantSeasons)
+  const eligible: Cell[] = [];
+  forEachCellInScope(state, scope, index, (cell) => {
+    if (!cell.coverCropId && isCoverCropEligible(cell)) {
+      eligible.push(cell);
+    }
+  });
+
+  if (eligible.length === 0) {
+    return { success: false, reason: 'No eligible plots for cover crops.' };
+  }
+
+  const totalCost = eligible.length * def.seedCostPerAcre;
+
+  if (state.economy.cash < totalCost && scope === 'all') {
+    // DD-1: partial offer with complete rows
+    const affordablePlots = Math.floor(state.economy.cash / def.seedCostPerAcre);
+    const affordableRows = Math.floor(affordablePlots / GRID_COLS);
+    if (affordableRows === 0) {
+      return { success: false, reason: `Not enough cash. Need $${totalCost}, have $${Math.floor(state.economy.cash)}.` };
+    }
+    return {
+      success: false,
+      reason: `Not enough cash for all plots.`,
+      partialOffer: {
+        affordableRows,
+        affordablePlots: affordableRows * GRID_COLS,
+        totalCost: affordableRows * GRID_COLS * def.seedCostPerAcre,
+      },
+    };
+  }
+
+  if (state.economy.cash < totalCost) {
+    return { success: false, reason: `Not enough cash. Need $${totalCost}, have $${Math.floor(state.economy.cash)}.` };
+  }
+
+  // Plant on all eligible cells
+  let planted = 0;
+  for (const cell of eligible) {
+    cell.coverCropId = coverCropId;
+    state.economy.cash -= def.seedCostPerAcre;
+    state.economy.yearlyExpenses += def.seedCostPerAcre;
+    planted++;
+  }
+
+  return { success: true, cellsAffected: planted, cost: planted * def.seedCostPerAcre };
+}
+
+/** Iterate over cells in the given scope. */
+function forEachCellInScope(
+  state: GameState,
+  scope: 'all' | 'row' | 'col',
+  index: number | undefined,
+  fn: (cell: Cell) => void,
+): void {
+  if (scope === 'all') {
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) fn(state.grid[r][c]);
+    }
+  } else if (scope === 'row' && index !== undefined) {
+    for (let c = 0; c < GRID_COLS; c++) fn(state.grid[index][c]);
+  } else if (scope === 'col' && index !== undefined) {
+    for (let r = 0; r < GRID_ROWS; r++) fn(state.grid[r][index]);
+  }
+}
+
+// ============================================================================
+// Cover Crop Incorporation (winter→spring)
+// ============================================================================
+
+function incorporateCoverCrops(state: GameState): void {
+  let incorporated = 0;
+
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const cell = state.grid[row][col];
+      if (!cell.coverCropId) continue;
+
+      const coverDef = getCoverCropDefinition(cell.coverCropId);
+
+      // Apply nitrogen fixation (clamped to 200)
+      cell.soil.nitrogen = Math.min(200, cell.soil.nitrogen + coverDef.nitrogenFixation);
+
+      // Apply organic matter bonus
+      cell.soil.organicMatter += coverDef.organicMatterBonus;
+
+      // Apply moisture drawdown (tradeoff)
+      cell.soil.moisture = Math.max(0, cell.soil.moisture - coverDef.moistureDrawdown);
+
+      // Clear cover crop
+      cell.coverCropId = null;
+      incorporated++;
+    }
+  }
+
+  if (incorporated > 0) {
+    addNotification(state, 'info',
+      `Cover crops incorporated on ${incorporated} plot${incorporated !== 1 ? 's' : ''}: +50 lbs/ac nitrogen, +0.10% organic matter, -0.5in moisture`);
+  }
+}
+
+// ============================================================================
 // Simulation Tick
 // ============================================================================
 
@@ -527,6 +763,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     });
     state.gameOver = true;
     state.speed = 0;
+    logGameOver(state, 'year_30_complete');
     return null;
   }
 
@@ -544,6 +781,11 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     state.waterStressPausedThisSeason = false; // Reset per-season auto-pause flag
     const seasonName = getSeasonName(state.calendar.season);
     addNotification(state, 'season_change', `${seasonName} — Year ${state.calendar.year}`);
+
+    // Cover crop incorporation at winter→spring transition
+    if (state.calendar.season === 'spring') {
+      incorporateCoverCrops(state);
+    }
   }
 
   // Expire active effects (remove where totalDay >= expiresDay)
@@ -619,6 +861,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
       reason: storylet.type === 'advisor' ? 'advisor' : 'event',
       message: storylet.title,
     });
+    logEventFired(state, storylet.id, storylet.type, storylet.title, storylet.choices.map(c => c.id));
   }
 
   // Loan interest accrual (daily simple interest)
@@ -679,6 +922,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         interestPaid: state.economy.interestPaidThisYear,
       },
     });
+    logYearEnd(state);
   }
 
   // Bankruptcy check (modified for Slice 2: loan offer on first insolvency)
@@ -695,6 +939,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
           cash: state.economy.cash,
         },
       });
+      logLoanOffer(state, loanAmount);
       // Temporarily set gameOver (TAKE_LOAN clears it; declining = permanent)
       state.gameOver = true;
       state.gameOverReason = 'bankruptcy';
@@ -714,6 +959,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
           yearlyExpenses: state.economy.yearlyExpenses,
         },
       });
+      logGameOver(state, 'bankruptcy');
     }
   }
 
@@ -743,18 +989,39 @@ function simulateSoil(cell: Cell, weather: DailyWeather): void {
   const soil = cell.soil;
 
   // Evapotranspiration (water loss)
-  const etLoss = cell.crop
-    ? weather.et0 * getCropCoefficient(cell.crop)
-    : weather.et0 * 0.3; // Bare soil still loses some moisture
+  // Cover crop ET rules:
+  //   crop + cover → max(cropKc, coverET)
+  //   crop + no cover → cropKc
+  //   empty + cover → coverET (replaces bare soil 0.3)
+  //   empty + no cover → 0.3 (bare soil)
+  let etMultiplier: number;
+  if (cell.crop) {
+    const cropKc = getCropCoefficient(cell.crop);
+    if (cell.coverCropId) {
+      const coverDef = getCoverCropDefinition(cell.coverCropId);
+      etMultiplier = Math.max(cropKc, coverDef.winterETMultiplier);
+    } else {
+      etMultiplier = cropKc;
+    }
+  } else if (cell.coverCropId) {
+    const coverDef = getCoverCropDefinition(cell.coverCropId);
+    etMultiplier = coverDef.winterETMultiplier;
+  } else {
+    etMultiplier = 0.3; // Bare soil
+  }
 
+  const etLoss = weather.et0 * etMultiplier;
   soil.moisture = Math.max(0, soil.moisture - etLoss);
 
   // Precipitation (water gain)
   soil.moisture = Math.min(soil.moisture + weather.precipitation, soil.moistureCapacity);
 
   // Organic matter decomposition (very slow: ~2%/year of current OM)
-  const omDecompRate = 0.02 / DAYS_PER_YEAR;
-  soil.organicMatter = Math.max(0.5, soil.organicMatter - soil.organicMatter * omDecompRate);
+  // Cover crop roots protect soil — halt decomposition when cover crop is present
+  if (!cell.coverCropId) {
+    const omDecompRate = 0.02 / DAYS_PER_YEAR;
+    soil.organicMatter = Math.max(0.5, soil.organicMatter - soil.organicMatter * omDecompRate);
+  }
 
   // Update moisture capacity based on OM
   soil.moistureCapacity = BASE_MOISTURE_CAPACITY + (soil.organicMatter - 2.0) * OM_MOISTURE_BONUS_PER_PERCENT;
@@ -1031,6 +1298,8 @@ export function harvestCell(state: GameState, cell: Cell): number {
     // Annual: remove crop after harvest
     cell.crop = null;
   }
+
+  logHarvest(state, crop.cropId, netRevenue, yieldAmount);
 
   assertFinite(state.economy.cash, 'economy.cash after harvest');
   return netRevenue;

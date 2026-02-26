@@ -62,16 +62,28 @@ function readSave(key: string): GameState | null {
 
     const parsed = JSON.parse(raw) as SaveGame;
     if (!validateSave(parsed)) {
-      // Try v2 → v3 migration
-      if (isV2Save(parsed)) {
-        return migrateV2ToV3(parsed);
+      // Try v3 → v4 migration
+      if (isV3Save(parsed)) {
+        return migrateV3ToV4(parsed);
       }
-      // Try v1 → v2 → v3 chain
+      // Try v2 → v3 → v4 chain
+      if (isV2Save(parsed)) {
+        const v3State = migrateV2ToV3(parsed);
+        if (v3State) {
+          const v3Save = { version: '3.0.0', state: v3State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
+          return migrateV3ToV4(v3Save);
+        }
+      }
+      // Try v1 → v2 → v3 → v4 chain
       if (isV1Save(parsed)) {
         const v2State = migrateV1ToV2(parsed);
         if (v2State) {
-          const v2Save = { version: '2.0.0', state: v2State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
-          return migrateV2ToV3(v2Save);
+          const v2Save = { version: '2.0.0', state: v2State, timestamp: Date.now() } as unknown as SaveGame;
+          const v3State = migrateV2ToV3(v2Save);
+          if (v3State) {
+            const v3Save = { version: '3.0.0', state: v3State, timestamp: Date.now() } as unknown as SaveGame;
+            return migrateV3ToV4(v3Save);
+          }
         }
       }
       return null;
@@ -126,13 +138,23 @@ export function listManualSaves(): SaveSlotInfo[] {
       let state: GameState | null = null;
       if (validateSave(parsed)) {
         state = parsed.state;
+      } else if (isV3Save(parsed)) {
+        state = migrateV3ToV4(parsed);
       } else if (isV2Save(parsed)) {
-        state = migrateV2ToV3(parsed);
+        const v3State = migrateV2ToV3(parsed);
+        if (v3State) {
+          const v3Save = { version: '3.0.0', state: v3State, timestamp: savedTimestamp } as unknown as SaveGame;
+          state = migrateV3ToV4(v3Save);
+        }
       } else if (isV1Save(parsed)) {
         const v2State = migrateV1ToV2(parsed);
         if (v2State) {
           const v2Save = { version: '2.0.0', state: v2State, timestamp: savedTimestamp } as unknown as SaveGame;
-          state = migrateV2ToV3(v2Save);
+          const v3State = migrateV2ToV3(v2Save);
+          if (v3State) {
+            const v3Save = { version: '3.0.0', state: v3State, timestamp: savedTimestamp } as unknown as SaveGame;
+            state = migrateV3ToV4(v3Save);
+          }
         }
       }
 
@@ -304,6 +326,46 @@ function migrateV1ToV2(data: unknown): GameState | null {
           if (cell.crop.harvestedThisSeason === undefined) cell.crop.harvestedThisSeason = false;
         }
       }
+    }
+
+    return state as GameState;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// V3 → V4 Migration (adds coverCropId + frostProtectionEndsDay)
+// ============================================================================
+
+function isV3Save(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const save = data as Record<string, unknown>;
+  return save.version === '3.0.0';
+}
+
+/**
+ * Migrate a v3 save to v4 by adding:
+ * - coverCropId: null on all cells (for 3b cover crops)
+ * - frostProtectionEndsDay: 0 on GameState (for 3c weather advisor)
+ */
+function migrateV3ToV4(data: unknown): GameState | null {
+  try {
+    const save = data as SaveGame;
+    const state = save.state as GameState & Record<string, unknown>;
+
+    // Add coverCropId to all cells
+    for (const row of state.grid) {
+      for (const cell of row) {
+        if ((cell as unknown as Record<string, unknown>).coverCropId === undefined) {
+          cell.coverCropId = null;
+        }
+      }
+    }
+
+    // Add frostProtectionEndsDay to GameState
+    if (state.frostProtectionEndsDay === undefined) {
+      state.frostProtectionEndsDay = 0;
     }
 
     return state as GameState;

@@ -2,7 +2,9 @@ import { signal, computed, batch } from '@preact/signals';
 import type { GameState, Command, CommandResult, Cell, DailyWeather } from '../engine/types.ts';
 import { GRID_ROWS, GRID_COLS, IRRIGATION_COST_PER_CELL } from '../engine/types.ts';
 import { getIrrigationCostMultiplier } from '../engine/events/effects.ts';
-import { createInitialState, processCommand, simulateTick, dismissAutoPause, resetYearlyTracking, addNotification, dismissNotification, getAvailableCrops, executeBulkPlant, executeWater } from '../engine/game.ts';
+import { createInitialState, processCommand, simulateTick, dismissAutoPause, resetYearlyTracking, addNotification, dismissNotification, getAvailableCrops, executeBulkPlant, executeWater, executeBulkCoverCrop } from '../engine/game.ts';
+import { getCoverCropDefinition } from '../data/cover-crops.ts';
+import { logSessionStart } from '../engine/playtest-log.ts';
 import { getCropDefinition } from '../data/crops.ts';
 import { SLICE_1_SCENARIO } from '../data/scenario.ts';
 import { autoSave, loadAutoSave, hasSaveData, hasManualSaves, saveGame, loadGame, listManualSaves, deleteSave, isTutorialDismissed, setTutorialDismissed } from '../save/storage.ts';
@@ -105,6 +107,7 @@ export function startNewGame(playerId: string): void {
   if (!trimmed) return;
 
   _liveState = createInitialState(trimmed, SLICE_1_SCENARIO);
+  logSessionStart(_liveState);
   batch(() => {
     publishState();
     screen.value = 'playing';
@@ -122,6 +125,7 @@ export function resumeGame(): void {
   if (!state) return;
 
   _liveState = state;
+  logSessionStart(_liveState);
   batch(() => {
     publishState();
     screen.value = 'playing';
@@ -369,6 +373,88 @@ export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
   }
 }
 
+export function coverCropBulk(scope: 'all' | 'row' | 'col', coverCropId: string, index?: number): void {
+  if (!_liveState) return;
+
+  if (scope === 'all') {
+    const def = getCoverCropDefinition(coverCropId);
+    // Count eligible cells for cost estimate
+    const eligible: Cell[] = [];
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        const cell = _liveState.grid[r][c];
+        if (!cell.coverCropId && isCoverCropEligibleUI(cell)) {
+          eligible.push(cell);
+        }
+      }
+    }
+    if (eligible.length === 0) return;
+
+    const totalCost = eligible.length * def.seedCostPerAcre;
+
+    if (_liveState.economy.cash >= totalCost) {
+      confirmDialog.value = {
+        message: `Plant cover crops on all ${eligible.length} eligible plots for $${totalCost.toLocaleString()}?`,
+        onConfirm: () => {
+          if (!_liveState) return;
+          processCommand(_liveState, { type: 'SET_COVER_CROP_BULK', scope: 'all', coverCropId }, SLICE_1_SCENARIO);
+          confirmDialog.value = null;
+          publishState();
+        },
+        onCancel: () => { confirmDialog.value = null; },
+      };
+      return;
+    }
+
+    // Cannot afford all — delegate to engine for partial offer
+    const result = processCommand(_liveState, { type: 'SET_COVER_CROP_BULK', scope, coverCropId }, SLICE_1_SCENARIO);
+
+    if (result.partialOffer) {
+      const offer = result.partialOffer;
+      const costPerCell = def.seedCostPerAcre;
+      confirmDialog.value = {
+        message: `You can afford to cover ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Plant cover crops on ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?`,
+        onConfirm: () => {
+          if (!_liveState) return;
+          const cells: Cell[] = [];
+          let rowsCollected = 0;
+          for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
+            const rowEligible = _liveState.grid[r].filter(c =>
+              !c.coverCropId && isCoverCropEligibleUI(c),
+            );
+            if (rowEligible.length > 0) {
+              cells.push(...rowEligible);
+              rowsCollected++;
+            }
+          }
+          executeBulkCoverCrop(_liveState, cells, coverCropId, costPerCell);
+          confirmDialog.value = null;
+          publishState();
+        },
+        onCancel: () => { confirmDialog.value = null; },
+      };
+      return;
+    }
+
+    publishState();
+    return;
+  }
+
+  // Row/Column scope: no confirmation needed
+  const result = processCommand(_liveState, { type: 'SET_COVER_CROP_BULK', scope, coverCropId, index }, SLICE_1_SCENARIO);
+  if (result.success) {
+    publishState();
+  }
+}
+
+/** UI-side eligibility check for cover crops (mirrors engine's isCoverCropEligible). */
+function isCoverCropEligibleUI(cell: Cell): boolean {
+  if (!cell.crop) return true;
+  if (!cell.crop.isPerennial) return false;
+  const def = getCropDefinition(cell.crop.cropId);
+  return (def.dormantSeasons?.length ?? 0) > 0;
+}
+
 // ============================================================================
 // Auto-Pause
 // ============================================================================
@@ -455,6 +541,7 @@ export function loadSavedGame(slotName: string): void {
   if (!state) return;
 
   _liveState = state;
+  logSessionStart(_liveState);
   batch(() => {
     publishState();
     screen.value = 'playing';

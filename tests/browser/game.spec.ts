@@ -1508,3 +1508,108 @@ test.describe('Perennial Yield Curve UI', () => {
     await expect(page.getByTestId('sidebar-perennial-decline-info')).toContainText('until decline');
   });
 });
+
+// ==========================================================================
+// §23 — Slice 3b: Cover Crop UI
+// ==========================================================================
+
+test.describe('Cover Crop UI', () => {
+  test('plant cover crop button appears in fall on empty cell', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set calendar to fall (October = day ~275 from start, totalDay ~334)
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      // Fall starts Sep (month 9), day 244 from Jan 1
+      debug.setDay(244); // Sep 1
+    });
+
+    // Click an empty cell
+    await page.getByTestId('farm-cell-0-0').click();
+
+    // Plant cover crop button should be visible
+    await expect(page.getByTestId('action-plant-cover-crop')).toBeVisible();
+    await expect(page.getByTestId('action-plant-cover-crop')).toContainText('Cover Crop ($30)');
+  });
+
+  test('plant cover crop button NOT visible in spring', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Game starts in spring — click empty cell
+    await page.getByTestId('farm-cell-0-0').click();
+
+    // Cover crop button should NOT be visible
+    await expect(page.getByTestId('action-plant-cover-crop')).not.toBeVisible();
+  });
+
+  test('planting cover crop shows status and clover icon', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set to fall
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.setDay(244);
+    });
+
+    // Click cell and plant cover crop
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant-cover-crop').click();
+
+    // Should show cover crop status
+    await expect(page.getByTestId('sidebar-cover-crop-status')).toBeVisible();
+    await expect(page.getByTestId('sidebar-cover-crop-status')).toContainText('Clover/Vetch Mix');
+
+    // Cell should show clover icon
+    await expect(page.getByTestId('farm-cell-cover-0-0')).toBeVisible();
+  });
+
+  test('remove cover crop button clears cover crop', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set to fall and plant cover crop
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.setDay(244);
+    });
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant-cover-crop').click();
+
+    // Verify it's planted
+    await expect(page.getByTestId('sidebar-cover-crop-status')).toBeVisible();
+
+    // Remove it
+    await page.getByTestId('action-remove-cover-crop').click();
+
+    // Status gone, clover icon gone
+    await expect(page.getByTestId('sidebar-cover-crop-status')).not.toBeVisible();
+    await expect(page.getByTestId('farm-cell-cover-0-0')).not.toBeVisible();
+  });
+
+  test('bulk cover crop field button appears in fall', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set to fall
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.setDay(244);
+    });
+
+    // Bulk cover crop button should be visible
+    await expect(page.getByTestId('action-plant-cover-crop-bulk')).toBeVisible();
+    await expect(page.getByTestId('action-plant-cover-crop-bulk')).toContainText('Cover Crop');
+  });
+
+  test('bulk cover crop field button NOT visible in spring', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Game starts in spring
+    await expect(page.getByTestId('action-plant-cover-crop-bulk')).not.toBeVisible();
+  });
+});

@@ -32,7 +32,10 @@ export type Command =
   | { type: 'RESPOND_EVENT'; eventId: string; choiceId: string }
   | { type: 'TAKE_LOAN' }  // parameterless — amount is engine-computed
   // Slice 2b: Perennial removal
-  | { type: 'REMOVE_CROP'; cellRow: number; cellCol: number };
+  | { type: 'REMOVE_CROP'; cellRow: number; cellCol: number }
+  // Slice 3b: Cover crops
+  | { type: 'SET_COVER_CROP'; cellRow: number; cellCol: number; coverCropId: string | null }
+  | { type: 'SET_COVER_CROP_BULK'; scope: 'all' | 'row' | 'col'; index?: number; coverCropId: string | null };
 
 export type GameSpeed = 0 | 1 | 2 | 4;
 
@@ -174,6 +177,7 @@ export interface Cell {
   col: number;
   crop: CropInstance | null;
   soil: SoilState;
+  coverCropId: string | null;
 }
 
 // --- Economy ---
@@ -272,6 +276,8 @@ export interface GameState {
   wateringRestrictionEndsDay: number;
   irrigationCostMultiplier: number;
   eventRngState: number;      // separate RNG for events (seeded from mainSeed + 10000)
+  // Slice 3c: Weather advisor frost protection
+  frostProtectionEndsDay: number; // 0 = inactive; active when totalDay < this value
 }
 
 // --- Save/Load ---
@@ -303,7 +309,7 @@ export const NITROGEN_MODERATE_THRESHOLD = 40;
 export const IRRIGATION_COST_PER_CELL = 5; // $ per cell per watering
 export const WATER_DOSE_INCHES = 3.0; // inches per watering action (~14 days worth at typical ET)
 export const STARTING_DAY = 59; // March 1 (0-indexed totalDay) — Spring start per SPEC
-export const SAVE_VERSION = '3.0.0';
+export const SAVE_VERSION = '4.0.0';
 
 /** Number of days in the dormant season (Dec + Jan + Feb = 90). Tied to SEASON_MAP. */
 export const DORMANCY_DAYS = 90;

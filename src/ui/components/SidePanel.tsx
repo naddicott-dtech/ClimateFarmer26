@@ -1,7 +1,7 @@
 import {
   selectedCell, selectedCellData, gameState,
   openCropMenu, dispatch, harvestBulk, waterBulk,
-  plantBulk, cropMenuOpen, availableCrops, confirmDialog,
+  plantBulk, coverCropBulk, cropMenuOpen, availableCrops, confirmDialog,
 } from '../../adapter/signals.ts';
 import { getCropDefinition } from '../../data/crops.ts';
 import { getGrowthProgress, getYieldPercentage, getPerennialPhase, getPerennialAgeFactor } from '../../engine/game.ts';
@@ -33,14 +33,18 @@ export function SidePanel() {
 }
 
 function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').Cell; row: number; col: number }) {
-  const { crop, soil } = cell;
+  const { crop, soil, coverCropId } = cell;
   const cropDef = crop ? getCropDefinition(crop.cropId) : null;
   const isMenuOpen = cropMenuOpen.value;
   const cropsAvailable = availableCrops.value;
+  const state = gameState.value;
 
   const canPlant = !crop && cropsAvailable.length > 0;
   const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe');
   const canRemove = crop?.isPerennial === true;
+  const isFall = state?.calendar.season === 'fall';
+  const isDeciduousPerennial = crop?.isPerennial && cropDef?.dormantSeasons && cropDef.dormantSeasons.length > 0;
+  const canPlantCover = isFall && !coverCropId && (!crop || isDeciduousPerennial);
   const progress = crop ? getGrowthProgress(crop) : 0;
   const yieldPct = crop ? getYieldPercentage(crop) : 0;
 
@@ -257,6 +261,29 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
               Remove {cropDef?.name} (${cropDef?.removalCost ?? 0})
             </button>
           )}
+
+          {canPlantCover && (
+            <button
+              data-testid="action-plant-cover-crop"
+              class={`${styles.actionBtn} ${styles.actionBtnCover}`}
+              onClick={() => dispatch({ type: 'SET_COVER_CROP', cellRow: row, cellCol: col, coverCropId: 'legume-cover' })}
+            >
+              Plant Cover Crop ($30)
+            </button>
+          )}
+
+          {coverCropId && (
+            <div data-testid="sidebar-cover-crop-status" class={styles.coverCropStatus}>
+              Cover Crop: Clover/Vetch Mix
+              <button
+                data-testid="action-remove-cover-crop"
+                class={`${styles.actionBtn} ${styles.actionBtnRemove}`}
+                onClick={() => dispatch({ type: 'SET_COVER_CROP', cellRow: row, cellCol: col, coverCropId: null })}
+              >
+                Remove Cover Crop
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -392,6 +419,14 @@ function BulkActions() {
   const hasHarvestable = state.grid.some(row => row.some(c =>
     c.crop && (c.crop.growthStage === 'harvestable' || c.crop.growthStage === 'overripe'),
   ));
+  const isFall = state.calendar.season === 'fall';
+  const hasEligibleForCover = isFall && state.grid.some(row => row.some(c => {
+    if (c.coverCropId) return false;
+    if (!c.crop) return true;
+    if (!c.crop.isPerennial) return false;
+    const def = getCropDefinition(c.crop.cropId);
+    return (def.dormantSeasons?.length ?? 0) > 0;
+  }));
 
   return (
     <div class={styles.section}>
@@ -498,6 +533,36 @@ function BulkActions() {
             disabled={!hasCrops}
           >
             Water Col {sel.col + 1}
+          </button>
+        )}
+
+        {hasEligibleForCover && (
+          <button
+            data-testid="action-plant-cover-crop-bulk"
+            class={`${styles.actionBtn} ${styles.actionBtnCover}`}
+            onClick={() => coverCropBulk('all', 'legume-cover')}
+          >
+            Cover Crop — Field ($30/plot)
+          </button>
+        )}
+
+        {sel && hasEligibleForCover && (
+          <button
+            data-testid={`action-cover-crop-row-${sel.row}`}
+            class={`${styles.actionBtn} ${styles.actionBtnCover}`}
+            onClick={() => coverCropBulk('row', 'legume-cover', sel.row)}
+          >
+            Cover Crop — Row {sel.row + 1}
+          </button>
+        )}
+
+        {sel && hasEligibleForCover && (
+          <button
+            data-testid={`action-cover-crop-col-${sel.col}`}
+            class={`${styles.actionBtn} ${styles.actionBtnCover}`}
+            onClick={() => coverCropBulk('col', 'legume-cover', sel.col)}
+          >
+            Cover Crop — Col {sel.col + 1}
           </button>
         )}
       </div>

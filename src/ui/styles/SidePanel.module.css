@@ -286,3 +286,22 @@
   background: var(--color-danger, #c44);
   color: white;
 }
+
+.actionBtnCover {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #66bb6a;
+}
+
+.actionBtnCover:hover:not(:disabled) {
+  background: #66bb6a;
+  color: white;
+}
+
+.coverCropStatus {
+  font-size: var(--font-size-sm);
+  color: #2e7d32;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

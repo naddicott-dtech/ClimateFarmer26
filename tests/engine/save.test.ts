@@ -395,19 +395,117 @@ describe('Save/Load System', () => {
     });
   });
 
-  describe('v3 save round-trip', () => {
-    it('preserves chillHoursAccumulated through save/load', () => {
+  describe('v3 → v4 migration', () => {
+    it('migrates v3 auto-save by adding coverCropId and frostProtectionEndsDay', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
-      processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
-      // Simulate some chill accumulation
-      state.grid[0][0].crop!.chillHoursAccumulated = 350;
-      state.flags['chillHoursRevealed'] = true;
+
+      // Build a v3-shaped save (strip v4 fields)
+      const v3State = JSON.parse(JSON.stringify(state));
+      for (const row of v3State.grid) {
+        for (const cell of row) {
+          delete cell.coverCropId;
+        }
+      }
+      delete v3State.frostProtectionEndsDay;
+
+      const v3Save = {
+        version: '3.0.0',
+        state: v3State,
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v3Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      // v4 fields present
+      expect(loaded!.grid[0][0].coverCropId).toBeNull();
+      expect(loaded!.grid[3][3].coverCropId).toBeNull();
+      expect(loaded!.frostProtectionEndsDay).toBe(0);
+    });
+
+    it('migrates v3 manual save via listManualSaves', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+
+      const v3State = JSON.parse(JSON.stringify(state));
+      for (const row of v3State.grid) {
+        for (const cell of row) {
+          delete cell.coverCropId;
+        }
+      }
+      delete v3State.frostProtectionEndsDay;
+
+      const v3Save = {
+        version: '3.0.0',
+        state: v3State,
+        timestamp: Date.now(),
+      };
+      mockStorage['climateFarmer_save_TestSlot'] = JSON.stringify(v3Save);
+
+      const saves = listManualSaves();
+      expect(saves.length).toBe(1);
+      expect(saves[0].playerId).toBe('test-player');
+    });
+  });
+
+  describe('v1 → v2 → v3 → v4 migration chain', () => {
+    it('migrates v1 save all the way to v4', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+
+      // Build v1-shaped save (strip v2, v3, v4 fields)
+      const v1State = JSON.parse(JSON.stringify(state));
+      delete v1State.eventLog;
+      delete v1State.activeEvent;
+      delete v1State.pendingForeshadows;
+      delete v1State.activeEffects;
+      delete v1State.cropFailureStreak;
+      delete v1State.flags;
+      delete v1State.wateringRestricted;
+      delete v1State.wateringRestrictionEndsDay;
+      delete v1State.irrigationCostMultiplier;
+      delete v1State.eventRngState;
+      delete v1State.economy.debt;
+      delete v1State.economy.totalLoansReceived;
+      delete v1State.economy.interestPaidThisYear;
+      delete v1State.grid[0][0].crop.chillHoursAccumulated;
+      for (const row of v1State.grid) {
+        for (const cell of row) {
+          delete cell.coverCropId;
+        }
+      }
+      delete v1State.frostProtectionEndsDay;
+
+      const v1Save = {
+        version: '1.0.0',
+        state: v1State,
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v1Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      // v2 fields
+      expect(loaded!.eventLog).toEqual([]);
+      expect(loaded!.economy.debt).toBe(0);
+      // v3 fields
+      expect(loaded!.grid[0][0].crop!.chillHoursAccumulated).toBe(0);
+      // v4 fields
+      expect(loaded!.grid[0][0].coverCropId).toBeNull();
+      expect(loaded!.frostProtectionEndsDay).toBe(0);
+    });
+  });
+
+  describe('v4 save round-trip', () => {
+    it('preserves coverCropId and frostProtectionEndsDay through save/load', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      state.grid[0][0].coverCropId = 'legume-cover';
+      state.frostProtectionEndsDay = 500;
 
       autoSave(state);
       const loaded = loadAutoSave();
       expect(loaded).not.toBeNull();
-      expect(loaded!.grid[0][0].crop!.chillHoursAccumulated).toBe(350);
-      expect(loaded!.flags['chillHoursRevealed']).toBe(true);
+      expect(loaded!.grid[0][0].coverCropId).toBe('legume-cover');
+      expect(loaded!.frostProtectionEndsDay).toBe(500);
     });
   });
 
@@ -416,7 +514,7 @@ describe('Save/Load System', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
       autoSave(state);
       const raw = JSON.parse(mockStorage[AUTOSAVE_KEY]);
-      raw.version = '4.0.0';
+      raw.version = '5.0.0';
       mockStorage[AUTOSAVE_KEY] = JSON.stringify(raw);
       expect(loadAutoSave()).toBeNull();
     });

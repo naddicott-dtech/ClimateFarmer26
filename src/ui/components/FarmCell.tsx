@@ -46,6 +46,22 @@ const CROP_ICONS: Record<string, Record<string, string>> = {
     harvestable: '\u{1F95C}',
     overripe: '\u{1F95C}',
   },
+  'sorghum': {
+    seedling: '\u{1F331}',
+    vegetative: '\u{1FAB4}',
+    flowering: '\u{1F33E}',
+    mature: '\u{1F33E}',
+    harvestable: '\u{1F33E}',
+    overripe: '\u{1F33E}',
+  },
+  'citrus-navels': {
+    seedling: '\u{1F333}',
+    vegetative: '\u{1F333}',
+    flowering: '\u{1F338}',
+    mature: '\u{1F333}',
+    harvestable: '\u{1F34A}',
+    overripe: '\u{1F34A}',
+  },
 };
 
 interface FarmCellProps {
@@ -53,7 +69,7 @@ interface FarmCellProps {
 }
 
 export function FarmCell({ cell }: FarmCellProps) {
-  const { row, col, crop, soil } = cell;
+  const { row, col, crop, soil, coverCropId } = cell;
   const isSelected = selectedCell.value?.row === row && selectedCell.value?.col === col;
 
   // Determine visual classes
@@ -103,6 +119,13 @@ export function FarmCell({ cell }: FarmCellProps) {
       tabIndex={row === 0 && col === 0 ? 0 : -1}
     >
       {icon && <span class={styles.cropIcon} aria-hidden="true">{icon}</span>}
+      {coverCropId && (
+        <span
+          data-testid={`farm-cell-cover-${row}-${col}`}
+          class={styles.coverCropIcon}
+          aria-hidden="true"
+        >{'\u{2618}'}</span>
+      )}
       {crop && !crop.isDormant && crop.growthStage !== 'harvestable' && crop.growthStage !== 'overripe' && (
         <div class={styles.progressBar} style={{ width: `${progress * 100}%` }} />
       )}
