@@ -150,6 +150,7 @@ export const STORYLETS: readonly Storylet[] = [
     preconditions: [
       { type: 'season_not', season: 'winter' },
       { type: 'min_year', year: 2 },
+      { type: 'has_crop', cropId: 'processing-tomatoes' },
       { type: 'random', probability: 0.10 },
     ],
     priority: 45,

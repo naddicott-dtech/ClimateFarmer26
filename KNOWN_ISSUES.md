@@ -102,28 +102,58 @@
 
 44. **LOW (hygiene): playwright-report tracked in git** — Generated `playwright-report/` and `test-results/` directories were not in `.gitignore`. Fixed: added both to `.gitignore`.
 
+### Playtest Findings — Slice 3b (2026-02-26)
+
+Two students were instructed to "play badly" (try to lose). Neither triggered bankruptcy. One submitted a playtest log covering a full 30-year run.
+
+**45. Economy is too lenient — impossible to lose with almond monoculture.**
+Severity: HIGH (balance). Student planted 64 almonds in year 3, made no strategic adjustments, and finished year 30 with $404,223 (started at $50,000). No debt, no loan offers, no bankruptcy threat. This undermines the core teaching objective — students should learn that monoculture and ignoring climate adaptation has consequences.
+Status: Deferred to Slice 4 balance testing suite (ARCHITECTURE.md §12 Layer 2, §13 Slice 4). Will require headless automated strategy tests running full 30-year games. Likely tuning levers: lower starting cash, raise orchard maintenance costs, increase drought severity in later years, add pest/disease pressure for monoculture. Do NOT hand-tune — use systematic headless testing against multiple strategies.
+
+**46. Tomato Market Surge fires when player has no tomatoes.** RESOLVED.
+Severity: MEDIUM (event noise). `tomato-market-surge` had no precondition requiring tomato production. Fixed: added `has_crop: processing-tomatoes` precondition. Event now only fires when player actually has tomatoes planted.
+
+**47. Event clustering feels spammy.**
+Severity: MEDIUM (UX). Multiple events sometimes fire in the same season (heatwave + water cut + pumping ban + tomato surge). Each auto-pauses the game, requiring separate dismissal. Students reported it feeling more like whack-a-mole than strategic decision-making.
+Status: Deferred to Slice 4. Likely fix: per-season event cap (max 1-2 events per season) or mutual exclusion groups for related events. Needs design discussion — cap could suppress important events.
+
+**48. "Already harvested this season" confusion with perennials.**
+Severity: LOW (UX polish). Players repeatedly clicked harvest on already-harvested perennials, getting failure messages. The validation works correctly, but the UI doesn't clearly indicate that a perennial has already been harvested this season.
+Status: Deferred. Fix: disable/gray out harvest button when `crop.harvestedThisSeason === true`, add visual indicator on cell.
+
+**49. Cover crop / soil health pedagogy not landing.**
+Severity: LOW (content design). Organic matter trended steadily down (1.97% → 1.19% over 30 years) but the student never engaged with cover crops. The payoff isn't visible enough in the UI. OM decline has no dramatic consequence the student can feel — it's a slow, invisible drain.
+Status: Deferred. Needs design discussion — possible interventions: OM-triggered advisor warning, visible soil quality tier (Healthy → Degraded → Depleted), yield penalty at low OM thresholds.
+
+**50. Pause-to-play transition is not intuitive.**
+Severity: MEDIUM (UX). After planting/watering at game start (or after any auto-pause), the game is paused at 0x speed. There is no clear UI signal that the player needs to press play to continue. Multiple playtesters were confused about why nothing was happening. The current speed controls exist but don't draw attention when they're the required next action.
+Status: Deferred. Needs design discussion. Options: (a) auto-resume at 1x after player actions when game is paused, (b) pulsing/highlighting speed controls when game is paused and player has taken an action, (c) contextual prompt ("Press play to continue"). Each has tradeoffs — auto-resume may surprise students; visual hints are less disruptive.
+
 ### Deferred — Accepted for Slice 1
 
 30. **Deep save validation** — Nested field tampering (e.g., modifying crop.gddAccumulated inside a valid grid structure) is not caught by `validateSave()`. Acceptable risk for classroom use — students are not adversarial. Could add deep schema validation in a future slice if needed.
 
-### Deferred from Slice 2 → Slice 3
+### Deferred from Slice 2 → Slice 3 (partially resolved)
 
-- **Stretch events (tomato-market-surge, groundwater-pumping-ban)** — Designed during Sub-Slice 2c but deferred per Neal's pre-flight feedback. Canonical specs (not yet in code):
-  - **Tomato Market Surge:** type=market, conditions: not winter + year 2+ + 10% random, priority 45, cooldown 365 days. Single choice: Acknowledge → tomato price ×1.4 for 60 days (per SPEC.md §19.1).
-  - **Groundwater Pumping Ban:** type=regulatory, conditions: summer + year 5+ + 12% random, priority 55, cooldown 730 days. Choices: Comply (no irrigation 30 days) OR Buy surface water rights ($1,000) (per SPEC.md §19.2).
-  - Low implementation effort — event data structure and effect types already exist.
-- **Perennial decline phase** — Trees should lose productivity after peak years (ARCHITECTURE.md §5.7). Currently binary yield (0 during establishment, 1.0 after establishment forever). Need age-dependent yield curve with decline.
-- **Age-based yield curves** — Real orchards ramp up production over years 1-6, peak, then decline. Currently a step function (0 → 1.0 at establishment).
-- **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started. Needed for crop visibility gating, irrigation upgrades, nutrient monitoring.
-- **Remaining 3 advisors** — Financial Advisor/Banker (loans, insurance, investment), Weather Service (forecasts, sometimes wrong), Farming Community (tips, gossip, unreliable). See ARCHITECTURE.md §5.9.
-- **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums that increase with claims. Only a one-time emergency loan exists currently.
-- **K + Zn nutrients** — Only nitrogen is modeled. Potassium (quality/defense) and Zinc (critical checkpoint) are in ARCHITECTURE.md §5.6 but not implemented.
-- **Cover crops** — Off-season strategies (legume, mustard, resident vegetation) that affect N/erosion/OM. See ARCHITECTURE.md §8.
-- **Additional crops** — 7 more crops from the 12-crop roster: Grapes, Citrus, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule. See ARCHITECTURE.md §8.
-- **Additional climate scenarios** — Only 1 scenario exists ("Slice 1 Baseline"). Need 5-8 for classroom use to prevent students from memorizing the weather track.
+**Resolved in Slice 3:**
+- ~~Stretch events~~ — `tomato-market-surge` and `groundwater-pumping-ban` implemented in 3a1
+- ~~Perennial decline phase / age-based yield curves~~ — 3-phase piecewise-linear yield curves (ramp → peak → decline → floor) implemented in 3a2
+- ~~Cover crops~~ — Legume cover crop system (fall planting, spring incorporation, N/OM bonus) implemented in 3b
+- ~~Additional crops~~ — Sorghum (drought-tolerant annual) and Citrus Navels (evergreen perennial) added in 3a1
+
+**Still deferred → Slice 4+:**
+- **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started.
+- **Remaining advisors** — Financial Advisor/Banker, Farming Community. Weather Service is in progress (3c).
+- **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums.
+- **K + Zn nutrients** — Only nitrogen is modeled.
+- **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule remain.
+- **Additional climate scenarios** — Only 1 scenario exists. Need 5-8 for classroom use.
 
 ### Deferred to Slice 4 / Later Discussion
 
+- **Balance testing suite** — Headless automated strategy tests running full 30-year games against multiple scenarios (ARCHITECTURE.md §12 Layer 2). Required before classroom deployment. Strategies to test: monoculture almond, monoculture corn, diversified adaptive, zero-irrigation, maximum debt. Target: monoculture should fail in ≥60% of drought-heavy scenarios; well-diversified strategies should survive ≥80%. See playtest findings #45.
+- **Economic rebalancing** — Starting cash, maintenance costs, drought severity, event impacts all need systematic tuning based on balance test results. NOT hand-tuned — data-driven from headless test suite.
+- **Event system tuning** — Per-season event cap, mutual exclusion groups, relevance gating (see #46, #47).
 - **Automation policies** — Replant-same, harvest-when-ready, water-when-dry. Unlocked via tech tree.
 - **Glossary / Information Index** — In-game educational reference with progressive disclosure.
 - **Solar lease event chain** — Multi-phase storylet (option → construction → operations → agrivoltaics).
@@ -131,4 +161,3 @@
 - **Advanced accessibility** (colorblind modes, full screen reader support) — Baseline keyboard nav + ARIA in Slice 1.
 - **Sound / music** — Not essential for classroom use.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.
-- **README.md** — Not yet created. App is fully runnable (`npm run dev`, `npm test`, `npm run build`). Defer until closer to classroom deployment.

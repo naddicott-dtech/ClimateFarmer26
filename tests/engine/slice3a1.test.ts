@@ -68,10 +68,11 @@ describe('Tomato Market Surge event', () => {
     expect(surge!.cooldownDays).toBe(365);
   });
 
-  it('has correct preconditions: season_not winter, min_year 2, random 0.10', () => {
+  it('has correct preconditions: season_not winter, min_year 2, has_crop tomatoes, random 0.10', () => {
     const surge = STORYLETS.find(s => s.id === 'tomato-market-surge')!;
     expect(surge.preconditions).toContainEqual({ type: 'season_not', season: 'winter' });
     expect(surge.preconditions).toContainEqual({ type: 'min_year', year: 2 });
+    expect(surge.preconditions).toContainEqual({ type: 'has_crop', cropId: 'processing-tomatoes' });
     expect(surge.preconditions).toContainEqual({ type: 'random', probability: 0.10 });
   });
 
