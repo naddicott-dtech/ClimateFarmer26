@@ -117,11 +117,11 @@ export function logLoanTaken(state: GameState, amount: number): void {
   });
 }
 
-export function logHarvest(state: GameState, cropId: string, revenue: number, yieldAmount: number): void {
+export function logHarvest(state: GameState, cropId: string, revenue: number, cellCount: number): void {
   emit('harvest', state, {
     cropId,
     revenue: Math.floor(revenue),
-    yield: Math.round(yieldAmount * 10) / 10,
+    cells: cellCount,
     cash: Math.floor(state.economy.cash),
   });
 }

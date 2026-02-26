@@ -342,7 +342,9 @@ function processHarvest(state: GameState, row: number, col: number): CommandResu
     return { success: false, reason: 'Already harvested this season. Trees produce one crop per year.' };
   }
 
+  const cropId = cell.crop.cropId;
   const revenue = harvestCell(state, cell);
+  logHarvest(state, cropId, revenue, 1);
   return { success: true, revenue, cellsAffected: 1 };
 }
 
@@ -357,6 +359,7 @@ function processHarvestBulk(state: GameState, scope: 'all' | 'row' | 'col', inde
     totalRevenue += harvestCell(state, cell);
   }
 
+  logHarvest(state, `bulk_${scope}`, totalRevenue, harvestable.length);
   return { success: true, revenue: totalRevenue, cellsAffected: harvestable.length };
 }
 
@@ -1298,8 +1301,6 @@ export function harvestCell(state: GameState, cell: Cell): number {
     // Annual: remove crop after harvest
     cell.crop = null;
   }
-
-  logHarvest(state, crop.cropId, netRevenue, yieldAmount);
 
   assertFinite(state.economy.cash, 'economy.cash after harvest');
   return netRevenue;
