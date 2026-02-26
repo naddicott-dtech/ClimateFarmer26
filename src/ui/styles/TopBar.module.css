@@ -80,6 +80,17 @@
   animation: flash-red 0.6s ease-out;
 }
 
+.frostStatus {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.3);
+  color: #bae6fd;
+}
+
 .debtSection {
   display: flex;
   align-items: center;

@@ -98,6 +98,12 @@ export function applyEffects(
         state.flags[effect.flag] = effect.value;
         break;
 
+      case 'activate_frost_protection': {
+        const newEnd = state.calendar.totalDay + effect.durationDays;
+        state.frostProtectionEndsDay = Math.max(state.frostProtectionEndsDay, newEnd);
+        break;
+      }
+
       default: {
         const _exhaustive: never = effect;
         throw new Error(`Unhandled effect type: ${(_exhaustive as Effect).type}`);

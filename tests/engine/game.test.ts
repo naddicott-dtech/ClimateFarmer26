@@ -219,6 +219,22 @@ describe('PLANT_BULK command', () => {
     expect(result.partialOffer!.affordablePlots).toBe(16);
   });
 
+  it('returns error when no fully empty rows exist for field-scope plant', () => {
+    // Plant one crop in every row so no row is fully empty
+    for (let r = 0; r < GRID_ROWS; r++) {
+      processCommand(state, {
+        type: 'PLANT_CROP', cellRow: r, cellCol: 0, cropId: 'silage-corn',
+      }, SLICE_1_SCENARIO);
+    }
+
+    const result = processCommand(state, {
+      type: 'PLANT_BULK', scope: 'all', cropId: 'silage-corn',
+    }, SLICE_1_SCENARIO);
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toContain('No fully empty rows');
+  });
+
   it('plants a single row', () => {
     const result = processCommand(state, {
       type: 'PLANT_BULK', scope: 'row', index: 3, cropId: 'silage-corn',

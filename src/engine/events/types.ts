@@ -36,7 +36,8 @@ export type Effect =
   | { type: 'modify_irrigation_cost'; multiplier: number; durationDays: number }
   | { type: 'add_notification'; message: string; notificationType: NotificationType }
   | { type: 'restrict_watering'; durationDays: number }
-  | { type: 'set_flag'; flag: string; value: boolean };
+  | { type: 'set_flag'; flag: string; value: boolean }
+  | { type: 'activate_frost_protection'; durationDays: number };
 
 // --- Choices (player options within an event) ---
 
@@ -72,6 +73,7 @@ export interface Storylet {
   foreshadowing?: Foreshadowing;
   choices: Choice[];
   tags: string[];
+  advisorId?: 'extension-agent' | 'weather-service'; // routes advisor character display
 }
 
 // --- Runtime state types ---

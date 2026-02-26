@@ -100,6 +100,16 @@ export function TopBar() {
         ${Math.floor(economy.cash).toLocaleString()}
       </span>
 
+      {state.frostProtectionEndsDay > state.calendar.totalDay && (
+        <span
+          class={styles.frostStatus}
+          data-testid="frost-protection-status"
+          aria-label={`Frost protection active: ${state.frostProtectionEndsDay - state.calendar.totalDay} days remaining`}
+        >
+          {'\u{1F9CA}'} Frost Protection ({state.frostProtectionEndsDay - state.calendar.totalDay}d)
+        </span>
+      )}
+
       {economy.debt > 0 && (
         <span
           class={styles.debtSection}

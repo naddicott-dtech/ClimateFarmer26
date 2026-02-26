@@ -106,9 +106,9 @@
 
 Two students were instructed to "play badly" (try to lose). Neither triggered bankruptcy. One submitted a playtest log covering a full 30-year run.
 
-**45. Economy is too lenient — impossible to lose with almond monoculture.**
+**45. Economy is too lenient — impossible to lose with almond monoculture.** **PRE-CLASSROOM RELEASE BLOCKER.**
 Severity: HIGH (balance). Student planted 64 almonds in year 3, made no strategic adjustments, and finished year 30 with $404,223 (started at $50,000). No debt, no loan offers, no bankruptcy threat. This undermines the core teaching objective — students should learn that monoculture and ignoring climate adaptation has consequences.
-Status: Deferred to Slice 4 balance testing suite (ARCHITECTURE.md §12 Layer 2, §13 Slice 4). Will require headless automated strategy tests running full 30-year games. Likely tuning levers: lower starting cash, raise orchard maintenance costs, increase drought severity in later years, add pest/disease pressure for monoculture. Do NOT hand-tune — use systematic headless testing against multiple strategies.
+Status: **BLOCKER — must be resolved before classroom deployment.** Requires headless automated strategy tests running full 30-year games (ARCHITECTURE.md §12 Layer 2, §13 Slice 4). Likely tuning levers: lower starting cash, raise orchard maintenance costs, increase drought severity in later years, add pest/disease pressure for monoculture. Do NOT hand-tune — use systematic headless testing against multiple strategies.
 
 **46. Tomato Market Surge fires when player has no tomatoes.** RESOLVED.
 Severity: MEDIUM (event noise). `tomato-market-surge` had no precondition requiring tomato production. Fixed: added `has_crop: processing-tomatoes` precondition. Event now only fires when player actually has tomatoes planted.
@@ -148,6 +148,39 @@ Status: Deferred. Needs design discussion. Options: (a) auto-resume at 1x after 
 - **K + Zn nutrients** — Only nitrogen is modeled.
 - **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule remain.
 - **Additional climate scenarios** — Only 1 scenario exists. Need 5-8 for classroom use.
+
+### AI Playtest Findings — Slice 3b Build (2026-02-26)
+
+Automated playtest by Claude agent. Triaged per senior engineer review. Verified against code.
+
+**51. "Plant Field" bulk buttons silently fail when some plots are occupied.** RESOLVED.
+Severity: HIGH (functional). Root cause: `plantBulk()` in `signals.ts` returned early with no feedback when no fully-empty rows existed. The engine had the right error message; the adapter never asked for it. BUG-03 is the same root cause. Fixed: adapter now routes through `processCommand` and shows an info notification with the engine's error message ("No fully empty rows available. Use Plant Row to fill specific rows.").
+
+**52. Water Warning "Water Field" chains into redundant second confirmation.**
+Severity: MEDIUM (UX flow). Auto-pause primary action calls `waterBulk('all')` which itself shows a confirmation dialog — double confirmation. Harvest auto-pause doesn't have this problem because `harvestBulk` dispatches directly. The water stress auto-pause IS the confirmation point; the second dialog is redundant.
+Status: Deferred. Fix: add a `skipConfirm` parameter to `waterBulk` when called from auto-pause context, or dispatch `WATER` command directly from the auto-pause handler.
+
+**53. Year-end expenses don't break down categories.**
+Severity: MEDIUM (transparency). Not a logic bug — the $1,600 discrepancy is exactly 8 almonds × $200 annual maintenance, correctly charged at year-end. But the year-end summary only shows aggregated "Expenses" with no line items. Violates cause-and-effect transparency principle.
+Status: Deferred. Fix: add expense breakdown (planting, watering, maintenance, loan repayment) to year-end summary.
+
+**54. Calendar display doesn't advance immediately after "Continue to Year 2".**
+Severity: LOW (cosmetic). Header shows "Winter — December, Year 1" after clicking continue until the next simulation tick updates the calendar. Revenue/Expenses reset correctly.
+Status: Deferred. Fix: call `publishState()` after `resetYearlyTracking` in the dismiss handler.
+
+**55. Row/Column plant buttons don't show per-plot cost.**
+Severity: LOW (UX polish). "Plant Field" buttons show "$X/plot" but row/column variants don't. Inconsistent.
+Status: Deferred.
+
+**Non-bugs (verified):**
+- BUG-07 (selected cell after load): Code clears `selectedCell.value = null` in both `resumeGame` and `loadSavedGame`. Could not reproduce — likely transient rendering.
+- BUG-09 (Continue doesn't require Player ID): By design — save is keyed to browser localStorage, not player ID. Classroom isolation is via separate Chromebook logins.
+- BUG-08 (notification count growing): By design — notifications persist within a year. Could cap or auto-dismiss, but this is a design decision, not a bug.
+- OBS-03 (annual crops auto-clear): This is the overripe grace period (30 days, then crop rots). Auto-pause fires at harvest-ready. Notification exists for crop rotting. Working as designed per SPEC DD-4.
+- OBS-04 (moisture hits 0.0): Correct simulation behavior. Perennials survive dormancy at 0 moisture (reduced kc).
+- OBS-05 (no undo for planting): By design per DECISIONS.md — no undo system. Row/column plant buttons skip confirmation intentionally (only field-scope requires confirmation per SPEC §2.3).
+- OBS-01 (click outside to deselect): Design suggestion, not a bug. Filed mentally.
+- OBS-02 (no planting window tooltips): Good suggestion for Slice 4 glossary/info system.
 
 ### Deferred to Slice 4 / Later Discussion
 

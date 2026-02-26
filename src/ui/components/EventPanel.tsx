@@ -1,7 +1,23 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { gameState, dispatch, handleDismissAutoPause } from '../../adapter/signals.ts';
+import { STORYLETS } from '../../data/events.ts';
 import type { ActiveEvent, Choice } from '../../engine/events/types.ts';
 import styles from '../styles/Overlay.module.css';
+
+/** Advisor character info keyed by advisorId */
+const ADVISOR_CHARACTERS: Record<string, { icon: string; name: string; role: string; subtitle?: string }> = {
+  'extension-agent': {
+    icon: '\u{1F9D1}\u200D\u{1F33E}',
+    name: 'Dr. Maria Santos',
+    role: 'County Extension Agent',
+  },
+  'weather-service': {
+    icon: '\u{1F327}\u{FE0F}',
+    name: 'NWS Fresno',
+    role: 'National Weather Service — Fresno Office',
+    subtitle: 'Forecast accuracy varies by timeframe',
+  },
+};
 
 /**
  * EventPanel renders the event/advisor choice UI when an activeEvent exists.
@@ -34,6 +50,11 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
     // should already be disabled via requiresCash check below
   }
 
+  // Look up advisor character from storylet definition
+  const storylet = STORYLETS.find(s => s.id === event.storyletId);
+  const advisorId = storylet?.advisorId ?? 'extension-agent';
+  const advisor = ADVISOR_CHARACTERS[advisorId] ?? ADVISOR_CHARACTERS['extension-agent'];
+
   const panelTestId = isAdvisor ? 'advisor-panel' : 'event-panel';
 
   return (
@@ -42,11 +63,14 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
         {isAdvisor && (
           <div class={styles.advisorHeader}>
             <span class={styles.advisorIcon} data-testid="advisor-portrait" aria-hidden="true">
-              {'\u{1F9D1}\u200D\u{1F33E}'}
+              {advisor.icon}
             </span>
             <div>
-              <div class={styles.advisorName} data-testid="advisor-name">Dr. Maria Santos</div>
-              <div class={styles.advisorRole} data-testid="advisor-role">County Extension Agent</div>
+              <div class={styles.advisorName} data-testid="advisor-name">{advisor.name}</div>
+              <div class={styles.advisorRole} data-testid="advisor-role">{advisor.role}</div>
+              {advisor.subtitle && (
+                <div class={styles.advisorSubtitle} data-testid="advisor-subtitle">{advisor.subtitle}</div>
+              )}
             </div>
           </div>
         )}

@@ -219,6 +219,7 @@ export const STORYLETS: readonly Storylet[] = [
     priority: 90,
     cooldownDays: 730,
     maxOccurrences: 2,
+    advisorId: 'extension-agent',
     choices: [
       {
         id: 'plan-replacement',
@@ -240,6 +241,122 @@ export const STORYLETS: readonly Storylet[] = [
     tags: ['advisor', 'perennials', 'decline'],
   },
 
+  // --- Slice 3c: Weather Service Advisor ---
+
+  {
+    id: 'weather-heat-forecast',
+    type: 'advisor',
+    title: 'Heat Wave Forecast',
+    description: 'High confidence: Our models show elevated heat risk for the coming weeks. Extreme temperatures could stress your crops and increase water demand.',
+    preconditions: [
+      { type: 'season', season: 'summer' },
+      { type: 'min_year', year: 2 },
+      { type: 'has_crop' },
+      { type: 'random', probability: 0.25 },
+    ],
+    priority: 85,
+    cooldownDays: 180,
+    maxOccurrences: 4,
+    advisorId: 'weather-service',
+    choices: [
+      {
+        id: 'pre-irrigate',
+        label: 'Pre-irrigate Fields',
+        description: 'Run irrigation early to build soil moisture reserves before the heat arrives. Costs $200.',
+        cost: 200,
+        requiresCash: 200,
+        effects: [
+          { type: 'modify_cash', amount: -200 },
+          { type: 'modify_moisture_all', amount: 1.5 },
+          { type: 'add_notification', message: 'Pre-irrigation applied. Soil moisture reserves boosted across all fields.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'monitor',
+        label: 'Monitor Conditions',
+        description: 'Keep an eye on the forecast and react if temperatures spike.',
+        effects: [
+          { type: 'add_notification', message: 'You decided to monitor conditions. Watch for heatwave advisories in the coming days.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'weather', 'heat'],
+  },
+
+  {
+    id: 'weather-frost-alert',
+    type: 'advisor',
+    title: 'Spring Frost Alert',
+    description: 'Moderate confidence: Cold air mass tracking south through the valley. There\'s a reasonable chance of overnight frost in the next week.',
+    preconditions: [
+      { type: 'season', season: 'spring' },
+      { type: 'has_crop' },
+      { type: 'random', probability: 0.20 },
+    ],
+    priority: 85,
+    cooldownDays: 365,
+    maxOccurrences: 3,
+    advisorId: 'weather-service',
+    choices: [
+      {
+        id: 'deploy-protection',
+        label: 'Deploy Frost Protection',
+        description: 'Set up wind machines and heaters for the next 14 days. Costs $150.',
+        cost: 150,
+        requiresCash: 150,
+        effects: [
+          { type: 'modify_cash', amount: -150 },
+          { type: 'activate_frost_protection', durationDays: 14 },
+          { type: 'add_notification', message: 'Frost protection deployed for 14 days. If frost comes, crop damage will be reduced.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'wait-and-see',
+        label: 'Wait and See',
+        description: 'The forecast is uncertain. Save your money and hope for the best.',
+        effects: [
+          { type: 'add_notification', message: 'You decided to wait. If a frost event occurs, your crops will be unprotected.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'weather', 'frost'],
+  },
+
+  {
+    id: 'weather-drought-outlook',
+    type: 'advisor',
+    title: 'Long-Range Drought Outlook',
+    description: 'Low confidence: Multi-year precipitation indicators suggest drought conditions may worsen. Water allocations could be reduced in coming years.',
+    preconditions: [
+      { type: 'min_year', year: 5 },
+      { type: 'season', season: 'spring' },
+      { type: 'random', probability: 0.15 },
+    ],
+    priority: 80,
+    cooldownDays: 730,
+    maxOccurrences: 2,
+    advisorId: 'weather-service',
+    choices: [
+      {
+        id: 'plan-for-drought',
+        label: 'Plan for Drought',
+        description: 'Start thinking about drought-tolerant crops and water conservation strategies.',
+        effects: [
+          { type: 'add_notification', message: 'Consider drought-tolerant crops like sorghum, which needs less water and survives dry spells better than corn or tomatoes.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'too-uncertain',
+        label: 'Too Uncertain to Act',
+        description: 'Long-range forecasts are unreliable. Continue with your current plan.',
+        effects: [
+          { type: 'add_notification', message: 'Long-range forecasts are often wrong. But keep an eye on water allocation announcements.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'weather', 'drought'],
+  },
+
   // --- 2c Advisor Events ---
 
   {
@@ -254,6 +371,7 @@ export const STORYLETS: readonly Storylet[] = [
     priority: 100,
     cooldownDays: 365,
     maxOccurrences: 3,
+    advisorId: 'extension-agent',
     choices: [
       {
         id: 'buy-fertilizer',
@@ -290,6 +408,7 @@ export const STORYLETS: readonly Storylet[] = [
     priority: 100,
     cooldownDays: 180,
     maxOccurrences: 5,
+    advisorId: 'extension-agent',
     choices: [
       {
         id: 'diversify-advice',
@@ -323,6 +442,7 @@ export const STORYLETS: readonly Storylet[] = [
     priority: 100,
     cooldownDays: 730,
     maxOccurrences: 2,
+    advisorId: 'extension-agent',
     choices: [
       {
         id: 'review-chill-data',
@@ -358,6 +478,7 @@ export const STORYLETS: readonly Storylet[] = [
     priority: 90,
     cooldownDays: 365,
     maxOccurrences: 3,
+    advisorId: 'extension-agent',
     choices: [
       {
         id: 'cost-cutting',
@@ -393,6 +514,7 @@ export const STORYLETS: readonly Storylet[] = [
     priority: 90,
     cooldownDays: 365,
     maxOccurrences: 1,
+    advisorId: 'extension-agent',
     choices: [
       {
         id: 'learn-perennials',

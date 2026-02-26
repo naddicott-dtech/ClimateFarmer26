@@ -240,7 +240,15 @@ export function plantBulk(scope: 'all' | 'row' | 'col', cropId: string, index?: 
       }
     }
 
-    if (fullRowCells.length === 0) return;
+    if (fullRowCells.length === 0) {
+      // No fully empty rows — route through engine for proper error feedback
+      const result = processCommand(_liveState, { type: 'PLANT_BULK', scope: 'all', cropId }, SLICE_1_SCENARIO);
+      if (!result.success) {
+        addNotification(_liveState, 'info', result.reason ?? 'No fully empty rows available. Use "Plant Row" to fill specific rows.');
+        publishState();
+      }
+      return;
+    }
 
     const costPerCell = cropDef.seedCostPerAcre;
     const totalCost = fullRowCells.length * costPerCell;

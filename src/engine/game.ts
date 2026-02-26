@@ -444,6 +444,41 @@ export function executeWater(state: GameState, cells: Cell[]): CommandResult {
 // Event Response
 // ============================================================================
 
+/**
+ * Apply frost protection interaction for late-frost-warning "accept-risk" choice.
+ * If weather-advisor frost protection is active, reduce penalty from 0.70 to 0.85
+ * and consume the protection. Returns modified effects array.
+ */
+function applyFrostProtection(
+  state: GameState,
+  eventId: string,
+  choiceId: string,
+  effects: readonly import('./events/types.ts').Effect[],
+): import('./events/types.ts').Effect[] {
+  // Only applies to late-frost-warning + accept-risk
+  if (eventId !== 'late-frost-warning' || choiceId !== 'accept-risk') {
+    return [...effects];
+  }
+
+  const isProtected = state.calendar.totalDay < state.frostProtectionEndsDay;
+  if (!isProtected) return [...effects];
+
+  // Replace yield modifier 0.70 → 0.85, consume protection
+  state.frostProtectionEndsDay = 0;
+  addNotification(state, 'event_result', 'Your frost protection reduced crop losses.');
+
+  return effects.map(e => {
+    if (e.type === 'modify_yield_modifier' && e.multiplier === 0.70) {
+      return { ...e, multiplier: 0.85 };
+    }
+    // Replace the "30% damage" notification with the protected version
+    if (e.type === 'add_notification' && e.message.includes('30%')) {
+      return { ...e, message: 'Frost damaged some crops, but your protection reduced losses. Yield reduced by 15% instead of 30%.' };
+    }
+    return e;
+  });
+}
+
 function processRespondEvent(state: GameState, eventId: string, choiceId: string): CommandResult {
   if (!state.activeEvent) {
     return { success: false, reason: 'No active event to respond to.' };
@@ -464,8 +499,11 @@ function processRespondEvent(state: GameState, eventId: string, choiceId: string
 
   const cashBefore = state.economy.cash;
 
+  // Apply frost protection interaction (may modify effects for late-frost-warning)
+  const effectsToApply = applyFrostProtection(state, eventId, choiceId, choice.effects);
+
   // Apply effects
-  applyEffects(state, choice.effects, eventId);
+  applyEffects(state, effectsToApply, eventId);
 
   // Log the event
   state.eventLog.push({

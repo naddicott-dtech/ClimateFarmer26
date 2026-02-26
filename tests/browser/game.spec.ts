@@ -670,10 +670,17 @@ test.describe('Auto-pause testids', () => {
         break;
       }
 
-      // If an event panel appeared first, dismiss it and continue
-      const firstChoice = page.locator('[data-testid^="event-choice-"]').first();
-      if (await firstChoice.isVisible().catch(() => false)) {
-        await firstChoice.click();
+      // If an event or advisor panel appeared first, dismiss it and continue
+      const eventChoice = page.locator('[data-testid^="event-choice-"]').first();
+      const advisorChoice = page.locator('[data-testid^="advisor-choice-"]').first();
+      if (await eventChoice.isVisible().catch(() => false)) {
+        await eventChoice.click();
+        await page.getByTestId('speed-fastest').click().catch(() => {});
+        await page.waitForTimeout(50);
+        continue;
+      }
+      if (await advisorChoice.isVisible().catch(() => false)) {
+        await advisorChoice.click();
         await page.getByTestId('speed-fastest').click().catch(() => {});
         await page.waitForTimeout(50);
         continue;
@@ -1611,5 +1618,60 @@ test.describe('Cover Crop UI', () => {
 
     // Game starts in spring
     await expect(page.getByTestId('action-plant-cover-crop-bulk')).not.toBeVisible();
+  });
+});
+
+// ==========================================================================
+// §24 — Weather Service Advisor
+// ==========================================================================
+
+test.describe('Weather Service Advisor', () => {
+  test('weather advisor panel shows NWS character info', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant something so has_crop passes
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Inject weather-frost-alert directly
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.triggerEvent('weather-frost-alert');
+    });
+
+    // Advisor panel should appear
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await expect(page.getByTestId('advisor-name')).toContainText('NWS Fresno');
+    await expect(page.getByTestId('advisor-role')).toContainText('National Weather Service');
+    await expect(page.getByTestId('advisor-subtitle')).toContainText('Forecast accuracy varies');
+    await expect(page.getByTestId('event-description')).toContainText('Moderate confidence');
+  });
+
+  test('weather advisor frost protection choice deducts cash', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Trigger frost alert
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.triggerEvent('weather-frost-alert');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // Click deploy protection
+    await page.getByTestId('advisor-choice-deploy-protection').click();
+
+    // Cash should be reduced by $150
+    const cashText = await page.getByTestId('topbar-cash').textContent();
+    const cash = parseInt(cashText!.replace(/[^0-9]/g, ''));
+    // Started at 50000, spent seed cost + $150 for protection
+    expect(cash).toBeLessThan(50000);
   });
 });
