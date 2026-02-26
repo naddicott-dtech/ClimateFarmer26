@@ -36,6 +36,6 @@ localStorage.removeItem('playtestLog')
 npm install
 npm run dev          # Dev server (localhost:5173)
 npm run build        # Production build
-npm test             # Unit tests (416)
-npm run test:browser # Playwright browser tests (82)
+npm test             # Unit tests (451)
+npm run test:browser # Playwright browser tests (84)
 ```

@@ -1,55 +1,56 @@
-# HANDOFF.md — Slice 2 Completion Handoff
+# HANDOFF.md — Slice 3 Completion Handoff
 
-**Date:** 2026-02-25
-**Status:** Slice 2 complete (sub-slices 2a + 2b + 2c), all tests passing. Ready for Slice 3 planning.
+**Date:** 2026-02-26
+**Status:** Slice 3 complete (sub-slices 3a1 + 3a2 + 3b + 3c), all tests passing. Ready for Slice 4 planning.
 
 ## What Was Built
 
-### Slice 1 (Complete — reviewed 3 rounds)
-Core farming simulation loop: plant → grow → harvest → economy. 3 annual crops, 8×8 grid with bulk ops, weather system, soil model, save/load, auto-pause, tutorial. See git history for details.
+### Slice 1 (Complete)
+Core farming simulation loop: plant → grow → harvest → economy. 3 annual crops (silage corn, winter wheat, processing tomatoes), 8×8 grid with bulk ops, weather system, soil model, save/load, auto-pause, tutorial.
 
-### Slice 2a: Event Engine + Loans + 3 Climate Events
-- **Storylet/event engine** — Precondition-based event selection with deterministic evaluation order, separate event RNG (seeded from mainSeed + 10000), cooldowns, and `maxOccurrences` caps
-- **Foreshadowing system** — Advance warnings N days before events, with reliability (false alarms possible). Foreshadowed events get guaranteed priority when they mature
-- **3 climate events:** Heatwave Advisory (year 2+, summer, 30%), Water Allocation Cut (year 3+, summer, 20%), Late Frost Warning (spring, 15%)
-- **Emergency loan system** — First insolvency offers a one-time loan (engine-computed amount, 10% annual interest, 20% harvest revenue auto-repayment). Second insolvency or debt >$100k = hard game over
-- **Effect system** — `modify_cash`, `modify_moisture_all`, `modify_nitrogen_all`, `modify_yield_modifier`, `modify_irrigation_cost`, `restrict_watering`, `add_notification`, `set_flag`
-- **Active effects with duration** — Yield/price modifiers and irrigation cost changes expire after N days
+### Slice 2 (Complete)
+Event/storylet engine + loans + 3 climate events (heatwave, water allocation cut, late frost). Perennial crops (almonds, pistachios) with dormancy, chill hours, establishment periods. Extension agent advisor (Dr. Maria Santos, 5 storylets). Emergency loan system. Fog-of-war for chill hours. Save migration V1→V2→V3.
 
-### Slice 2b: Perennial Crops
-- **2 perennial crops:** Almonds (establishment: 3 years, $960 seed, 700 chill hours required) and Pistachios (establishment: 4 years, $900 seed, 600 chill hours required)
-- **Establishment period** — Zero yield during establishment, perennialAge tracked, perennialEstablished flag
-- **Dormancy** — Winter dormancy with automatic entry/exit based on season. Chill hours accumulate during dormancy
-- **Non-destructive harvest** — Collects fruit, keeps tree. Growth stage resets to mature. `harvestedThisSeason` guard prevents double-harvest
-- **Explicit removal** — `REMOVE_CROP` command required to clear perennials (with confirmation dialog)
+### Slice 3a1: Stretch Events + New Crops
+- **2 stretch events:** Tomato Market Surge (price ×1.4 for 60 days) and Groundwater Pumping Ban (comply: 30-day watering restriction, or buy rights: $1,000)
+- **2 new crops:** Sorghum (drought-tolerant annual, ky=0.50, $660/acre) and Citrus Navels (evergreen perennial, $4,900/acre, 35-year lifespan, no dormancy/chill)
+- **Citrus harvest cadence fix:** `harvestedThisSeason` reset for ALL perennials at year-end (not just dormancy exit)
 
-### Slice 2c: Extension Agent Advisor + Chill Hours + Fog-of-War
-- **5 advisor storylets** (Dr. Maria Santos, Extension Agent):
-  - `advisor-soil-nitrogen` — Fires when avg nitrogen < 50 (year 2+). Offers fertilizer ($400, +60N to all cells) or acknowledgment
-  - `advisor-crop-failure` — Fires after crop failures. Offers diversification or irrigation tips
-  - `advisor-chill-warning` — Fires when perennials planted (year 8+). Reveals chill hour data
-  - `advisor-drought-recovery` — Fires when cash < $30k (year 4+). Offers cost-cutting or low-cost crop advice
-  - `advisor-perennial-opportunity` — Fires when cash > $40k, no debt, no perennials (year 3+). Suggests tree crops
-- **Chill-hour mechanics:**
-  - Pre-defined chill hours per year in scenario data: 800 (years 1-5), 700 (6-15), 630 (16-25), 570 (26-30)
-  - Accumulation during winter dormancy: `dailyChill = yearChillHours / 90`, resets at dormancy entry
-  - Yield penalty at harvest: `chillFactor = clamp(accumulated / required, 0, 1)`. Annuals skip, non-established perennials skip
-  - Teaching moment: by year 20, chill hours (630) are insufficient for almonds (700 required) but sufficient for pistachios (600 required)
-- **Fog-of-war:** Chill hour UI hidden until `state.flags['chillHoursRevealed']` is true. Set by: (a) planting first perennial, or (b) advisor chill-warning event choice
-- **Dynamic testid prefixes:** Advisor events use `advisor-choice-*`, climate/regulatory events use `event-choice-*`
-- **Save migration:** V2→V3 (adds `chillHoursAccumulated` to crop instances), V1→V2→V3 chaining for oldest saves
+### Slice 3a2: Perennial Yield Curves
+- **3-phase piecewise-linear yield curves:** Ramp (0.6→0.8→1.0) → Peak (1.0) → Decline (→floor)
+- **Crop curves:** Almonds (decline year 15, floor 0.2), Pistachios (decline year 17, floor 0.2), Citrus (decline year 28, floor 0.3 — never declines in 30-year game)
+- **Decline advisor:** `advisor-orchard-decline` fires when perennials enter decline phase
+- **SidePanel UI:** Phase labels (Establishing, Ramping Up, Peak, Declining, Past Prime), years-until-decline countdown
 
-### Reviewer Findings Addressed (4 rounds for 2a, 1 round for 2c)
-All findings documented in KNOWN_ISSUES.md with resolution details.
+### Slice 3b: Cover Crop System
+- **Legume cover crop:** $30/plot, fall planting (months 9-11), spring auto-incorporation (+50N, +0.10% OM, -0.5in moisture)
+- **Eligibility:** Empty cells OR deciduous perennials (has `dormantSeasons`). Evergreen citrus rejected.
+- **ET rules:** Cover crop replaces bare soil ET (0.2× vs 0.3×). Halts OM decomposition during winter.
+- **Bulk ops:** DD-1 pattern (field/row/col scope, partial offers, `executeBulkCoverCrop` engine function)
+- **Save migration:** V3→V4 adds `coverCropId: null` to all cells + `frostProtectionEndsDay: 0` to GameState
+
+### Slice 3c: Weather Service Advisor
+- **NWS Fresno character:** 3 storylets with confidence language (High/Moderate/Low). `advisorId: 'weather-service'` routes character display in EventPanel.
+- **`weather-heat-forecast`** (summer, year 2+, 25%): Pre-irrigate $200 (+1.5 moisture) or Monitor
+- **`weather-frost-alert`** (spring, 20%): Deploy frost protection $150 (14-day `frostProtectionEndsDay`) or Wait
+- **`weather-drought-outlook`** (spring, year 5+, 15%): Informational — mentions sorghum as drought-tolerant option
+- **Frost protection mechanism:** `frostProtectionEndsDay` state field. Active when `totalDay < frostProtectionEndsDay`. Consumed only by late-frost-warning "accept-risk" (0.70→0.85 yield penalty). Full-protection ($300) does NOT consume it. Non-frost events ignore it. Overlapping activations: `max(current, new)`. TopBar shows ice indicator with countdown.
+- **Advisor routing:** `advisorId` field on Storylet. All Dr. Santos advisors tagged `'extension-agent'`, weather service tagged `'weather-service'`. EventPanel renders correct character, icon, and subtitle.
+
+### Additional: Playtest Logging + Bug Fixes
+- **Playtest logging** (`src/engine/playtest-log.ts`): localStorage-toggled verbose logging for human QA. Captures commands, events, harvests, year-end summaries. `window.__playtestLog` + `window.__exportPlaytestLog()`.
+- **#46 fix:** Tomato Market Surge now requires `has_crop: processing-tomatoes` precondition
+- **#51 fix:** "Plant Field" bulk buttons now show notification instead of silently failing when no full rows available
+- **Frost messaging fix:** Protected frost path shows "Yield reduced by 15% instead of 30%" (not contradictory "30%" message)
 
 ## Current Metrics
 
 ```
 npx tsc -b             # Type-check: clean
-npx vitest run         # 300 unit tests, all passing (10 test files)
-npx vite build         # 32.38 KB gzipped JS, 4.35 KB CSS
-npx playwright test    # 65 browser tests, all passing
-SAVE_VERSION           # '3.0.0'
+npx vitest run         # 451 unit tests, all passing (14 test files)
+npx vite build         # 37.80 KB gzipped JS, 4.51 KB CSS
+npx playwright test    # 84 browser tests, all passing
+SAVE_VERSION           # '4.0.0'
 ```
 
 ## Architecture Quick Reference
@@ -58,106 +59,119 @@ SAVE_VERSION           # '3.0.0'
 src/
   engine/          Pure TS, zero UI deps. All game logic.
     types.ts         GameState root type, Command union, CropInstance, constants
-    game.ts          createInitialState, processCommand, simulateTick, harvestCell
+    game.ts          createInitialState, processCommand, simulateTick, harvestCell,
+                     getPerennialAgeFactor, getPerennialPhase, executeBulkPlant,
+                     executeWater, executeBulkCoverCrop, addNotification
     calendar.ts      Day↔calendar conversion (STARTING_DAY=59 = March 1)
-    weather.ts       generateDailyWeather, updateExtremeEvents, ExtremeEventState
+    weather.ts       generateDailyWeather, updateExtremeEvents
     rng.ts           Mulberry32 seeded PRNG
+    playtest-log.ts  Opt-in verbose logging for human QA
     events/
-      types.ts       Storylet, Condition, Effect, Choice, Foreshadowing types
+      types.ts       Storylet (with advisorId), Condition (16 types), Effect (10 types),
+                     Choice, Foreshadowing, ActiveEvent, ActiveEffect
       selector.ts    evaluateEvents — precondition checking, weighted selection
-      effects.ts     applyEffects — processes all Effect types on GameState
+      effects.ts     applyEffects — processes all Effect types including activate_frost_protection
   adapter/
     signals.ts       Bridges engine↔UI. _liveState → structuredClone → gameState signal
                      Debug hooks: window.__gameDebug (setCash, setDay, setDebt, triggerEvent, setFlag)
   data/
-    crops.ts         5 crop definitions (3 annual + 2 perennial)
+    crops.ts         7 crop definitions (4 annual + 3 perennial) with yield curves
+    cover-crops.ts   Cover crop definitions (legume-cover)
     scenario.ts      30-year climate scenario with chillHours per year
-    events.ts        STORYLETS array (3 climate + 5 advisor events)
+    events.ts        STORYLETS array (3 climate + 2 market/regulatory + 9 advisor events = 14 total)
   save/
-    storage.ts       localStorage: auto-save, manual saves, V1→V2→V3 migration
+    storage.ts       localStorage: auto-save, manual saves, V1→V2→V3→V4 migration chain
   ui/
     components/      Preact components (App, GameScreen, NewGameScreen, TopBar, FarmGrid,
                      FarmCell, SidePanel, CropMenu, AutoPausePanel, NotificationBar,
                      ConfirmDialog, Tutorial, EventPanel)
     styles/          CSS Modules
 tests/
-  engine/            Unit tests: game, weather, calendar, save, rng, events, chill, advisors
-  browser/           Playwright specs (game.spec.ts)
+  engine/            Unit tests: game, weather, calendar, save, rng, events, chill,
+                     advisors, perennials, yieldcurve, covercrop, weather-advisor, slice3a1
+  browser/           Playwright specs (game.spec.ts — 84 tests)
 ```
 
 ## Key Implementation Details for Next Session
 
-### Event System Flow
-1. `simulateTick()` calls `evaluateEvents()` each tick
-2. `evaluateEvents()` checks all storylets in array order against preconditions
-3. Non-random conditions evaluated first (short-circuit). `random` condition consumed from event RNG only if all others pass
-4. Foreshadowing: conditions pass → foreshadow created → event fires N days later (guaranteed priority)
-5. Active event → auto-pause, EventPanel overlay. Player choice → `RESPOND_EVENT` command → `applyEffects()`
+### Crop Roster (7 crops)
+| Crop | Type | Revenue/acre | Key trait |
+|------|------|-------------|-----------|
+| Silage Corn | Annual | $1,650 | Standard warm-season |
+| Winter Wheat | Annual | $510 | Winter crop, light feeder |
+| Processing Tomatoes | Annual | $3,600 | High revenue, water-hungry |
+| Sorghum | Annual | $660 | Drought-tolerant (ky=0.50) |
+| Almonds | Perennial | $6,250 peak | High chill needs (700hr), declines year 15 |
+| Pistachios | Perennial | $4,800 peak | Lower chill (600hr), declines year 17 |
+| Citrus Navels | Perennial | $4,900 | Evergreen, no chill, no decline in 30yr |
 
-### Chill Hour Flow
-1. Scenario data: `yearClimate.chillHours` (800→700→630→570 over 30 years)
-2. `simulateCrop()`: dormancy entry resets `chillHoursAccumulated` to 0, then accumulates `yearChillHours / 90` per dormant day
-3. `harvestCell()`: after event yield modifier, applies `chillFactor = clamp(accumulated / required, 0, 1)` as yield multiplier
-4. Annuals: `chillHoursRequired` undefined → skip. Non-established perennials: skip penalty
+### Event System (14 storylets)
+- **3 climate:** heatwave-advisory, water-allocation-cut, late-frost-warning (all have foreshadowing)
+- **2 market/regulatory:** tomato-market-surge (no foreshadowing), groundwater-pumping-ban (no foreshadowing)
+- **6 Dr. Santos advisors:** soil-nitrogen, crop-failure, chill-warning, drought-recovery, perennial-opportunity, orchard-decline
+- **3 Weather Service advisors:** heat-forecast, frost-alert, drought-outlook
+
+### Frost Protection Flow
+1. `weather-frost-alert` fires → player chooses "Deploy Protection" ($150)
+2. `activate_frost_protection` effect sets `frostProtectionEndsDay = totalDay + 14`
+3. TopBar shows "Frost Protection (Xd)" indicator
+4. If `late-frost-warning` fires during window and player chooses "Accept the Risk":
+   - `applyFrostProtection()` replaces 0.70 multiplier with 0.85, replaces notification text
+   - Consumes protection (`frostProtectionEndsDay = 0`)
+5. If player pays $300 for full frost protection: weather protection NOT consumed
+6. Protection expires naturally when `totalDay >= frostProtectionEndsDay`
 
 ### Save Migration Chain
-- V3 (current, `'3.0.0'`): Full validation via `validateSave()`
-- V2 (`'2.0.0'`): `migrateV2ToV3()` — adds `chillHoursAccumulated: 0` to all crop instances
-- V1 (`'1.0.0'`): `migrateV1ToV2()` → `migrateV2ToV3()` chain — fills event system fields, perennial fields, then chill fields
-- Unknown/corrupt: returns null (no crash)
+- V4 (current, `'4.0.0'`): Full validation via `validateSave()`
+- V3→V4: `migrateV3ToV4()` — adds `coverCropId: null` to all cells + `frostProtectionEndsDay: 0`
+- V2→V3: adds `chillHoursAccumulated: 0` to all crop instances
+- V1→V2: fills event system fields + perennial fields
+- Both `readSave()` and `listManualSaves()` use the full migration chain
 
 ### Adapter Debug Hooks (for Playwright tests)
 `window.__gameDebug` exposes: `setCash()`, `setDay()`, `setDebt()`, `setTotalLoansReceived()`, `setFlag()`, `triggerEvent()`, `getState()`. Test-only — does not resync RNG or resimulate.
 
-## Deferred Items (Documented in KNOWN_ISSUES.md)
+## Open Issues & Priorities for Slice 4
 
-### Deferred from Slice 2 → Slice 3
-- **Stretch events:** `tomato-market-surge` and `groundwater-pumping-ban` were designed but deferred per Neal's pre-flight feedback. Canonical specs below (not yet in code):
-  - **Tomato Market Surge:** type=market, conditions: not winter + year 2+ + 10% random, priority 45, cooldown 365 days. Single choice: Acknowledge → tomato price ×1.4 for 60 days.
-  - **Groundwater Pumping Ban:** type=regulatory, conditions: summer + year 5+ + 12% random, priority 55, cooldown 730 days. Choices: Comply (no irrigation 30 days) OR Buy surface water rights ($1,000).
-- **Perennial decline phase** — Trees should lose productivity after peak years. Not yet modeled.
-- **Age-based yield curves** — Perennials currently use binary yield (0 during establishment, 1.0 after). Real orchards have a ramp-up curve.
-- **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started.
-- **Remaining 3 advisors** — Financial advisor, Weather service, Farming community. Only Extension Agent (Dr. Santos) is implemented.
-- **Insurance / credit systems** — Credit rating, variable rates, insurance premiums. Only one-time emergency loan exists.
-- **K + Zn nutrients** — Only nitrogen is tracked. Potassium and zinc deferred.
-- **Cover crops** — Off-season crop strategies not yet implemented.
-- **Additional crops** — 7 more crops from the full 12-crop roster (ARCHITECTURE.md §8).
-- **Additional scenarios** — Only 1 scenario exists. Need 5-8 for classroom use.
+### PRE-CLASSROOM RELEASE BLOCKER
+- **#45: Economy too lenient** — Almond monoculture finished 30 years at $404k. Requires headless automated balance testing (ARCHITECTURE.md §12 Layer 2). Systematic tuning, NOT hand-tuning.
 
-### Deferred from Slice 2 → Slice 4
-- **Automation policies** — Replant-same, harvest-when-ready, water-when-dry
+### Known UX bugs (deferred from playtesting)
+- **#52:** Water Warning "Water Field" chains into redundant second confirmation dialog
+- **#53:** Year-end expenses don't break down categories (maintenance costs invisible)
+- **#54:** Calendar display lag after "Continue to Year 2"
+- **#55:** Row/Column plant buttons don't show per-plot cost
+- **#47:** Event clustering feels spammy (multiple events per season)
+- **#48:** Perennial re-harvest confusion (no visual indicator when already harvested)
+- **#49:** Cover crop/soil health pedagogy not landing (OM decline invisible)
+- **#50:** Pause-to-play transition not intuitive
+
+### Deferred Features → Slice 4+
+- **Balance testing suite** — Headless automated strategy tests (monoculture, diversified, zero-irrigation, max-debt). BLOCKER prerequisite for classroom deployment.
+- **Economic rebalancing** — Data-driven tuning from balance test results
+- **Event system tuning** — Per-season event cap, mutual exclusion groups
+- **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4)
+- **Remaining advisors** — Financial Advisor/Banker, Farming Community
+- **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums
+- **K + Zn nutrients** — Only nitrogen is modeled
+- **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule
+- **Additional climate scenarios** — Only 1 scenario exists. Need 5-8 for classroom use
+- **Automation policies** — Replant-same, harvest-when-ready, water-when-dry. Unlocked via tech tree
 - **Glossary / Information Index** — In-game educational reference
 - **Solar lease event chain** — Multi-phase storylet
 - **Completion code + Google Form** — End-of-game reporting
-- **Advanced accessibility** — Colorblind modes, full screen reader support
-- **Sound / music**
+- **Year-end expense breakdown** — Show planting, watering, maintenance, loan repayment line items
 
 ### Accepted Limitations
 - **Deep save validation** — Nested field tampering not caught (acceptable for classroom)
 - **Single scenario** — Students all play the same climate track until more scenarios are added
 
-## What's Next (Slice 3: Depth & Discovery)
-
-Per ARCHITECTURE.md §13, Slice 3 adds the systems that make the game truly educational:
-
-**Likely priorities (Neal to confirm):**
-1. Stretch events (tomato market surge, groundwater pumping ban) — already designed, low effort
-2. Perennial decline phase + age-based yield curves — completes the perennial lifecycle
-3. Additional crop roster (grapes, citrus, stone fruit, future/adaptive crops)
-4. K + Zn nutrients with tech-gated visibility
-5. Cover crop strategies
-6. Tech tree (event-driven fog-of-war unlocks)
-7. Additional advisors (Financial, Weather, Community)
-8. Additional climate scenarios (need 5-8 total)
-9. Insurance + credit systems
-
 ## Verification Commands
 
 ```bash
 npx tsc -b                    # Type-check (must be clean)
-npx vitest run                # 300 unit tests
+npx vitest run                # 451 unit tests
 npx vite build                # Production build (<200KB gzipped)
-npx playwright test           # 65 browser tests (builds first)
+npx playwright test           # 84 browser tests (builds first)
 npm run test:all              # All tests in sequence
 ```

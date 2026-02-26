@@ -1,6 +1,6 @@
 # SPEC.md — Acceptance Tests & Requirements
 
-> **Status: Living document. Slice 1 locked. Slice 2 implemented and reviewed. Slice 3 in progress.**
+> **Status: Living document. Slice 1 locked. Slices 2-3 implemented and reviewed. Slice 4 next.**
 > Format: **When** [user action], **I should see** [expected result].
 > Negative cases use: **When** [action], **I should NOT see** [bad outcome] / **the system should** [prevent it].
 
@@ -698,8 +698,9 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 
 ##### 23.2 Eligible Cells
 - **When** I try to plant a cover crop on an empty cell, **the system should** allow it.
-- **When** I try to plant a cover crop on a cell with a dormant perennial, **the system should** allow it (understory planting — real orchard practice).
-- **When** I try to plant a cover crop on a cell with a growing (non-dormant) annual or perennial, **the system should** reject it.
+- **When** I try to plant a cover crop on a cell with a deciduous perennial (has `dormantSeasons`), **the system should** allow it regardless of current dormancy state (understory planting — real orchard practice).
+- **When** I try to plant a cover crop on a cell with an evergreen perennial (citrus — no `dormantSeasons`), **the system should** reject it.
+- **When** I try to plant a cover crop on a cell with a growing annual, **the system should** reject it.
 
 ##### 23.3 Cost
 - **When** I plant a legume cover crop, **I should see** $30 deducted per plot.
@@ -803,7 +804,7 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 - `farm-cell-cover-{row}-{col}` — cover crop indicator on farm cell
 
 #### Weather Advisor
-- `advisor-panel-weather` — weather advisor panel (distinct from extension agent)
+- `advisor-panel` — shared advisor panel (weather and extension agent use the same panel with `advisorId` routing)
 - `frost-protection-status` — frost protection active indicator
 
 ---
@@ -822,7 +823,7 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 - `advisor-portrait` — emoji/portrait element
 - `advisor-name` — advisor's name
 - `advisor-role` — advisor's role subtitle
-- `advisor-message` — dialogue text
+- `event-description` — dialogue text (shared test ID with event panel)
 - `advisor-choice-{choiceId}` — choice buttons
 
 #### Loan Panel

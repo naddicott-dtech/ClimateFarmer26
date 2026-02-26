@@ -143,7 +143,7 @@ Status: Deferred. Needs design discussion. Options: (a) auto-resume at 1x after 
 
 **Still deferred → Slice 4+:**
 - **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started.
-- **Remaining advisors** — Financial Advisor/Banker, Farming Community. Weather Service is in progress (3c).
+- **Remaining advisors** — Financial Advisor/Banker, Farming Community. (Weather Service completed in 3c.)
 - **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums.
 - **K + Zn nutrients** — Only nitrogen is modeled.
 - **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule remain.

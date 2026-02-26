@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClimateFarmer26 is a browser-based educational simulation game where students role-play as California farmers across multiple years, making season-by-season strategic decisions as climate impacts challenge their operations. A successful playthrough teaches diversification, water conservation, and forward-thinking agricultural practices. The student experience should be pleasant and focused on key decisions — many systems run on autopilot until the student opts into manual control.
 
-**Status: Slice 2 complete and reviewed.** Core farming loop + event/storylet engine + perennials + advisor + chill hours + emergency loans. 300 unit tests, 65 Playwright browser tests, all passing. Production build: ~32KB gzipped JS. Ready for Slice 3 planning.
+**Status: Slice 3 complete and reviewed.** Core farming loop + event/storylet engine + perennials + 7 crops + cover crops + 2 advisors (Dr. Santos + NWS Fresno) + yield curves + frost protection. 451 unit tests, 84 Playwright browser tests, all passing. Production build: ~38KB gzipped JS. Ready for Slice 4 planning. **Pre-classroom release blocker: #45 (economy too lenient — needs headless balance testing).**
 
 ## Workflow Rules
 
@@ -48,9 +48,9 @@ Do not commit, push, or create branches/PRs unless Neal explicitly asks.
 npm run dev          # Dev server (http://localhost:5173)
 npm run build        # Type-check + production build (tsc -b && vite build)
 npm run preview      # Serve production build (http://localhost:4173)
-npm test             # Unit tests (vitest run) — 300 tests
+npm test             # Unit tests (vitest run) — 451 tests
 npm run test:watch   # Unit tests in watch mode
-npm run test:browser # Playwright browser tests — 65 tests (builds first)
+npm run test:browser # Playwright browser tests — 84 tests (builds first)
 npm run test:all     # Unit + browser tests
 npx vitest run tests/engine/game.test.ts  # Run a single test file
 npx vitest run -t "plants a crop"         # Run tests matching a name pattern
@@ -63,27 +63,28 @@ npx vitest run -t "plants a crop"         # Run tests matching a name pattern
 **Three-layer architecture:**
 
 1. **Engine** (`src/engine/`) — Pure TypeScript, zero UI deps. All game logic lives here. Testable headlessly.
-   - `types.ts` — All game state types and constants. `GameState` is the root type. `SAVE_VERSION = '3.0.0'`.
+   - `types.ts` — All game state types and constants. `GameState` is the root type. `SAVE_VERSION = '4.0.0'`.
    - `game.ts` — Core: `createInitialState()`, `processCommand()`, `simulateTick()`, `harvestCell()`. Commands are discriminated unions (`Command` type).
    - `calendar.ts` — Day↔calendar conversion. Game starts at `STARTING_DAY=59` (March 1).
    - `weather.ts` — Deterministic daily weather from `ClimateScenario` + seeded RNG. `ExtremeEventState` interface for multi-day heatwave/frost tracking. `updateExtremeEvents()` modifies weather in-place. Per-season probability converted to per-day via `1-(1-p)^(1/90)`.
    - `rng.ts` — Mulberry32 seeded PRNG with save/restore state.
-   - `events/types.ts` — Storylet, Condition, Effect, Choice, Foreshadowing type definitions.
+   - `playtest-log.ts` — Opt-in verbose logging for human QA sessions.
+   - `events/types.ts` — Storylet (with advisorId), Condition (16 types), Effect (10 types incl. `activate_frost_protection`), Choice, Foreshadowing.
    - `events/selector.ts` — `evaluateEvents()` — precondition checking, foreshadowing lifecycle, weighted event selection.
    - `events/effects.ts` — `applyEffects()` — processes all Effect types on GameState.
 
 2. **Adapter** (`src/adapter/signals.ts`) — Bridges engine↔UI with Preact Signals.
    - `_liveState` is mutable (engine mutates it). `publishState()` creates a `structuredClone` for the reactive `gameState` signal.
    - Game loop: `requestAnimationFrame`-based, 12 ticks/sec × speed multiplier.
-   - Player actions go through `dispatch()` → `processCommand()`. Partial-offer bulk confirm callbacks call `executeBulkPlant`/`executeWater` directly (already validated by prior `processCommand` call).
+   - Player actions go through `dispatch()` → `processCommand()`. Partial-offer bulk confirm callbacks call `executeBulkPlant`/`executeWater`/`executeBulkCoverCrop` directly (already validated by prior `processCommand` call).
    - Debug hooks (`window.__gameDebug`): `setCash`, `setDay`, `setDebt`, `setTotalLoansReceived`, `setFlag`, `triggerEvent`, `getState` — for Playwright test state injection.
 
 3. **UI** (`src/ui/`) — Preact components + CSS Modules. Reads computed signals, calls adapter functions.
    - Components: App, GameScreen, NewGameScreen, TopBar, FarmGrid, FarmCell, SidePanel (with ChillHourBar), CropMenu, AutoPausePanel, NotificationBar, ConfirmDialog, Tutorial, EventPanel
 
-**Data files** (`src/data/`): `crops.ts` (5 crops: 3 annual + 2 perennial), `scenario.ts` (30-year climate scenario with chillHours per year), `events.ts` (STORYLETS: 3 climate + 5 advisor)
+**Data files** (`src/data/`): `crops.ts` (7 crops: 4 annual + 3 perennial with yield curves), `cover-crops.ts` (legume cover crop definition), `scenario.ts` (30-year climate scenario with chillHours per year), `events.ts` (STORYLETS: 14 total — 3 climate + 2 market/regulatory + 6 Dr. Santos advisors + 3 Weather Service advisors)
 
-**Save system** (`src/save/storage.ts`): localStorage with corruption detection + V1→V2→V3 migration chain. Auto-save on season change. Manual named saves keyed by "Year N Season". `hasSaveData()` only checks auto-save (powers Continue button); `hasManualSaves()` powers Load Game button.
+**Save system** (`src/save/storage.ts`): localStorage with corruption detection + V1→V2→V3→V4 migration chain. Auto-save on season change. Manual named saves keyed by "Year N Season". `hasSaveData()` only checks auto-save (powers Continue button); `hasManualSaves()` powers Load Game button.
 
 **Key patterns:**
 - Command pattern for all player actions (discriminated union `Command` type)

@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Technical Design Document (Draft)
 
-> **Status: Living document. Slice 1-2 implemented and reviewed. Slice 3 in progress.**
+> **Status: Living document. Slices 1-3 implemented and reviewed. Slice 4 next.**
 > Cross-references: `reference/SIMULATION_PATTERNS.md`, `reference/BackgroundDeepResearch.md`
 
 ## 1. Overview
@@ -621,7 +621,7 @@ All grid cells, buttons, panels, and interactive elements have `data-testid` att
 
 **Cover crop lifecycle:** Plant in fall (months 9-11) → grows over winter (halts OM decomposition) → auto-incorporated at winter→spring transition (applies N + OM bonuses, moisture drawdown).
 
-**Eligible cells:** Empty cells OR cells with dormant perennials (understory planting).
+**Eligible cells:** Empty cells OR deciduous perennials (crops with `dormantSeasons` defined — almonds, pistachios). Evergreen perennials (citrus — no `dormantSeasons`) are rejected. Deciduous perennials are eligible throughout the fall planting window, not only when dormant.
 
 **ET rules with cover crops:**
 ```
@@ -784,7 +784,7 @@ The game becomes strategic. Things happen that require decisions. Long-term inve
 
 **Sub-sliced as:** 2a (event engine + loans + 3 events) → 2b (perennials) → 2c (advisor + chill hours). Each independently reviewed.
 
-### Slice 3: Depth & Discovery ← IN PROGRESS
+### Slice 3: Depth & Discovery ← COMPLETE
 Adaptation tradeoffs, perennial lifecycle, cover crop system, and weather advisor.
 
 **Sub-slices:**
@@ -820,10 +820,10 @@ Everything needed to hand this to students with confidence.
 
 ### Deferrable (decide during later slices)
 - [ ] Scoring formula for retirement (Slice 4 — endgame feature)
-- [ ] Irrigation upgrade specifics and costs (Slice 3 — tech tree detail)
-- [ ] Climate scenario data: need to generate/curate 5-8 30-year seasonal parameter sets (Slice 3-4)
+- [ ] Irrigation upgrade specifics and costs (Slice 4+ — tech tree detail)
+- [ ] Climate scenario data: need to generate/curate 5-8 30-year seasonal parameter sets (Slice 4+)
 - [ ] Farm expansion / neighbor buyout event (likely v2, not Classroom-Ready Build)
 - [ ] Agrivoltaics detail level in solar lease chain (Slice 4)
 - [ ] Market price model: static base + event modifiers is sufficient for Slice 1-2; full supply/demand is likely overkill
-- [ ] Advanced accessibility: colorblind modes, full screen reader support (Slice 3-4; baseline keyboard nav + ARIA labels are in Slice 1)
+- [ ] Advanced accessibility: colorblind modes, full screen reader support (Slice 4+; baseline keyboard nav + ARIA labels are in Slice 1)
 - [ ] Sound / music (defer — nice to have, not essential for classroom use)
