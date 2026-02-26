@@ -72,7 +72,7 @@ Review every contribution as untrusted until proven:
 
 ## Testability and Agent-Friendly UI
 - Every interactive element must have clear `data-testid`.
-- IDs should be readable and predictable (example: `field-cell-3-7`, `plant-corn-button`).
+- IDs should be readable and predictable (example: `farm-cell-3-7`, `action-plant`).
 - Core user flows must be automatable without brittle selectors.
 
 ## Risk Management
@@ -88,6 +88,7 @@ Review every contribution as untrusted until proven:
 
 ## Ongoing Artifacts and Ownership
 Keep these current at all times:
+- `HANDOFF.md`: current slice status, metrics, shipped systems, immediate priorities
 - `README.md`: run/test/dev instructions
 - `SPEC.md`: acceptance tests and expected behavior
 - `ARCHITECTURE.md`: design decisions and boundaries
@@ -101,17 +102,30 @@ Keep these current at all times:
 4. What must be measured (performance, reliability, usability) before moving on?
 5. What assumptions are still unverified?
 
-## Fresh Context Bootstrap (2026-02-23)
-Run these first in any new session:
-1. `/bin/zsh -lc "TMPDIR=$PWD git status --short"` (see what changed before reviewing).
-2. `npm run test` (expect full engine suite to pass; currently 113 tests).
-3. `npm run test:browser` (expect Playwright suite to pass; currently 38 tests).
-4. `npm run build` (expect successful production build; currently ~22KB gzipped JS).
+## Fresh Context Bootstrap (2026-02-26, Post-Slice-3)
 
-Current known review priorities:
-1. Weather RNG continuity at Spring start: `createInitialState` warms RNG with `generateDailyWeather` only, but tick path also calls `updateExtremeEvents`. Re-check determinism intent and skipped-day event carryover in `src/engine/game.ts`.
-2. Extreme-event probability semantics: `heatwaveProbability`/`frostProbability` are documented as per-season but implemented as `p/90` daily approximation in `src/engine/weather.ts`. Confirm whether this approximation is acceptable for classroom balance.
-3. Weather streak test strength: the test checks `maxStreak >= 3`; tighten if needed to ensure no isolated one-day event regressions in `tests/engine/weather.test.ts`.
+### Must-Read Order Before Any Slice 4 Work
+1. `HANDOFF.md` — fastest current-state snapshot (what shipped, exact metrics, priorities).
+2. `KNOWN_ISSUES.md` — blockers/deferred work and why it was deferred.
+3. `SPEC.md` — acceptance contract (what behavior is required, not just implemented).
+4. `ARCHITECTURE.md` — system boundaries and Slice 4 roadmap.
+5. `DECISIONS.md` — locked choices to avoid re-litigating resolved design decisions.
+6. `README.md` — run/test commands and playtest logging usage.
+
+### Session-Start Verification Commands
+Run these first in any new session:
+1. `/bin/zsh -lc "TMPDIR=$PWD git status --short"` (inspect local changes before review).
+2. `npx tsc -b` (type-check must be clean).
+3. `npm test` (expect 451 unit tests passing).
+4. `npm run test:browser` (expect 84 Playwright tests passing).
+5. `npm run build` (expect successful production build, ~37.80 KB gzipped JS).
+
+### Current Slice 4 Review Priorities
+1. **Pre-classroom blocker (#45):** economy/balance is too lenient. Implement headless balance-testing suite and tune from data, not ad hoc playfeel.
+2. **Event cadence UX:** reduce event clustering spam while preserving educational signal and deterministic behavior.
+3. **Decision transparency UX:** year-end expense breakdown (especially perennial maintenance and recurring costs).
+4. **Onboarding friction:** paused-state play confusion and related UX flow issues from human playtests.
+5. **Slice-4 scope discipline:** prioritize classroom-polish outcomes (balance suite, scenarios, clarity) over new speculative mechanics.
 
 Review discipline reminders:
 - Never accept pass-count claims without rerunning tests locally.
