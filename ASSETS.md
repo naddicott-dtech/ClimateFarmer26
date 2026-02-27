@@ -63,6 +63,18 @@ When implementing advisor portraits in the EventPanel:
 5. Browser tests: verify `<img>` loads for advisor events, verify alt text is accessible
 6. Keep text-first UI intact — portraits enhance but don't replace the text content
 
+## Style Guide
+  Create a single game-ready 2D digital illustration asset for an educational farming strategy game set in California’s San Joaquin Valley.
+
+  SHARED STYLE GUIDE:
+  Stylized semi-realistic look with warmth and personality. Painterly forms, clean readable silhouette, subtle hand-crafted texture, approachable for high school
+  students. Grounded and optimistic tone.
+  Palette direction: sun-baked earth (#A97142), wheat gold (#D8B45A), irrigation blue (#4A90B8), leaf green (#6FA35B), sky haze (#C9DCE8), orchard dark (#2F5D3A),
+  accent orange (#E38B3A).
+  Lighting: soft daylight, gentle directional light, mild contrast, no harsh dramatic shadows.
+  Composition: one clear centered subject, high readability at small size.
+  Hard constraints: transparent background, no scene background, no text, no letters, no logos, no watermark, no frame, no UI elements.
+
 ## Source & License
 
 | Asset | Source | License | Attribution Required |
