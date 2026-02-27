@@ -5,14 +5,14 @@ import type { ActiveEvent, Choice } from '../../engine/events/types.ts';
 import styles from '../styles/Overlay.module.css';
 
 /** Advisor character info keyed by advisorId */
-const ADVISOR_CHARACTERS: Record<string, { icon: string; name: string; role: string; subtitle?: string }> = {
+const ADVISOR_CHARACTERS: Record<string, { portrait: string; name: string; role: string; subtitle?: string }> = {
   'extension-agent': {
-    icon: '\u{1F9D1}\u200D\u{1F33E}',
+    portrait: `${import.meta.env.BASE_URL}assets/advisors/extension-agent_128x128.jpeg`,
     name: 'Dr. Maria Santos',
     role: 'County Extension Agent',
   },
   'weather-service': {
-    icon: '\u{1F327}\u{FE0F}',
+    portrait: `${import.meta.env.BASE_URL}assets/advisors/weather-service_128x128.jpeg`,
     name: 'NWS Fresno',
     role: 'National Weather Service — Fresno Office',
     subtitle: 'Forecast accuracy varies by timeframe',
@@ -62,9 +62,14 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
       <div class={styles.panel} ref={panelRef}>
         {isAdvisor && (
           <div class={styles.advisorHeader}>
-            <span class={styles.advisorIcon} data-testid="advisor-portrait" aria-hidden="true">
-              {advisor.icon}
-            </span>
+            <img
+              class={styles.advisorPortrait}
+              data-testid="advisor-portrait"
+              src={advisor.portrait}
+              alt={advisor.name}
+              width="64"
+              height="64"
+            />
             <div>
               <div class={styles.advisorName} data-testid="advisor-name">{advisor.name}</div>
               <div class={styles.advisorRole} data-testid="advisor-role">{advisor.role}</div>

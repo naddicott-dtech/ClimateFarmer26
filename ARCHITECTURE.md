@@ -199,14 +199,16 @@ interface SeasonParams {
 
 **Scenario selection:** On new game, pick randomly from scenarios the student hasn't played recently (tracked in localStorage). Students cannot predict which scenario they'll get.
 
-**Scenario pool for Classroom-Ready Build:** 5–8 scenarios covering a range:
-- Gradual warming (manageable with adaptation)
-- Early severe drought (tests early-game resilience)
-- Whiplash pattern (drought-flood-drought cycles)
-- Late-game heat escalation (manageable early, harsh later)
-- Relatively mild (to allow some students to succeed more easily)
+**Scenario pool for Classroom-Ready Build:** 5 calibrated scenarios required for Slice 4 sign-off (additional scenarios optional for Slice 5+):
+1. **Gradual warming** — manageable with adaptation (current "Slice 1 Baseline")
+2. **Early severe drought** — tests early-game resilience
+3. **Whiplash** — drought-flood-drought cycles
+4. **Late-game heat escalation** — manageable early, harsh later
+5. **Relatively mild baseline** — allows some students to succeed more easily
 
-**Balance testing:** Automated headless tests run generic strategies against ALL scenarios. A corn monoculture should fail in drought-heavy scenarios. A well-diversified adaptive strategy should survive most.
+**Scenario selection:** Random from recently-unplayed pool (tracked in localStorage). Students cannot predict which scenario they'll get. With 5 scenarios and recently-played exclusion, repeat play is meaningfully less predictable.
+
+**Balance testing:** Full matrix: 5 strategy bots × 5 scenarios × ≥20 seeds = ≥500 headless 30-year runs. See §12 Layer 2 and §12.1 for protocol.
 
 ### 5.4 Event / Storylet System
 
@@ -518,7 +520,7 @@ src/data/
 
 All content is defined as typed TypeScript constants, validated at compile time by `tsc --strict`. This provides the data-driven benefits (adding content = editing data, not engine logic) with compile-time type safety.
 
-**Future target (Slice 3+):** As content grows (12 crops, 5-8 scenarios, tech tree, glossary), consider migrating to JSON files with Zod runtime validation. Proposed structure:
+**Future target (Slice 5+):** As content grows beyond the Slice 4 baseline (12+ crops, scenarios beyond the 5 required, tech tree, glossary), consider migrating to JSON files with Zod runtime validation. Proposed structure:
 
 ```
 data/
@@ -722,11 +724,38 @@ All interactive DOM elements get `data-testid` attributes following this standar
 - Determinism: "Two runs with same seed + same commands produce identical state at day 1000"
 
 ### Layer 2: Scenario Balance Tests (Vitest — headless, automated strategies)
-- "Corn monoculture strategy goes bankrupt in ≥60% of drought-heavy scenarios"
-- "Diversified adaptive strategy survives ≥80% of all scenarios"
-- "Every scenario has at least one viable strategy path (no unwinnable scenarios)"
-- "Tech tree events offer necessary unlocks before bankruptcy is inevitable"
-- "At least one advisor gives a useful warning before every major crisis"
+
+Automated headless tests that run full 30-year games with scripted strategies. These validate that the economy produces the right difficulty curve: bad strategies fail, good strategies succeed, and luck doesn't dominate.
+
+**Required strategy bots (minimum 5):**
+
+| Bot Name | Behavior | Expected Outcome |
+|----------|----------|-----------------|
+| `almond-monoculture` | Plant 64 almonds ASAP, water when prompted, no other actions | ≤40% survival; median cash below $50k |
+| `corn-monoculture` | Plant 64 corn every spring, water once per season | ≤60% survival; modest or bankrupt |
+| `zero-irrigation` | Plant annual mix, never water | ≤20% survival; bankrupt by year 10 |
+| `diversified-adaptive` | Mixed crops, rotates based on conditions, uses cover crops, heeds advisor events | ≥80% survival; median cash well above $50k |
+| `citrus-stability` | All citrus, consistent watering | 60-80% survival; moderate cash |
+
+**Required test matrix:**
+- Each strategy bot runs against **every scenario** in the pool
+- Each strategy × scenario combination runs with **≥20 different RNG seeds**
+- Results aggregated as: survival rate, median final cash, p10 final cash, median bankruptcy year (if applicable)
+
+**Pass/fail metrics (all must pass before classroom deployment):**
+- Monoculture bots survive ≤40-60% of runs (per archetype targets in SPEC.md §30.1)
+- Diversified-adaptive bot survives ≥80% of runs
+- Diversified-adaptive bot has **0% bankruptcy rate** across all seeds and scenarios (no unwinnable seeds)
+- **Same-seed dominance**: for every seed where a monoculture bot survives, the diversified-adaptive bot with the same seed must also survive
+- ≥3 distinct strategy families complete 30 years with positive cash in ≥60% of runs
+- No scenario is unwinnable (every scenario has at least one strategy with ≥60% survival)
+- Variance within a strategy: p25-to-p75 cash spread is <2× (luck doesn't dominate)
+- Soil pedagogy: monoculture without cover crops shows ≥20% yield decline by year 15; cover crop users maintain OM ≥ 1.5%
+
+**Statistical requirements:**
+- All balance assertions use **median and p10**, not single-run or best-case
+- Seed selection: sequential integers starting from 1 (deterministic, reproducible)
+- Strategy bots issue commands via `processCommand()` — same validation path as real players
 
 ### Layer 3: Browser Integration Tests (Playwright — Chromium)
 - "Click cell (3,4) → Plant menu appears with available crops"
@@ -747,6 +776,42 @@ All interactive DOM elements get `data-testid` attributes following this standar
 - "All routine operations (plant, harvest, water) achievable in ≤3 clicks"
 - "Every event explains what happened and why in plain language"
 - "Every advisor recommendation is traceable in retrospect"
+
+## 12.1 Balance-Tuning Protocol
+
+Balance tuning follows a strict sequence. No hand-tuning. No "it feels about right." Data in, decisions out.
+
+### Prerequisites
+1. Layer 2 balance test suite is fully implemented and running
+2. All 5 strategy bots produce reproducible results across ≥20 seeds
+3. Baseline metrics are recorded (current economy, pre-tuning)
+
+### Tuning Cycle
+1. **Run full matrix** — all bots × all scenarios × all seeds. Record survival rates, median cash, p10 cash, bankruptcy timing.
+2. **Identify failing metrics** — compare results to targets in SPEC.md §30.1. Document which archetypes are too easy or too hard.
+3. **Adjust ONE parameter category** — pick the lever most likely to fix the largest gap. Categories:
+   - Crop economics (revenue, costs, maintenance)
+   - Climate severity (drought ramp, water allocation curve, chill hour decline)
+   - Event impacts (cost magnitudes, duration, frequency)
+   - Soil dynamics (OM decay rate, nitrogen depletion, yield penalty thresholds)
+   - New mechanics (monoculture pest pressure, escalating maintenance)
+4. **Rerun full matrix** — verify the change moved metrics in the right direction without breaking other archetypes.
+5. **Repeat** until all pass/fail metrics are green.
+
+### Rules
+- Never tune more than one category per cycle (isolate cause and effect)
+- Never tune without rerunning the full matrix afterward
+- If a change fixes one archetype but breaks another, revert and find a different lever
+- Document every parameter change and its measured impact in DECISIONS.md
+- The tuning protocol itself is tested: changing a single parameter should produce a measurably different outcome in the balance suite
+
+### Scenario Calibration
+- **5 calibrated scenarios required for Slice 4 sign-off** (see §5.3 for the five scenario types)
+- Calibrate the current scenario ("Gradual Warming") first, then add and calibrate the remaining four
+- Each new scenario is calibrated against the full bot matrix before sign-off
+- Every scenario must have at least one strategy family with ≥60% survival (no unwinnable scenarios)
+- Scenario difficulty must vary: the "Relatively Mild" scenario should have ≥3 strategy families surviving; the "Early Severe Drought" should have ≤2 strategy families surviving easily
+- Full sign-off matrix: 5 bots × 5 scenarios × ≥20 seeds = ≥500 runs, all pass/fail metrics green
 
 ## 13. Development Slicing (Proposed)
 
@@ -795,10 +860,30 @@ Adaptation tradeoffs, perennial lifecycle, cover crop system, and weather adviso
 
 **Explicitly deferred to Slice 4+:** Tech tree, K+Zn nutrients, insurance/credit expansion, multi-scenario, remaining advisors (Financial, Community), automation policies.
 
-### Slice 4: Classroom Polish
-Everything needed to hand this to students with confidence.
+### Slice 4: Balance, Scoring & Classroom Readiness
+Everything needed to hand this to students with confidence. **Balance testing is the gating prerequisite** — no other Slice 4 work ships until the balance suite passes.
 
-**Adds:** Automation policies, glossary, solar lease event chain, completion code + Google Form, all 5-8 scenarios, balance testing suite, final UI polish.
+**Phase 1 — Balance Testing Infrastructure (BLOCKER):**
+- Headless strategy bot framework (5 bots minimum, see §12 Layer 2)
+- 5 calibrated climate scenarios required for sign-off (see §12.1 Scenario Calibration)
+- Full test matrix: 5 bots × 5 scenarios × ≥20 seeds = ≥500 headless 30-year runs
+- Produce baseline metrics showing current balance failures
+- All bots use `processCommand()` / `simulateTick()` — no UI, no adapter
+
+**Phase 2 — Economic Rebalancing (data-driven from Phase 1):**
+- Tune parameters ONLY based on failing balance test metrics
+- Likely levers: maintenance costs, drought severity ramp, water allocation, event economic impacts, monoculture pest/disease pressure, OM yield penalties
+- Rerun full test matrix after each parameter change
+- Gate: all Layer 2 pass/fail metrics green before proceeding
+
+**Phase 3 — Scoring & Classroom Polish:**
+- Scoring formula: weighted composite (financial 30%, soil 20%, diversity 20%, adaptation 20%, consistency 10%) — see SPEC.md §31
+- Completion code + Google Form integration
+- UX fixes from playtesting (#47, #48, #50, #52, #53, #54)
+- Year-end expense breakdown
+- Event clustering cap (max 2 per season)
+
+**Deferred to post-classroom (Slice 5+):** Automation policies, glossary, solar lease event chain, additional scenarios beyond the 5 required, tech tree, remaining advisors, insurance/credit systems.
 
 ## 14. Open Questions
 
@@ -818,12 +903,19 @@ Everything needed to hand this to students with confidence.
 - [x] Chill hours: Pre-defined per year in scenario data (800→700→630→570). Daily accumulation during dormancy. Yield penalty at harvest: `clamp(accumulated/required, 0, 1)`. Almonds fail before pistachios as climate warms.
 - [x] Save migration: V1→V2→V3 chain with explicit version detection. Both `readSave()` and `listManualSaves()` use the same path.
 
+### Resolved for Slice 4 (see SPEC.md §30-32)
+- [x] Scoring formula: Weighted composite — financial stability 30%, soil health 20%, crop diversity 20%, climate adaptation 20%, consistency 10%. See SPEC.md §31.
+- [x] Balance targets: Strategy archetype survival rates and cash targets defined. See SPEC.md §30.1.
+- [x] Anti-luck requirement: Median and p10 across ≥20 seeds, not single runs. See SPEC.md §30.3.
+- [x] Multiple viable paths: ≥3 distinct strategy families must survive. See SPEC.md §30.2.
+- [x] Soil pedagogy targets: Monoculture without cover crops shows ≥20% yield decline; cover crop users maintain OM ≥ 1.5%. See SPEC.md §30.4.
+- [x] Balance-tuning protocol: Tune one category per cycle, rerun full matrix, document in DECISIONS.md. See ARCHITECTURE.md §12.1.
+- [x] Climate scenario count: 5 calibrated scenarios required for Slice 4 sign-off; additional scenarios optional for Slice 5+. See §5.3.
+
 ### Deferrable (decide during later slices)
-- [ ] Scoring formula for retirement (Slice 4 — endgame feature)
-- [ ] Irrigation upgrade specifics and costs (Slice 4+ — tech tree detail)
-- [ ] Climate scenario data: need to generate/curate 5-8 30-year seasonal parameter sets (Slice 4+)
+- [ ] Irrigation upgrade specifics and costs (Slice 5+ — tech tree detail)
 - [ ] Farm expansion / neighbor buyout event (likely v2, not Classroom-Ready Build)
-- [ ] Agrivoltaics detail level in solar lease chain (Slice 4)
+- [ ] Agrivoltaics detail level in solar lease chain (Slice 5+)
 - [ ] Market price model: static base + event modifiers is sufficient for Slice 1-2; full supply/demand is likely overkill
 - [ ] Advanced accessibility: colorblind modes, full screen reader support (Slice 4+; baseline keyboard nav + ARIA labels are in Slice 1)
 - [ ] Sound / music (defer — nice to have, not essential for classroom use)

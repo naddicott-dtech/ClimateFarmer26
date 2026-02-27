@@ -155,7 +155,7 @@ tests/
 - **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums
 - **K + Zn nutrients** — Only nitrogen is modeled
 - **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule
-- **Additional climate scenarios** — Only 1 scenario exists. Need 5-8 for classroom use
+- **Additional climate scenarios** — Only 1 scenario exists. 5 calibrated scenarios required for Slice 4 sign-off
 - **Automation policies** — Replant-same, harvest-when-ready, water-when-dry. Unlocked via tech tree
 - **Glossary / Information Index** — In-game educational reference
 - **Solar lease event chain** — Multi-phase storylet

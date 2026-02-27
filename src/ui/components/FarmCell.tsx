@@ -11,57 +11,54 @@ const CROP_ICONS: Record<string, Record<string, string>> = {
     vegetative: '\u{1FAB4}',
     flowering: '\u{1F33B}',
     mature: '\u{1F345}',
-    harvestable: '\u{1F345}',
-    overripe: '\u{1F345}',
   },
   'silage-corn': {
     seedling: '\u{1F331}',
     vegetative: '\u{1FAB4}',
     flowering: '\u{1F33E}',
     mature: '\u{1F33D}',
-    harvestable: '\u{1F33D}',
-    overripe: '\u{1F33D}',
   },
   'winter-wheat': {
     seedling: '\u{1F331}',
     vegetative: '\u{1FAB4}',
     flowering: '\u{1F33E}',
     mature: '\u{1F33E}',
-    harvestable: '\u{1F33E}',
-    overripe: '\u{1F33E}',
   },
   'almonds': {
     seedling: '\u{1F333}',
     vegetative: '\u{1F333}',
     flowering: '\u{1F338}',
     mature: '\u{1F333}',
-    harvestable: '\u{1F95C}',
-    overripe: '\u{1F95C}',
   },
   'pistachios': {
     seedling: '\u{1F333}',
     vegetative: '\u{1F333}',
     flowering: '\u{1F338}',
     mature: '\u{1F333}',
-    harvestable: '\u{1F95C}',
-    overripe: '\u{1F95C}',
   },
   'sorghum': {
     seedling: '\u{1F331}',
     vegetative: '\u{1FAB4}',
     flowering: '\u{1F33E}',
     mature: '\u{1F33E}',
-    harvestable: '\u{1F33E}',
-    overripe: '\u{1F33E}',
   },
   'citrus-navels': {
     seedling: '\u{1F333}',
     vegetative: '\u{1F333}',
     flowering: '\u{1F338}',
     mature: '\u{1F333}',
-    harvestable: '\u{1F34A}',
-    overripe: '\u{1F34A}',
   },
+};
+
+/** Crop art images used for harvestable/overripe stages */
+const CROP_ART: Record<string, string> = {
+  'processing-tomatoes': `${import.meta.env.BASE_URL}assets/crops/crop-tomatoes_48x48.jpeg`,
+  'silage-corn': `${import.meta.env.BASE_URL}assets/crops/crop-corn_48x48.jpeg`,
+  'winter-wheat': `${import.meta.env.BASE_URL}assets/crops/crop-wheat_48x48.jpeg`,
+  'sorghum': `${import.meta.env.BASE_URL}assets/crops/crop-sorghum_48x48.jpeg`,
+  'almonds': `${import.meta.env.BASE_URL}assets/crops/crop-almonds_48x48.jpeg`,
+  'pistachios': `${import.meta.env.BASE_URL}assets/crops/crop-pistachios_48x48.jpeg`,
+  'citrus-navels': `${import.meta.env.BASE_URL}assets/crops/crop-citrus_48x48.jpeg`,
 };
 
 interface FarmCellProps {
@@ -81,8 +78,11 @@ export function FarmCell({ cell }: FarmCellProps) {
     '';
 
   // Crop icon — dormant perennials show a bare tree
+  // Harvestable/overripe stages use crop art images; other stages use emoji
+  const useArt = crop && !crop.isDormant && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe');
+  const cropArtSrc = crop && useArt ? CROP_ART[crop.cropId] : null;
   const icon = crop
-    ? (crop.isDormant ? '\u{1FAB5}' : (CROP_ICONS[crop.cropId]?.[crop.growthStage] ?? '\u{1F331}'))
+    ? (crop.isDormant ? '\u{1FAB5}' : (useArt ? '' : (CROP_ICONS[crop.cropId]?.[crop.growthStage] ?? '\u{1F331}')))
     : '';
   const dormantClass = crop?.isDormant ? styles.dormant : '';
 
@@ -118,7 +118,11 @@ export function FarmCell({ cell }: FarmCellProps) {
       aria-selected={isSelected}
       tabIndex={row === 0 && col === 0 ? 0 : -1}
     >
-      {icon && <span class={styles.cropIcon} aria-hidden="true">{icon}</span>}
+      {cropArtSrc ? (
+        <img class={styles.cropArt} src={cropArtSrc} alt="" aria-hidden="true" width="36" height="36" />
+      ) : (
+        icon && <span class={styles.cropIcon} aria-hidden="true">{icon}</span>
+      )}
       {coverCropId && (
         <span
           data-testid={`farm-cell-cover-${row}-${col}`}

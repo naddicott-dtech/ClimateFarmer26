@@ -75,6 +75,15 @@
   user-select: none;
 }
 
+.cropArt {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  pointer-events: none;
+  user-select: none;
+}
+
 .coverCropIcon {
   position: absolute;
   bottom: 2px;

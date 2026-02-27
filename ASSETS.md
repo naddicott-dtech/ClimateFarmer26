@@ -4,47 +4,46 @@ All visual assets for the game. This file is the single source of truth for what
 
 ## Naming Convention
 
-`{asset-id}_{width}x{height}.png`
+`{asset-id}_{width}x{height}.jpeg`
 
-Example: `extension-agent_128x128.png`
+Example: `extension-agent_128x128.jpeg`
 
-This embeds the target pixel dimensions in the filename so artists know exactly what size to produce. All assets use PNG with transparent backgrounds unless noted otherwise.
+This embeds the target pixel dimensions in the filename so artists know exactly what size to produce.
 
 ## Performance Budget
 
-Target hardware is Chromebooks. Keep total asset payload under 500KB. Individual images should be optimized PNGs (use TinyPNG or similar before committing).
+Target hardware is Chromebooks. Keep total asset payload under 2MB. Individual images should be optimized before committing.
 
 ## Advisor Portraits
 
-Displayed in the EventPanel when advisor-type events fire. Mapped by `advisorId` in code with fallback to `default_128x128.png`.
+Displayed in the EventPanel when advisor-type events fire. Mapped by `advisorId` in code via `ADVISOR_CHARACTERS` in `src/ui/components/EventPanel.tsx`.
 
 | Asset ID | File Path | Dimensions | Used In | Status | Notes |
 |----------|-----------|------------|---------|--------|-------|
-| `extension-agent` | `public/assets/advisors/extension-agent_128x128.png` | 128x128 | EventPanel (Dr. Elena Santos) | Placeholder | Agricultural extension agent. Warm, approachable. |
-| `weather-service` | `public/assets/advisors/weather-service_128x128.png` | 128x128 | EventPanel (NWS Fresno) | Placeholder | Weather forecaster. Professional, could be a logo or person. |
-| `default` | `public/assets/advisors/default_128x128.png` | 128x128 | EventPanel (fallback) | Placeholder | Generic advisor silhouette. Used when advisorId has no matching portrait. |
+| `extension-agent` | `public/assets/advisors/extension-agent_128x128.jpeg` | 128x128 | EventPanel (Dr. Maria Santos) | Complete | Agricultural extension agent. Warm, approachable. |
+| `weather-service` | `public/assets/advisors/weather-service_128x128.jpeg` | 128x128 | EventPanel (NWS Fresno) | Complete | Weather forecaster. Professional. |
+| `default` | `public/assets/advisors/default_128x128.jpeg` | 128x128 | EventPanel (fallback) | Complete | Generic advisor silhouette. Used when advisorId has no matching portrait. |
 
 ### Advisor Portrait Spec
 
 - **Size:** 128x128 pixels (renders at 64x64 CSS pixels for retina sharpness)
-- **Background:** Transparent PNG
 - **Style:** Friendly, approachable — these are educational characters for high school students
 - **Framing:** Head and shoulders, centered
-- **File size target:** Under 20KB each
+- **Rendering:** Rendered as `<img>` with `data-testid="advisor-portrait"`, circular crop via CSS `border-radius: 50%`
 
-## Crop Icons (Future — Slice 4 Visual Pass)
+## Crop Icons
 
-Small icons for the crop menu and farm grid cells. Not yet needed.
+Small icons shown on farm grid cells at harvestable/overripe growth stages. Earlier growth stages use emoji. Mapped via `CROP_ART` in `src/ui/components/FarmCell.tsx`.
 
 | Asset ID | File Path | Dimensions | Used In | Status | Notes |
 |----------|-----------|------------|---------|--------|-------|
-| `crop-tomatoes` | `public/assets/crops/crop-tomatoes_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Processing tomatoes |
-| `crop-corn` | `public/assets/crops/crop-corn_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Silage corn |
-| `crop-wheat` | `public/assets/crops/crop-wheat_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Winter wheat |
-| `crop-sorghum` | `public/assets/crops/crop-sorghum_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Sorghum |
-| `crop-almonds` | `public/assets/crops/crop-almonds_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Almonds (tree) |
-| `crop-pistachios` | `public/assets/crops/crop-pistachios_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Pistachios (tree) |
-| `crop-citrus` | `public/assets/crops/crop-citrus_48x48.png` | 48x48 | CropMenu, FarmCell | Not started | Citrus navels (tree) |
+| `crop-tomatoes` | `public/assets/crops/crop-tomatoes_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Processing tomatoes |
+| `crop-corn` | `public/assets/crops/crop-corn_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Silage corn |
+| `crop-wheat` | `public/assets/crops/crop-wheat_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Winter wheat |
+| `crop-sorghum` | `public/assets/crops/crop-sorghum_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Sorghum |
+| `crop-almonds` | `public/assets/crops/crop-almonds_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Almonds (tree) |
+| `crop-pistachios` | `public/assets/crops/crop-pistachios_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Pistachios (tree) |
+| `crop-citrus` | `public/assets/crops/crop-citrus_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Citrus navels (tree) |
 
 ## UI Icons (Future)
 
@@ -52,22 +51,12 @@ Small icons for the crop menu and farm grid cells. Not yet needed.
 |----------|-----------|------------|---------|--------|-------|
 | (none yet) | | | | | |
 
-## Implementation Contract (for Sub-slice 3c)
-
-When implementing advisor portraits in the EventPanel:
-
-1. Add `advisorId` field to Storylet type (optional, for advisor-type events)
-2. Map `advisorId` to portrait path: `advisorId -> /assets/advisors/${advisorId}_128x128.png`
-3. Fallback chain: specific portrait -> `default_128x128.png` -> text-only (no broken images)
-4. Render `<img>` with `data-testid="advisor-portrait"`, `alt` text describing the advisor
-5. Browser tests: verify `<img>` loads for advisor events, verify alt text is accessible
-6. Keep text-first UI intact — portraits enhance but don't replace the text content
-
 ## Source & License
 
 | Asset | Source | License | Attribution Required |
 |-------|--------|---------|---------------------|
-| Placeholder PNG | Project team | Internal use | No |
+| Advisor portraits | Neal Addicott using Nano Banana Pro | Project use | Yes |
+| Crop icons | Neal Addicott using Nano Banana Pro | Project use | Yes |
 | (student contributions) | Student artists | (TBD — get written consent) | Yes — credit in-game or README |
 
 ### Student Art Contributions
@@ -75,5 +64,4 @@ When implementing advisor portraits in the EventPanel:
 If students create art for the game:
 - Get written consent (school policy) before including any student work
 - Credit the artist by name (or initials if preferred) in README.md
-- Ensure art meets the dimension and transparency specs above
-- Optimize PNGs before committing (TinyPNG, pngquant, etc.)
+- Ensure art meets the dimension specs above

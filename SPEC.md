@@ -1,6 +1,6 @@
 # SPEC.md — Acceptance Tests & Requirements
 
-> **Status: Living document. Slice 1 locked. Slices 2-3 implemented and reviewed. Slice 4 next.**
+> **Status: Living document. Slice 1 locked. Slices 2-3 implemented and reviewed. Slice 4 spec added (§30-32).**
 > Format: **When** [user action], **I should see** [expected result].
 > Negative cases use: **When** [action], **I should NOT see** [bad outcome] / **the system should** [prevent it].
 
@@ -238,7 +238,7 @@ The engine fully simulates OM changes each tick. However, there are no Slice 1 p
 #### 5.3 Year-End Summary
 - **When** Year 1 ends, **I should see** a summary panel showing:
   - Total revenue from all harvests this year
-  - Total expenses (planting + irrigation)
+  - Total expenses (planting + irrigation in Slice 1; itemized breakdown in Slice 4 — see §32.2)
   - Net profit or loss
   - Ending cash balance
   - Brief narrative about what happened ("Year 1: You planted 32 plots of corn and 16 plots of tomatoes...")
@@ -788,6 +788,123 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 ##### 29.5 Non-Frost Events
 - **When** a heatwave or other non-frost event fires while frost protection is active, **the system should NOT** consume or modify frost protection. Only late-frost-warning events interact with it.
 
+---
+
+## Slice 4: Balance, Scoring & Classroom Readiness
+
+### 30. Balance & Pedagogy Contract
+
+The game must produce outcomes where **strategy matters more than luck**. Bad farming should fail. Good farming should succeed. Monoculture should be risky. Diversification and climate adaptation should be rewarded. These targets are validated by headless balance tests (ARCHITECTURE.md §12 Layer 2) across multiple seeds and scenarios.
+
+#### 30.1 Strategy Archetype Targets
+
+Five reference strategies define the difficulty curve. All targets are evaluated as **medians and 10th-percentile (p10) outcomes across ≥20 seeds per scenario**, not single runs.
+
+| Archetype | Description | 30-Year Survival Rate | Median Final Cash | Intent |
+|-----------|-------------|----------------------|-------------------|--------|
+| **Almond Monoculture** | 64 almonds year 1, no adaptation | ≤40% | Below starting cash | Monoculture + ignoring climate = failure |
+| **Corn Monoculture** | 64 corn every spring, basic watering | ≤60% | Modest or bankrupt | Repetitive low-value strategy struggles |
+| **Zero Irrigation** | Plant and abandon, never water | ≤20% | Bankrupt by year 10 | Neglect = fast failure |
+| **Diversified Adaptive** | Mixed crops, rotates with conditions, uses cover crops, heeds advisors | ≥80% | Well above starting cash | Smart play is rewarded |
+| **Citrus Stability** | All citrus, consistent watering | 60-80% | Moderate | Safe but not optimal |
+
+- **When** the almond monoculture strategy is run across all scenarios and seeds, **its median final cash should be** below starting cash ($50,000), and **its p10 should be** bankrupt (cash ≤ 0).
+- **When** the diversified adaptive strategy is run, **its median final cash should be** well above starting cash, and **its p10 should be** above starting cash (survives even bad luck).
+- **When** any two strategy archetypes are compared, **I should see** that the diversified adaptive strategy outperforms monocultures in median outcome across all scenarios.
+
+#### 30.2 Multiple Viable Paths
+
+- **When** balance tests are run, **at least 3 distinct strategy families** (e.g., diversified annual rotation, mixed perennial/annual, citrus-heavy with cover crops) must complete 30 years with positive cash in ≥60% of runs.
+- **No single strategy should be** the only winning path. If only one strategy family survives, the balance is broken.
+- **When** a student plays thoughtfully (reads advisors, rotates crops, manages water), **they should** succeed regardless of which specific crop mix they chose.
+
+#### 30.3 Anti-Luck Requirement
+
+- **When** evaluating game balance, outcomes must be judged on **median and p10** across ≥20 seeds per scenario, not best-case or single runs.
+- **When** two students play the same strategy with different RNG seeds, **the variance in final cash should be** less than 2× between p25 and p75 (consistent strategies produce consistent results; luck doesn't dominate).
+- **When** the diversified-adaptive bot is run across all scenarios and seeds, **no individual seed should** produce bankruptcy (0% bankruptcy rate for the best strategy — no unwinnable seeds exist).
+- **When** any monoculture bot survives a scenario, **switching to the diversified-adaptive bot with the same seed should also** survive (good strategy never does worse than bad strategy on the same luck).
+
+#### 30.4 Soil & Nutrient Pedagogy Targets
+
+- **When** a student plants the same annual crop for 10+ years without cover crops or fertilizer, **they should see** nitrogen depletion cause measurable yield loss (≥20% reduction from peak).
+- **When** a student uses cover crops consistently, **they should see** organic matter stabilize or increase (not decline below 1.5% after 30 years).
+- **When** a student ignores soil health entirely (no cover crops, no fertilizer events), **they should see** OM drop below 1.5% by year 20, with visible yield drag.
+- **When** comparing two otherwise-identical strategies, one with cover crops and one without, **the cover crop strategy should** outperform by a measurable margin (≥10% higher median final cash over 30 years).
+
+### 31. Scoring & End-of-Game Evaluation
+
+#### 31.1 Scoring Formula
+
+The end-of-game score rewards **resilient, sustainable farming** — not just maximum cash. The score is a weighted composite:
+
+| Component | Weight | What It Measures | How Calculated |
+|-----------|--------|-----------------|----------------|
+| Financial Stability | 30% | Survived and prospered | Normalized final cash (0-100 scale, capped at reasonable ceiling) |
+| Soil Health | 20% | Long-term stewardship | Average final OM% across field, normalized. Bonus for OM ≥ 2.0% (maintained or improved). |
+| Crop Diversity | 20% | Adaptation and resilience | Shannon diversity index of crops planted across all years, normalized |
+| Climate Adaptation | 20% | Responded to changing conditions | Outcome-based: crop transitions away from failing crops + drought-tolerant crop adoption + cover crop usage after soil decline. No credit for advisor interaction itself. |
+| Consistency | 10% | Not a boom-bust rollercoaster | Inverse of year-over-year revenue variance, normalized |
+
+- **When** a student completes 30 years, **I should see** a score breakdown showing each component with a sub-score and explanation.
+- **When** a student goes bankrupt, **I should see** a partial score based on years survived and the components above up to that point.
+- **When** two students compare scores, **the student who diversified and adapted should** outscore the student who monocultured, even if the monoculture student has more final cash.
+- **When** two students make identical farming decisions but one clicks every advisor panel and the other dismisses them, **their scores should be** identical. No points for opening or accepting advisor prompts.
+- Advisor engagement (panels viewed, choices made) is tracked as a **non-scored metric** for teacher analytics/debrief only, not included in the resilience score.
+
+#### 31.2 Completion Code
+
+- **When** I complete 30 years (or go bankrupt), **I should see** a completion code that encodes: player ID, final score, years survived, and scenario ID.
+- **When** I enter my completion code into the Google Form, **the teacher should** be able to decode it and see my results.
+
+#### 31.3 Leaderboard Framing
+
+- The score is presented as a **farm resilience rating**, not a competition ranking. Language should frame it as "How sustainable was your farm?" not "Did you beat your classmates?"
+- **When** I see my final score, **I should see** qualitative tiers: "Thriving" (80+), "Stable" (60-79), "Struggling" (40-59), "Failed" (<40).
+
+### 32. UX Fixes (from Playtesting)
+
+#### 32.1 Water Auto-Pause Double Confirmation (#52)
+- **When** a water-stress auto-pause fires and I click "Water Field", **I should NOT** see a second confirmation dialog. The auto-pause IS the confirmation.
+
+#### 32.2 Year-End Expense Breakdown (#53)
+- **When** the year-end summary appears, **I should see** expense categories: Planting, Watering, Maintenance (with per-crop breakdown), and Loan Repayment.
+- **When** I have perennial maintenance costs, **I should see** them itemized (e.g., "Almond maintenance: 8 trees × $200 = $1,600").
+
+#### 32.3 Calendar Display Lag (#54)
+- **When** I click "Continue to Year N", **I should see** the calendar update immediately (not wait for next simulation tick).
+
+#### 32.4 Event Clustering Cap (#47)
+- **When** events fire during a season, **the system should** cap at 2 events per season (excluding advisors, which have their own cadence).
+- **When** a third event would fire in the same season, **the system should** defer it to the next season or suppress it.
+
+#### 32.5 Pause-to-Play Transition (#50)
+- **When** the game is paused at 0x speed and I have taken an action (planted, watered, etc.), **I should see** a visual prompt near the speed controls indicating I need to press play to continue.
+
+#### 32.6 Harvested Indicator (#48)
+- **When** a perennial has been harvested this season, **I should see** a visual indicator on the cell and the harvest button should be disabled.
+
+### Slice 4 data-testid Coverage
+
+#### Scoring & End Game
+- `score-panel` — final score display container
+- `score-total` — total composite score
+- `score-financial` — financial stability sub-score
+- `score-soil` — soil health sub-score
+- `score-diversity` — crop diversity sub-score
+- `score-adaptation` — climate adaptation sub-score
+- `score-consistency` — consistency sub-score
+- `completion-code` — completion code display
+- `completion-copy` — copy code button
+
+#### UX Improvements
+- `expense-breakdown` — year-end expense category breakdown
+- `expense-line-{category}` — individual expense line item
+- `play-prompt` — visual prompt to resume after action while paused
+- `harvest-indicator-{row}-{col}` — harvested-this-season indicator
+
+---
+
 ### Slice 3 data-testid Coverage
 
 #### New Crops
@@ -844,4 +961,4 @@ Every interactive element listed below MUST have a data-testid. Tests will verif
 
 ---
 
-*Additional slices will be added to this document as Slice 2 is approved and implemented.*
+*Slice 5+ specs will be added as Slice 4 balance testing and classroom readiness are completed.*
