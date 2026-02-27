@@ -59,6 +59,34 @@ Small icons shown on farm grid cells at harvestable/overripe growth stages. Earl
 | Crop icons | Neal Addicott using Nano Banana Pro | Project use | Yes |
 | (student contributions) | Student artists | (TBD — get written consent) | Yes — credit in-game or README |
 
+## Prompting information
+  Sources used:
+
+  - https://ai.google.dev/gemini-api/docs/image-generation
+  - https://ai.google.dev/gemini-api/docs/imagen
+  - https://firebase.google.com/docs/ai-logic/prompt-design
+  - https://ai.google.dev/gemini-api/docs/prompting-strategies
+
+  Prompt (shared element):
+    Create a single game-ready 2D digital illustration asset for an educational farming strategy game set in California’s San Joaquin Valley.
+
+  SHARED STYLE GUIDE:
+  Stylized semi-realistic look with warmth and personality. Painterly forms, clean readable silhouette, subtle hand-crafted texture, approachable for high school
+  students. Grounded and optimistic tone.
+  Palette direction: sun-baked earth (#A97142), wheat gold (#D8B45A), irrigation blue (#4A90B8), leaf green (#6FA35B), sky haze (#C9DCE8), orchard dark (#2F5D3A),
+  accent orange (#E38B3A).
+  Lighting: soft daylight, gentle directional light, mild contrast, no harsh dramatic shadows.
+  Composition: one clear centered subject, high readability at small size.
+  Hard constraints: transparent background, no scene background, no text, no letters, no logos, no watermark, no frame, no UI elements.
+
+  Example specific prompt:
+    ASSET-SPECIFIC:
+  Head-and-shoulders portrait of a friendly agricultural extension advisor (Latina woman, late 30s to early 40s), calm confident smile, practical field jacket over
+  collared shirt, slight clipboard edge visible.
+  Expression should feel approachable and trustworthy, professional but not corporate.
+  Face should occupy about 65% of the canvas, centered.
+  Output as square icon art intended for 128x128.
+
 ### Student Art Contributions
 
 If students create art for the game:
