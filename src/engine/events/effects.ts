@@ -28,6 +28,7 @@ export function applyEffects(
         state.economy.cash += effect.amount;
         state.economy.yearlyExpenses += Math.max(0, -effect.amount);
         state.economy.yearlyRevenue += Math.max(0, effect.amount);
+        state.tracking.currentExpenses.eventCosts += Math.max(0, -effect.amount);
         break;
 
       case 'modify_moisture_all':

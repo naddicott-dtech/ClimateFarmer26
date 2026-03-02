@@ -187,6 +187,7 @@ Status: Deferred.
 - **Balance testing suite** — Headless automated strategy tests running full 30-year games against multiple scenarios (ARCHITECTURE.md §12 Layer 2). Required before classroom deployment. Strategies to test: monoculture almond, monoculture corn, diversified adaptive, zero-irrigation, maximum debt. Target: monoculture should fail in ≥60% of drought-heavy scenarios; well-diversified strategies should survive ≥80%. See playtest findings #45.
 - **Economic rebalancing** — Starting cash, maintenance costs, drought severity, event impacts all need systematic tuning based on balance test results. NOT hand-tuned — data-driven from headless test suite.
 - **Event system tuning** — Per-season event cap, mutual exclusion groups, relevance gating (see #46, #47).
+- **Web-aware AI exploratory QA** — Supplement headless balance bots with AI agents playing the actual web UI via Playwright/browser automation. Catches UX, decision-quality, and exploitability issues that headless engine-only bots cannot see. Six player personas defined: (1) Optimal-seeking strategist, (2) Intentional self-sabotage, (3) Advisor maximizer, (4) Advisor skeptic, (5) Low-effort student, (6) Late adapter. Each run produces: decision log by year/season, top-5 observations, outcome summary, bugs/UX issues. Planned timing: initial runs after 4b baseline (optimal + sabotage), regression during 4c tuning (optimal + low-effort), full sweep after 4d+4e for classroom sign-off. See Slice 4 plan sub-slice 4d.5.
 - **Automation policies** — Replant-same, harvest-when-ready, water-when-dry. Unlocked via tech tree.
 - **Glossary / Information Index** — In-game educational reference with progressive disclosure.
 - **Solar lease event chain** — Multi-phase storylet (option → construction → operations → agrivoltaics).
@@ -194,3 +195,8 @@ Status: Deferred.
 - **Advanced accessibility** (colorblind modes, full screen reader support) — Baseline keyboard nav + ARIA in Slice 1.
 - **Sound / music** — Not essential for classroom use.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.
+
+### Deferred — Post-Slice 4 / Academic Integrity
+
+- **Agent policy notice (soft deterrent)** — Production-only `<meta name="ai-agent-policy">` tag asking well-behaved AI agents not to play the game for students. Low effort (~30 min), only a soft deterrent for agents that respect such instructions. Implementation: inject in `src/main.tsx` gated on `import.meta.env.PROD`. Verify with test: present in prod build, absent in dev.
+- **Behavioral suspicion scoring** — Client-side heuristic to flag sessions that look AI-automated: `event.isTrusted === false`, inhuman action timing (fast + perfectly regular), scripted sweep patterns, zero hover/scroll behavior with high throughput. Produces a `suspicionScore` with confidence band (low/medium/high). If above threshold, marks session as `tainted_for_review` in teacher report with "interview student for understanding" recommendation. Important limits: cannot detect passive DOM reading; good automation can mimic humans; assistive tech can false-positive. NOT auto-fail — teacher triage tool only. Requires completion code / teacher reporting infrastructure (4f) to be useful.

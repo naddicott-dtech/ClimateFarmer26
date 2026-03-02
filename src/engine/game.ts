@@ -1,7 +1,7 @@
 import type {
   GameState, Cell, SoilState, CropInstance, CropDefinition, Command, CommandResult,
   GameSpeed, DailyWeather, GrowthStage, Notification,
-  ClimateScenario,
+  ClimateScenario, YearSnapshot,
 } from './types.ts';
 import {
   GRID_ROWS, GRID_COLS, STARTING_CASH, STARTING_NITROGEN,
@@ -11,6 +11,7 @@ import {
   WATER_DOSE_INCHES, STARTING_DAY, AUTO_PAUSE_PRIORITY,
   EVENT_RNG_SEED_OFFSET, LOAN_INTEREST_RATE, LOAN_REPAYMENT_FRACTION,
   LOAN_DEBT_CAP, DORMANCY_DAYS,
+  createEmptyTrackingState, createEmptyExpenseBreakdown,
 } from './types.ts';
 import { evaluateEvents } from './events/selector.ts';
 import { applyEffects, expireActiveEffects, getYieldModifier, getPriceModifier, getIrrigationCostMultiplier } from './events/effects.ts';
@@ -37,6 +38,8 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
         crop: null,
         soil: createInitialSoil(),
         coverCropId: null,
+        lastCropId: null,
+        lastHarvestYieldRatio: null,
       });
     }
     grid.push(rowCells);
@@ -94,6 +97,10 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     irrigationCostMultiplier: 1.0,
     eventRngState: eventRng.getState(),
     frostProtectionEndsDay: 0,
+    // Slice 4a: Tracking
+    tracking: createEmptyTrackingState(),
+    eventsThisSeason: 0,
+    actedSincePause: false,
   };
 }
 
@@ -168,12 +175,20 @@ export function processCommand(state: GameState, command: Command, _scenario: Cl
   // Skip SET_SPEED to avoid noise
   if (command.type !== 'SET_SPEED') {
     logCommand(state, command, result.success, result.reason, cashBefore);
+    // Track that the player has acted since the last pause (for play-prompt UX)
+    if (state.speed === 0 && result.success) {
+      state.actedSincePause = true;
+    }
   }
 
   return result;
 }
 
 function processSetSpeed(state: GameState, speed: GameSpeed): CommandResult {
+  // Reset actedSincePause when transitioning from paused to playing
+  if (state.speed === 0 && speed > 0) {
+    state.actedSincePause = false;
+  }
   state.speed = speed;
   return { success: true };
 }
@@ -199,7 +214,25 @@ function processPlantCrop(state: GameState, row: number, col: number, cropId: st
 
   state.economy.cash -= cost;
   state.economy.yearlyExpenses += cost;
+  state.tracking.currentExpenses.planting += cost;
   cell.crop = createCropInstance(cropId, state.calendar.totalDay);
+
+  // Adaptation tracking: crop transitions (trigger-conditioned on poor yield)
+  if (cell.lastCropId !== null && cell.lastCropId !== cropId &&
+      cell.lastHarvestYieldRatio !== null && cell.lastHarvestYieldRatio < 0.80) {
+    state.tracking.cropTransitions++;
+  }
+
+  // Adaptation tracking: drought-tolerant adoption (per-type, after year 5)
+  if (state.calendar.year >= 5 && ['sorghum', 'pistachios', 'citrus-navels'].includes(cropId) &&
+      !state.tracking.droughtTolerantTypesAdopted.includes(cropId)) {
+    state.tracking.droughtTolerantTypesAdopted.push(cropId);
+  }
+
+  // Set lastCropId for perennials at planting time
+  if (cropDef.type === 'perennial') {
+    cell.lastCropId = cropId;
+  }
 
   // Reveal chill hours when first perennial is planted
   if (cropDef.type === 'perennial' && !state.flags['chillHoursRevealed']) {
@@ -312,17 +345,32 @@ export function executeBulkPlant(
   const totalCost = cells.length * costPerCell;
   state.economy.cash -= totalCost;
   state.economy.yearlyExpenses += totalCost;
+  state.tracking.currentExpenses.planting += totalCost;
+
+  const cropDef = getCropDefinition(cropId);
+  const isPerennial = cropDef.type === 'perennial';
 
   for (const cell of cells) {
+    // Adaptation tracking: crop transitions (trigger-conditioned on poor yield)
+    if (cell.lastCropId !== null && cell.lastCropId !== cropId &&
+        cell.lastHarvestYieldRatio !== null && cell.lastHarvestYieldRatio < 0.80) {
+      state.tracking.cropTransitions++;
+    }
     cell.crop = createCropInstance(cropId, state.calendar.totalDay);
+    if (isPerennial) {
+      cell.lastCropId = cropId;
+    }
+  }
+
+  // Adaptation tracking: drought-tolerant adoption (per-type, after year 5)
+  if (state.calendar.year >= 5 && ['sorghum', 'pistachios', 'citrus-navels'].includes(cropId) &&
+      !state.tracking.droughtTolerantTypesAdopted.includes(cropId)) {
+    state.tracking.droughtTolerantTypesAdopted.push(cropId);
   }
 
   // Reveal chill hours when first perennial is bulk-planted
-  if (!state.flags['chillHoursRevealed']) {
-    const def = getCropDefinition(cropId);
-    if (def.type === 'perennial') {
-      state.flags['chillHoursRevealed'] = true;
-    }
+  if (!state.flags['chillHoursRevealed'] && isPerennial) {
+    state.flags['chillHoursRevealed'] = true;
   }
 
   return { success: true, cost: totalCost, cellsAffected: cells.length };
@@ -432,6 +480,7 @@ export function executeWater(state: GameState, cells: Cell[]): CommandResult {
   const totalCost = cells.length * costPerCell;
   state.economy.cash -= totalCost;
   state.economy.yearlyExpenses += totalCost;
+  state.tracking.currentExpenses.watering += totalCost;
 
   for (const cell of cells) {
     cell.soil.moisture = Math.min(cell.soil.moisture + WATER_DOSE_INCHES, cell.soil.moistureCapacity);
@@ -577,6 +626,7 @@ function processRemoveCrop(state: GameState, row: number, col: number): CommandR
 
   state.economy.cash -= cost;
   state.economy.yearlyExpenses += cost;
+  state.tracking.currentExpenses.removal += cost;
   addNotification(state, 'info', `Removed ${cropDef.name} from row ${row + 1}, col ${col + 1}. Cost: $${cost}.`);
   cell.crop = null;
 
@@ -608,6 +658,7 @@ export function executeBulkCoverCrop(
   const totalCost = cells.length * costPerCell;
   state.economy.cash -= totalCost;
   state.economy.yearlyExpenses += totalCost;
+  state.tracking.currentExpenses.coverCrops += totalCost;
 
   for (const cell of cells) {
     cell.coverCropId = coverCropId;
@@ -655,6 +706,7 @@ function processSetCoverCrop(state: GameState, row: number, col: number, coverCr
 
   state.economy.cash -= def.seedCostPerAcre;
   state.economy.yearlyExpenses += def.seedCostPerAcre;
+  state.tracking.currentExpenses.coverCrops += def.seedCostPerAcre;
   cell.coverCropId = coverCropId;
   return { success: true, cost: def.seedCostPerAcre };
 }
@@ -725,6 +777,7 @@ function processSetCoverCropBulk(
     cell.coverCropId = coverCropId;
     state.economy.cash -= def.seedCostPerAcre;
     state.economy.yearlyExpenses += def.seedCostPerAcre;
+    state.tracking.currentExpenses.coverCrops += def.seedCostPerAcre;
     planted++;
   }
 
@@ -820,6 +873,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
   // Season change detection
   if (isSeasonChange(prevTotalDay, newTotalDay)) {
     state.waterStressPausedThisSeason = false; // Reset per-season auto-pause flag
+    state.eventsThisSeason = 0; // Reset event clustering counter
     const seasonName = getSeasonName(state.calendar.season);
     addNotification(state, 'season_change', `${seasonName} — Year ${state.calendar.year}`);
 
@@ -903,6 +957,10 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
       message: storylet.title,
     });
     logEventFired(state, storylet.id, storylet.type, storylet.title, storylet.choices.map(c => c.id));
+    // Increment per-season event counter (non-advisor only, for clustering cap)
+    if (storylet.type !== 'advisor') {
+      state.eventsThisSeason++;
+    }
   }
 
   // Loan interest accrual (daily simple interest)
@@ -944,10 +1002,23 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
           if (def.annualMaintenanceCost) {
             state.economy.cash -= def.annualMaintenanceCost;
             state.economy.yearlyExpenses += def.annualMaintenanceCost;
+            state.tracking.currentExpenses.maintenance += def.annualMaintenanceCost;
           }
         }
       }
     }
+
+    // Year-end snapshot (Slice 4a): capture tracking data BEFORE resetting
+    const yearSnapshot = createYearSnapshot(state);
+    state.tracking.yearSnapshots.push(yearSnapshot);
+
+    // Cover crop usage: count as adaptation only if OM was declining (< 2.0%)
+    if (yearSnapshot.coverCropCount >= 10 && yearSnapshot.avgOrganicMatter < 2.0) {
+      state.tracking.coverCropYearsUsed++;
+    }
+
+    // Freeze expense breakdown for UI display, THEN reset
+    const frozenExpenses = { ...state.tracking.currentExpenses };
 
     state.yearEndSummaryPending = true;
     state.autoPauseQueue.push({
@@ -961,8 +1032,12 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         cash: state.economy.cash,
         debt: state.economy.debt,
         interestPaid: state.economy.interestPaidThisYear,
+        expenseBreakdown: frozenExpenses,
       },
     });
+
+    // Reset expense tracking for next year
+    state.tracking.currentExpenses = createEmptyExpenseBreakdown();
     logYearEnd(state);
   }
 
@@ -1307,6 +1382,7 @@ export function harvestCell(state: GameState, cell: Cell): number {
   state.economy.yearlyRevenue += grossRevenue;
   state.economy.yearlyExpenses += laborCost;
   state.economy.cash -= laborCost;
+  state.tracking.currentExpenses.harvestLabor += laborCost;
 
   // Step 3: Loan repayment — 20% of GROSS harvest revenue
   let repayment = 0;
@@ -1315,6 +1391,7 @@ export function harvestCell(state: GameState, cell: Cell): number {
     state.economy.cash -= repayment;
     state.economy.debt -= repayment;
     state.economy.yearlyExpenses += repayment;
+    state.tracking.currentExpenses.loanRepayment += repayment;
   }
 
   const netRevenue = grossRevenue - laborCost - repayment;
@@ -1327,6 +1404,9 @@ export function harvestCell(state: GameState, cell: Cell): number {
       `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost})`);
   }
 
+  // Track yield ratio for adaptation scoring (before price/economic multipliers)
+  cell.lastHarvestYieldRatio = cropDef.yieldPotential > 0 ? yieldAmount / cropDef.yieldPotential : 0;
+
   if (crop.isPerennial) {
     // Perennial: reset for next season but keep the crop
     crop.growthStage = 'mature';
@@ -1336,12 +1416,51 @@ export function harvestCell(state: GameState, cell: Cell): number {
     crop.plantedDay = state.calendar.totalDay; // Fix #1: reset so next season's water-stress denominator is fresh
     crop.harvestedThisSeason = true;           // Fix #2: prevent multiple harvests per season
   } else {
-    // Annual: remove crop after harvest
+    // Annual: set lastCropId at harvest time (perennials set at planting)
+    cell.lastCropId = crop.cropId;
     cell.crop = null;
   }
 
   assertFinite(state.economy.cash, 'economy.cash after harvest');
   return netRevenue;
+}
+
+// ============================================================================
+// Year-End Snapshot (Slice 4a)
+// ============================================================================
+
+function createYearSnapshot(state: GameState): YearSnapshot {
+  let totalOM = 0;
+  let totalN = 0;
+  let coverCropCount = 0;
+  const cropCounts: Record<string, number> = {};
+
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const cell = state.grid[r][c];
+      totalOM += cell.soil.organicMatter;
+      totalN += cell.soil.nitrogen;
+      if (cell.coverCropId) coverCropCount++;
+      if (cell.crop) {
+        cropCounts[cell.crop.cropId] = (cropCounts[cell.crop.cropId] ?? 0) + 1;
+      }
+    }
+  }
+
+  const totalCells = GRID_ROWS * GRID_COLS;
+  return {
+    year: state.calendar.year,
+    revenue: state.economy.yearlyRevenue,
+    expenses: { ...state.tracking.currentExpenses },
+    cashAtYearEnd: state.economy.cash,
+    avgOrganicMatter: totalOM / totalCells,
+    avgNitrogen: totalN / totalCells,
+    cropCounts,
+    coverCropCount,
+    eventsReceived: state.eventLog.filter(
+      e => e.day >= (state.calendar.year - 1) * DAYS_PER_YEAR && e.day <= state.calendar.totalDay
+    ).length,
+  };
 }
 
 // ============================================================================

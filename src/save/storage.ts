@@ -1,5 +1,5 @@
 import type { GameState, SaveGame } from '../engine/types.ts';
-import { SAVE_VERSION, GRID_ROWS, GRID_COLS, EVENT_RNG_SEED_OFFSET } from '../engine/types.ts';
+import { SAVE_VERSION, GRID_ROWS, GRID_COLS, EVENT_RNG_SEED_OFFSET, createEmptyTrackingState } from '../engine/types.ts';
 import { SLICE_1_SCENARIO } from '../data/scenario.ts';
 
 // ============================================================================
@@ -62,19 +62,31 @@ function readSave(key: string): GameState | null {
 
     const parsed = JSON.parse(raw) as SaveGame;
     if (!validateSave(parsed)) {
-      // Try v3 → v4 migration
-      if (isV3Save(parsed)) {
-        return migrateV3ToV4(parsed);
+      // Try v4 → v5 migration
+      if (isV4Save(parsed)) {
+        return migrateV4ToV5(parsed);
       }
-      // Try v2 → v3 → v4 chain
+      // Try v3 → v4 → v5 chain
+      if (isV3Save(parsed)) {
+        const v4State = migrateV3ToV4(parsed);
+        if (v4State) {
+          const v4Save = { version: '4.0.0', state: v4State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
+          return migrateV4ToV5(v4Save);
+        }
+      }
+      // Try v2 → v3 → v4 → v5 chain
       if (isV2Save(parsed)) {
         const v3State = migrateV2ToV3(parsed);
         if (v3State) {
           const v3Save = { version: '3.0.0', state: v3State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
-          return migrateV3ToV4(v3Save);
+          const v4State = migrateV3ToV4(v3Save);
+          if (v4State) {
+            const v4Save = { version: '4.0.0', state: v4State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
+            return migrateV4ToV5(v4Save);
+          }
         }
       }
-      // Try v1 → v2 → v3 → v4 chain
+      // Try v1 → v2 → v3 → v4 → v5 chain
       if (isV1Save(parsed)) {
         const v2State = migrateV1ToV2(parsed);
         if (v2State) {
@@ -82,7 +94,11 @@ function readSave(key: string): GameState | null {
           const v3State = migrateV2ToV3(v2Save);
           if (v3State) {
             const v3Save = { version: '3.0.0', state: v3State, timestamp: Date.now() } as unknown as SaveGame;
-            return migrateV3ToV4(v3Save);
+            const v4State = migrateV3ToV4(v3Save);
+            if (v4State) {
+              const v4Save = { version: '4.0.0', state: v4State, timestamp: Date.now() } as unknown as SaveGame;
+              return migrateV4ToV5(v4Save);
+            }
           }
         }
       }
@@ -138,13 +154,23 @@ export function listManualSaves(): SaveSlotInfo[] {
       let state: GameState | null = null;
       if (validateSave(parsed)) {
         state = parsed.state;
+      } else if (isV4Save(parsed)) {
+        state = migrateV4ToV5(parsed);
       } else if (isV3Save(parsed)) {
-        state = migrateV3ToV4(parsed);
+        const v4State = migrateV3ToV4(parsed);
+        if (v4State) {
+          const v4Save = { version: '4.0.0', state: v4State, timestamp: savedTimestamp } as unknown as SaveGame;
+          state = migrateV4ToV5(v4Save);
+        }
       } else if (isV2Save(parsed)) {
         const v3State = migrateV2ToV3(parsed);
         if (v3State) {
           const v3Save = { version: '3.0.0', state: v3State, timestamp: savedTimestamp } as unknown as SaveGame;
-          state = migrateV3ToV4(v3Save);
+          const v4State = migrateV3ToV4(v3Save);
+          if (v4State) {
+            const v4Save = { version: '4.0.0', state: v4State, timestamp: savedTimestamp } as unknown as SaveGame;
+            state = migrateV4ToV5(v4Save);
+          }
         }
       } else if (isV1Save(parsed)) {
         const v2State = migrateV1ToV2(parsed);
@@ -153,7 +179,11 @@ export function listManualSaves(): SaveSlotInfo[] {
           const v3State = migrateV2ToV3(v2Save);
           if (v3State) {
             const v3Save = { version: '3.0.0', state: v3State, timestamp: savedTimestamp } as unknown as SaveGame;
-            state = migrateV3ToV4(v3Save);
+            const v4State = migrateV3ToV4(v3Save);
+            if (v4State) {
+              const v4Save = { version: '4.0.0', state: v4State, timestamp: savedTimestamp } as unknown as SaveGame;
+              state = migrateV4ToV5(v4Save);
+            }
           }
         }
       }
@@ -348,6 +378,7 @@ function isV3Save(data: unknown): boolean {
  * Migrate a v3 save to v4 by adding:
  * - coverCropId: null on all cells (for 3b cover crops)
  * - frostProtectionEndsDay: 0 on GameState (for 3c weather advisor)
+ * Returns state (not fully valid yet — caller chains to V4→V5).
  */
 function migrateV3ToV4(data: unknown): GameState | null {
   try {
@@ -366,6 +397,61 @@ function migrateV3ToV4(data: unknown): GameState | null {
     // Add frostProtectionEndsDay to GameState
     if (state.frostProtectionEndsDay === undefined) {
       state.frostProtectionEndsDay = 0;
+    }
+
+    return state as GameState;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// V4 → V5 Migration (adds tracking, cell fields, event clustering)
+// ============================================================================
+
+function isV4Save(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const save = data as Record<string, unknown>;
+  return save.version === '4.0.0';
+}
+
+/**
+ * Migrate a v4 save to v5 by adding:
+ * - tracking: TrackingState (empty snapshots, zero counters)
+ * - eventsThisSeason: 0
+ * - actedSincePause: false
+ * - lastCropId: null, lastHarvestYieldRatio: null on all cells
+ */
+function migrateV4ToV5(data: unknown): GameState | null {
+  try {
+    const save = data as SaveGame;
+    const state = save.state as GameState & Record<string, unknown>;
+
+    // Add tracking state
+    if (!state.tracking) {
+      state.tracking = createEmptyTrackingState();
+    }
+
+    // Add event clustering counter
+    if (state.eventsThisSeason === undefined) {
+      state.eventsThisSeason = 0;
+    }
+
+    // Add acted-since-pause flag
+    if (state.actedSincePause === undefined) {
+      state.actedSincePause = false;
+    }
+
+    // Add new cell fields
+    for (const row of state.grid) {
+      for (const cell of row) {
+        if ((cell as unknown as Record<string, unknown>).lastCropId === undefined) {
+          cell.lastCropId = null;
+        }
+        if ((cell as unknown as Record<string, unknown>).lastHarvestYieldRatio === undefined) {
+          cell.lastHarvestYieldRatio = null;
+        }
+      }
     }
 
     return state as GameState;

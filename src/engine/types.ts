@@ -178,6 +178,42 @@ export interface Cell {
   crop: CropInstance | null;
   soil: SoilState;
   coverCropId: string | null;
+  // Slice 4a: Tracking for adaptation scoring
+  lastCropId: string | null;
+  lastHarvestYieldRatio: number | null;
+}
+
+// --- Tracking (Slice 4a) ---
+
+export interface ExpenseBreakdown {
+  planting: number;
+  watering: number;
+  harvestLabor: number;
+  maintenance: number;
+  loanRepayment: number;
+  removal: number;
+  coverCrops: number;
+  eventCosts: number;
+}
+
+export interface YearSnapshot {
+  year: number;
+  revenue: number;
+  expenses: ExpenseBreakdown;
+  cashAtYearEnd: number;
+  avgOrganicMatter: number;
+  avgNitrogen: number;
+  cropCounts: Record<string, number>;
+  coverCropCount: number;
+  eventsReceived: number;
+}
+
+export interface TrackingState {
+  yearSnapshots: YearSnapshot[];
+  currentExpenses: ExpenseBreakdown;
+  cropTransitions: number;
+  droughtTolerantTypesAdopted: string[];
+  coverCropYearsUsed: number;
 }
 
 // --- Economy ---
@@ -278,6 +314,10 @@ export interface GameState {
   eventRngState: number;      // separate RNG for events (seeded from mainSeed + 10000)
   // Slice 3c: Weather advisor frost protection
   frostProtectionEndsDay: number; // 0 = inactive; active when totalDay < this value
+  // Slice 4a: Tracking, event clustering, UX
+  tracking: TrackingState;
+  eventsThisSeason: number;
+  actedSincePause: boolean;
 }
 
 // --- Save/Load ---
@@ -309,7 +349,21 @@ export const NITROGEN_MODERATE_THRESHOLD = 40;
 export const IRRIGATION_COST_PER_CELL = 5; // $ per cell per watering
 export const WATER_DOSE_INCHES = 3.0; // inches per watering action (~14 days worth at typical ET)
 export const STARTING_DAY = 59; // March 1 (0-indexed totalDay) — Spring start per SPEC
-export const SAVE_VERSION = '4.0.0';
+export const SAVE_VERSION = '5.0.0';
+
+export function createEmptyExpenseBreakdown(): ExpenseBreakdown {
+  return { planting: 0, watering: 0, harvestLabor: 0, maintenance: 0, loanRepayment: 0, removal: 0, coverCrops: 0, eventCosts: 0 };
+}
+
+export function createEmptyTrackingState(): TrackingState {
+  return {
+    yearSnapshots: [],
+    currentExpenses: createEmptyExpenseBreakdown(),
+    cropTransitions: 0,
+    droughtTolerantTypesAdopted: [],
+    coverCropYearsUsed: 0,
+  };
+}
 
 /** Number of days in the dormant season (Dec + Jan + Feb = 90). Tied to SEASON_MAP. */
 export const DORMANCY_DAYS = 90;

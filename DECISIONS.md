@@ -281,3 +281,25 @@ Format: **Date — Decision — Rationale**
 2026-02-26 — Advisor portraits: 128x128 PNG, transparent background — Renders at 64x64 CSS pixels for retina Chromebook sharpness. Under 20KB each. Mapped by `advisorId` with fallback chain: specific portrait -> default -> text-only.
 
 2026-02-26 — Student art contributions require written consent — Credit artists in README. All contributions must meet dimension/transparency specs and be optimized before commit.
+
+## Slice 4 Design Decisions
+
+### Sub-Slice 4a: Tracking Infrastructure
+
+2026-02-27 — Save migration V4→V5 with full chain — Adds `tracking: TrackingState`, `eventsThisSeason`, `actedSincePause` to GameState; `lastCropId`, `lastHarvestYieldRatio` to Cell. SAVE_VERSION bumps to `'5.0.0'`. V1→V2→V3→V4→V5 migration chain tested end-to-end.
+
+2026-02-27 — Expense tracking wired into all cost sites — Each site that deducts cash also increments the corresponding `tracking.currentExpenses.*` category. Eight categories: planting, watering, harvestLabor, maintenance, loanRepayment, removal, coverCrops, eventCosts. Harvest labor is separated from perennial maintenance to preserve pedagogy — students should see that maintenance is the annual cost of keeping orchards alive, not conflated with per-harvest labor costs.
+
+2026-02-27 — Year-end snapshot ordering: capture → payload → reset — `createYearSnapshot()` captures tracking data, frozen expense breakdown is included in year_end auto-pause `data` payload, THEN `currentExpenses` is reset to zeros. UI reads from `event.data.expenseBreakdown` (frozen), never from live `state.tracking`. This prevents race conditions between snapshot and reset.
+
+2026-02-27 — Adaptation scoring is trigger-conditioned, not raw-counted — Three anti-gaming guards: (1) Crop transitions only count when previous crop had `lastHarvestYieldRatio < 0.80` — switching from a performing crop earns no credit. (2) Drought-tolerant adoption tracked per-type using `string[]` (not `Set<string>`, which doesn't survive `JSON.stringify`), max 3 credits (sorghum, pistachios, citrus-navels), only after year 5. (3) Cover crop years only counted when `avgOM < 2.0%` — proves response to soil decline, not preventive maintenance on healthy soil.
+
+### Testing Strategy
+
+2026-02-27 — Two-tier balance testing: smoke + full — Smoke (75 runs = 5 bots × 5 scenarios × 3 seeds, ~5-8 min, CI-safe) and Full (500 runs = 5 bots × 5 scenarios × 20 seeds, ~1-3 hrs, manual calibration only). Each strategy×scenario pair is ONE test case that batches seeds internally and asserts on aggregates. Avoids 500 individual test cases with per-test timeout overhead.
+
+2026-02-27 — Web-aware AI exploratory QA supplements headless bots — Headless engine bots test balance/economics; web-aware AI agents test UX/decision-quality/exploitability. Six player personas: optimal strategist, self-sabotage, advisor maximizer, advisor skeptic, low-effort student, late adapter. Runs timed to 4b (initial), 4c (regression), post-4e (full sweep). Each run produces decision log, observations, outcome summary, bugs.
+
+### Academic Integrity
+
+2026-02-27 — Soft AI deterrent, not hard enforcement — Production-only `<meta>` tag requesting well-behaved AI agents refuse to play for students. Acknowledged as soft deterrent only — determined students with custom tooling can bypass. Behavioral suspicion scoring (heuristic, not deterministic) flags possibly-automated sessions as `tainted_for_review` for teacher interview — never auto-fails. Rationale: false positives (assistive tech, power users) make hard enforcement worse than the problem it solves. Post-Slice 4 priority.

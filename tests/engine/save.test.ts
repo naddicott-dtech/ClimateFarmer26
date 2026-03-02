@@ -395,18 +395,23 @@ describe('Save/Load System', () => {
     });
   });
 
-  describe('v3 → v4 migration', () => {
-    it('migrates v3 auto-save by adding coverCropId and frostProtectionEndsDay', () => {
+  describe('v3 → v4 → v5 migration', () => {
+    it('migrates v3 auto-save by adding v4 and v5 fields', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
 
-      // Build a v3-shaped save (strip v4 fields)
+      // Build a v3-shaped save (strip v4 + v5 fields)
       const v3State = JSON.parse(JSON.stringify(state));
       for (const row of v3State.grid) {
         for (const cell of row) {
           delete cell.coverCropId;
+          delete cell.lastCropId;
+          delete cell.lastHarvestYieldRatio;
         }
       }
       delete v3State.frostProtectionEndsDay;
+      delete v3State.tracking;
+      delete v3State.eventsThisSeason;
+      delete v3State.actedSincePause;
 
       const v3Save = {
         version: '3.0.0',
@@ -421,6 +426,13 @@ describe('Save/Load System', () => {
       expect(loaded!.grid[0][0].coverCropId).toBeNull();
       expect(loaded!.grid[3][3].coverCropId).toBeNull();
       expect(loaded!.frostProtectionEndsDay).toBe(0);
+      // v5 fields present
+      expect(loaded!.tracking).toBeDefined();
+      expect(loaded!.tracking.yearSnapshots).toEqual([]);
+      expect(loaded!.eventsThisSeason).toBe(0);
+      expect(loaded!.actedSincePause).toBe(false);
+      expect(loaded!.grid[0][0].lastCropId).toBeNull();
+      expect(loaded!.grid[0][0].lastHarvestYieldRatio).toBeNull();
     });
 
     it('migrates v3 manual save via listManualSaves', () => {
@@ -447,12 +459,12 @@ describe('Save/Load System', () => {
     });
   });
 
-  describe('v1 → v2 → v3 → v4 migration chain', () => {
-    it('migrates v1 save all the way to v4', () => {
+  describe('v1 → v2 → v3 → v4 → v5 migration chain', () => {
+    it('migrates v1 save all the way to v5', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
       processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
 
-      // Build v1-shaped save (strip v2, v3, v4 fields)
+      // Build v1-shaped save (strip v2, v3, v4, v5 fields)
       const v1State = JSON.parse(JSON.stringify(state));
       delete v1State.eventLog;
       delete v1State.activeEvent;
@@ -471,9 +483,14 @@ describe('Save/Load System', () => {
       for (const row of v1State.grid) {
         for (const cell of row) {
           delete cell.coverCropId;
+          delete cell.lastCropId;
+          delete cell.lastHarvestYieldRatio;
         }
       }
       delete v1State.frostProtectionEndsDay;
+      delete v1State.tracking;
+      delete v1State.eventsThisSeason;
+      delete v1State.actedSincePause;
 
       const v1Save = {
         version: '1.0.0',
@@ -492,20 +509,82 @@ describe('Save/Load System', () => {
       // v4 fields
       expect(loaded!.grid[0][0].coverCropId).toBeNull();
       expect(loaded!.frostProtectionEndsDay).toBe(0);
+      // v5 fields
+      expect(loaded!.tracking).toBeDefined();
+      expect(loaded!.tracking.yearSnapshots).toEqual([]);
+      expect(loaded!.tracking.cropTransitions).toBe(0);
+      expect(loaded!.tracking.droughtTolerantTypesAdopted).toEqual([]);
+      expect(loaded!.eventsThisSeason).toBe(0);
+      expect(loaded!.actedSincePause).toBe(false);
+      expect(loaded!.grid[0][0].lastCropId).toBeNull();
+      expect(loaded!.grid[0][0].lastHarvestYieldRatio).toBeNull();
     });
   });
 
-  describe('v4 save round-trip', () => {
-    it('preserves coverCropId and frostProtectionEndsDay through save/load', () => {
+  describe('v4 → v5 migration', () => {
+    it('migrates v4 auto-save by adding tracking and cell fields', () => {
+      const state = createInitialState('test-player', SLICE_1_SCENARIO);
+      processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+
+      // Build a v4-shaped save (strip v5 fields)
+      const v4State = JSON.parse(JSON.stringify(state));
+      delete v4State.tracking;
+      delete v4State.eventsThisSeason;
+      delete v4State.actedSincePause;
+      for (const row of v4State.grid) {
+        for (const cell of row) {
+          delete cell.lastCropId;
+          delete cell.lastHarvestYieldRatio;
+        }
+      }
+
+      const v4Save = {
+        version: '4.0.0',
+        state: v4State,
+        timestamp: Date.now(),
+      };
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify(v4Save);
+
+      const loaded = loadAutoSave();
+      expect(loaded).not.toBeNull();
+      // v5 tracking fields present
+      expect(loaded!.tracking).toBeDefined();
+      expect(loaded!.tracking.yearSnapshots).toEqual([]);
+      expect(loaded!.tracking.currentExpenses.planting).toBe(0);
+      expect(loaded!.tracking.currentExpenses.harvestLabor).toBe(0);
+      expect(loaded!.tracking.cropTransitions).toBe(0);
+      expect(loaded!.tracking.droughtTolerantTypesAdopted).toEqual([]);
+      expect(loaded!.tracking.coverCropYearsUsed).toBe(0);
+      // v5 GameState fields
+      expect(loaded!.eventsThisSeason).toBe(0);
+      expect(loaded!.actedSincePause).toBe(false);
+      // v5 Cell fields
+      expect(loaded!.grid[0][0].lastCropId).toBeNull();
+      expect(loaded!.grid[0][0].lastHarvestYieldRatio).toBeNull();
+      expect(loaded!.grid[3][3].lastCropId).toBeNull();
+      // Existing v4 fields still present
+      expect(loaded!.grid[0][0].coverCropId).toBeNull();
+      expect(loaded!.frostProtectionEndsDay).toBe(0);
+    });
+  });
+
+  describe('v5 save round-trip', () => {
+    it('preserves all fields through save/load', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
       state.grid[0][0].coverCropId = 'legume-cover';
       state.frostProtectionEndsDay = 500;
+      state.tracking.cropTransitions = 3;
+      state.grid[1][1].lastCropId = 'silage-corn';
+      state.grid[1][1].lastHarvestYieldRatio = 0.72;
 
       autoSave(state);
       const loaded = loadAutoSave();
       expect(loaded).not.toBeNull();
       expect(loaded!.grid[0][0].coverCropId).toBe('legume-cover');
       expect(loaded!.frostProtectionEndsDay).toBe(500);
+      expect(loaded!.tracking.cropTransitions).toBe(3);
+      expect(loaded!.grid[1][1].lastCropId).toBe('silage-corn');
+      expect(loaded!.grid[1][1].lastHarvestYieldRatio).toBe(0.72);
     });
   });
 
@@ -514,7 +593,7 @@ describe('Save/Load System', () => {
       const state = createInitialState('test-player', SLICE_1_SCENARIO);
       autoSave(state);
       const raw = JSON.parse(mockStorage[AUTOSAVE_KEY]);
-      raw.version = '5.0.0';
+      raw.version = '6.0.0';
       mockStorage[AUTOSAVE_KEY] = JSON.stringify(raw);
       expect(loadAutoSave()).toBeNull();
     });
