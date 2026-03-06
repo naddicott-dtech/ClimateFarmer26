@@ -102,7 +102,7 @@ Each stage should be visually distinct from its neighbors. Crop art renders resp
 - **Size:** 48x48 pixels (renders responsively to fill cell, CSS `width: calc(100% - 4px)`)
 - **Style:** Stylized semi-realistic, painterly, approachable for high school students
 - **Palette:** sun-baked earth (#A97142), wheat gold (#D8B45A), irrigation blue (#4A90B8), leaf green (#6FA35B), sky haze (#C9DCE8), orchard dark (#2F5D3A), accent orange (#E38B3A)
-- **Background:** Soil/earth tones — crops sit on farm cells, so background should blend with the cell background
+- **Background:** Soil/earth tones — crops sit on farm cells, so background should blend with the cell background. (The shared prompt says "transparent background" but all assets are JPEG — no transparency supported. Earth-toned backgrounds effectively achieve the same result.)
 - **Constraints:** No text, no logos, no watermarks
 
 ## UI Icons (Future)

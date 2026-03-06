@@ -55,7 +55,7 @@ Notes:
   - Plant col: `action-plant-col-<col>-<cropId>`
   - Harvest field: `action-harvest-all`
   - Water field: `action-water-all`
-- Field-scope water always opens a confirm dialog.
+- Manual side-panel field-scope water opens a confirm dialog. Auto-pause water uses `skipConfirm` (single click).
 
 ## 6) Dialog Handling (Most Important)
 Most blocking overlays use `role="alertdialog"`.

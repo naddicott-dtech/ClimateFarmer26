@@ -1,7 +1,7 @@
 # HANDOFF.md — Post-Slice 4 Completion Snapshot
 
 **Date:** 2026-03-06
-**Status:** Slice 4 complete (sub-slices 4a + 4b + 4b.5 + 4c + 4d + 4e + stabilization). All tests passing. Ready for Slice 5 planning.
+**Status:** Slice 4 complete (sub-slices 4a + 4b + 4b.5 + 4c + 4d + 4e + stabilization). Ready for Slice 5 planning.
 
 ## What Was Built
 
@@ -65,7 +65,7 @@ Four levers to fix #45 (economy too lenient):
 
 ```
 npm test             # 589 unit tests, all passing (19 test files)
-npm run test:browser # 96 Playwright browser tests (95 passing, 1 known flaky foreshadow test)
+npm run test:browser # 96 Playwright browser tests (all passing; foreshadow natural-flow test may flake under --repeat-each stress)
 npm run build        # ~43.8 KB gzipped JS, ~5.1 KB CSS
 SAVE_VERSION         # '7.0.0'
 ```

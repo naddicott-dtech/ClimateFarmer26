@@ -10,5 +10,5 @@ This file is a lightweight pointer to the active supervisory brief.
 2. Project is **ready for Slice 5 planning**.
 3. 589 unit tests + 96 browser tests (95 passing, 1 known flaky foreshadow test).
 4. Build: ~44KB gzipped JS + ~5KB CSS. SAVE_VERSION = '7.0.0'.
-5. All classroom-critical UX issues from external QA resolved.
+5. Classroom-critical UX issues from external QA rounds resolved (water fatigue #59 remains open — recommended for Slice 5 tech tree).
 6. Remaining open items are UX polish and deferred features (see KNOWN_ISSUES.md).

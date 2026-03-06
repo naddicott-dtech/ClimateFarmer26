@@ -107,7 +107,7 @@ Keep these current at all times:
 ### Executive Status
 1. Slice 4 is **complete** (4a balance infrastructure → 4b event refactor → 4c economic rebalancing → 4d overhead tuning → 4e classroom UX pass → stabilization fixes).
 2. Project is **ready for Slice 5 planning**.
-3. All classroom-critical UX issues from external QA rounds resolved.
+3. Classroom-critical UX issues from external QA rounds resolved. Water fatigue (#59, HIGH) remains open — recommended for Slice 5 tech tree unlock.
 
 ### Latest Verified Signals
 1. Unit tests: 589 passing (19 test files).

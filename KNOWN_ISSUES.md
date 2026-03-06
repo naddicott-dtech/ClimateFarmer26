@@ -256,7 +256,7 @@ Resolution: Three reinforcing signals: (1) "Ready!" text badge on harvestable ce
 - ~~Cover crops~~ — Legume cover crop system (fall planting, spring incorporation, N/OM bonus) implemented in 3b
 - ~~Additional crops~~ — Sorghum (drought-tolerant annual) and Citrus Navels (evergreen perennial) added in 3a1
 
-**Still deferred → Slice 4+:**
+**Still deferred → Slice 5+:**
 - **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started.
 - **Remaining advisors** — Financial Advisor/Banker, Farming Community. (Weather Service completed in 3c.)
 - **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums.
