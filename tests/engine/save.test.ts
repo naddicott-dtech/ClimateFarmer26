@@ -41,6 +41,16 @@ describe('Save/Load System', () => {
       saveGame(state, 'slot1');
       expect(hasSaveData()).toBe(false);
     });
+
+    it('#67: returns false when auto-save is corrupt JSON', () => {
+      mockStorage[AUTOSAVE_KEY] = '{not valid json!!!';
+      expect(hasSaveData()).toBe(false);
+    });
+
+    it('#67: returns false when auto-save has invalid state', () => {
+      mockStorage[AUTOSAVE_KEY] = JSON.stringify({ version: '99.99.99', state: {}, timestamp: Date.now() });
+      expect(hasSaveData()).toBe(false);
+    });
   });
 
   describe('hasManualSaves', () => {

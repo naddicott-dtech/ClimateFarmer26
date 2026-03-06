@@ -113,6 +113,17 @@ describe('advisor-soil-nitrogen', () => {
     const minYear = getStorylet('advisor-soil-nitrogen').preconditions.find(c => c.type === 'min_year');
     expect(evaluateCondition(minYear!, state, rng)).toBe(false);
   });
+
+  it('#72: acknowledge choice notification mentions fall and cover crops', () => {
+    const storylet = getStorylet('advisor-soil-nitrogen');
+    const ackChoice = storylet.choices.find(c => c.id === 'acknowledge');
+    expect(ackChoice).toBeDefined();
+    const notifEffect = ackChoice!.effects.find(e => e.type === 'add_notification');
+    expect(notifEffect).toBeDefined();
+    const msg = (notifEffect as { message: string }).message;
+    expect(msg).toMatch(/fall/i);
+    expect(msg).toMatch(/cover crop/i);
+  });
 });
 
 // ============================================================================

@@ -159,9 +159,9 @@ function readSave(key: string): GameState | null {
 // Save Management
 // ============================================================================
 
-/** Returns true only if an auto-save exists (powers the "Continue" button). */
+/** Returns true only if a valid auto-save exists (powers the "Continue" button). */
 export function hasSaveData(): boolean {
-  return localStorage.getItem(AUTOSAVE_KEY) !== null;
+  return loadAutoSave() !== null;
 }
 
 /** Returns true if any named manual saves exist (powers the "Load Game" button). */

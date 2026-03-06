@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'preact/hooks';
-import { gameState, currentWeather, dispatch, handleSave, returnToTitle, getActiveScenarioName } from '../../adapter/signals.ts';
+import { gameState, currentWeather, dispatch, handleSave, returnToTitle, getActiveScenarioName, confirmDialog, needsPlayPrompt } from '../../adapter/signals.ts';
 import { getSeasonName, getMonthName } from '../../engine/calendar.ts';
 import type { GameSpeed, DailyWeather } from '../../engine/types.ts';
 import styles from '../styles/TopBar.module.css';
@@ -94,6 +94,12 @@ export function TopBar() {
         ))}
       </div>
 
+      {needsPlayPrompt.value && speed === 0 && (
+        <span data-testid="play-prompt" class={styles.playPrompt}>
+          Press Play to continue
+        </span>
+      )}
+
       <span
         ref={cashRef}
         class={styles.cashSection}
@@ -102,6 +108,19 @@ export function TopBar() {
       >
         ${Math.floor(economy.cash).toLocaleString()}
       </span>
+
+      {(() => {
+        const net = economy.yearlyRevenue - economy.yearlyExpenses;
+        return (
+          <span
+            data-testid="topbar-year-net"
+            class={net >= 0 ? styles.netPositive : styles.netNegative}
+            aria-label={`Year net: ${net >= 0 ? '+' : ''}$${Math.floor(net).toLocaleString()}`}
+          >
+            Year net: {net >= 0 ? '+' : '-'}${Math.floor(Math.abs(net)).toLocaleString()}
+          </span>
+        );
+      })()}
 
       {state.frostProtectionEndsDay > state.calendar.totalDay && (
         <span
@@ -135,7 +154,15 @@ export function TopBar() {
       <button
         data-testid="save-new-game"
         class={styles.newGameBtn}
-        onClick={() => returnToTitle()}
+        onClick={() => {
+          confirmDialog.value = {
+            message: 'Return to title screen? Your game is auto-saved at each season boundary.',
+            onConfirm: () => { confirmDialog.value = null; returnToTitle(); },
+            onCancel: () => { confirmDialog.value = null; },
+            actionId: 'return-to-title',
+            origin: 'manual',
+          };
+        }}
         aria-label="Return to title screen"
       >
         New Game

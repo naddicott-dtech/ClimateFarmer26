@@ -84,6 +84,21 @@
   user-select: none;
 }
 
+.readyBadge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fef08a;
+  padding: 1px 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+}
+
 .coverCropIcon {
   position: absolute;
   bottom: 2px;

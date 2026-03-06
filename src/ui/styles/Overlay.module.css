@@ -102,6 +102,29 @@
   font-size: var(--font-size-lg);
 }
 
+.expenseHeader td {
+  font-weight: 600;
+}
+
+.expenseLine td {
+  font-size: var(--font-size-sm) !important;
+  padding: 2px 0 !important;
+  color: var(--color-text-muted);
+}
+
+.expenseIndent {
+  padding-left: 16px !important;
+}
+
+.expenseAmount {
+  font-weight: 500 !important;
+}
+
+.netRow td {
+  border-top: 1px solid var(--color-bg-dark);
+  padding-top: 8px !important;
+}
+
 .positive {
   color: var(--color-success);
 }

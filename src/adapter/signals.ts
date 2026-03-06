@@ -102,6 +102,9 @@ export const currentWeather = signal<DailyWeather | null>(null);
 /** Save error message */
 export const saveError = signal<string | null>(null);
 
+/** Show "Press Play to continue" prompt when paused after action */
+export const needsPlayPrompt = signal(false);
+
 // ============================================================================
 // State Publishing
 // ============================================================================
@@ -149,13 +152,15 @@ export const grid = computed(() => gameState.value?.grid ?? []);
 // ============================================================================
 
 export type ConfirmActionId =
+  | 'plant-single'
   | 'plant-all'
   | 'plant-partial'
   | 'water-all'
   | 'water-partial'
   | 'cover-crop-all'
   | 'cover-crop-partial'
-  | 'remove-crop';
+  | 'remove-crop'
+  | 'return-to-title';
 
 export type ConfirmOrigin = 'manual' | 'autopause';
 
@@ -192,6 +197,7 @@ export function startNewGame(playerId: string, scenarioId?: string): void {
     confirmDialog.value = null;
     currentWeather.value = null;
     saveError.value = null;
+    needsPlayPrompt.value = false;
     tutorialStep.value = isTutorialDismissed() ? -1 : 0;
   });
 }
@@ -210,6 +216,7 @@ export function resumeGame(): void {
     cropMenuOpen.value = false;
     confirmDialog.value = null;
     saveError.value = null;
+    needsPlayPrompt.value = false;
     tutorialStep.value = -1;
   });
 }
@@ -232,6 +239,7 @@ export function returnToTitle(): void {
     cropMenuOpen.value = false;
     confirmDialog.value = null;
     currentWeather.value = null;
+    needsPlayPrompt.value = false;
   });
 }
 
@@ -243,8 +251,21 @@ export function dispatch(command: Command): CommandResult {
   if (!_liveState) return { success: false, reason: 'No active game.' };
 
   const result = processCommand(_liveState, command, _activeScenario);
+  // #50: Clear play prompt when speed increases; show it when paused and taking actions
+  if (command.type === 'SET_SPEED' && command.speed > 0) {
+    needsPlayPrompt.value = false;
+  } else if (command.type !== 'SET_SPEED') {
+    maybeShowPlayPrompt();
+  }
   publishState();
   return result;
+}
+
+/** #50: Show play prompt if game is paused and player just took an action */
+function maybeShowPlayPrompt(): void {
+  if (_liveState && _liveState.speed === 0 && _liveState.autoPauseQueue.length === 0) {
+    needsPlayPrompt.value = true;
+  }
 }
 
 // ============================================================================
@@ -287,7 +308,28 @@ export function closeCropMenu(): void {
 
 export function plantCrop(cropId: string): void {
   const sel = selectedCell.value;
-  if (!sel) return;
+  if (!sel || !_liveState) return;
+
+  const cropDef = getCropDefinition(cropId);
+
+  // #71: First perennial warning
+  if (cropDef.type === 'perennial' && !_liveState.flags['perennialWarningShown']) {
+    const yrs = cropDef.yearsToEstablish ?? 3;
+    confirmDialog.value = {
+      message: `Plant ${cropDef.name}? These trees take ${yrs} years to produce their first harvest. You won't see revenue from them until Year ${_liveState.calendar.year + yrs}. Cost: $${cropDef.seedCostPerAcre}.`,
+      onConfirm: () => {
+        if (!_liveState) return;
+        _liveState.flags['perennialWarningShown'] = true;
+        const result = dispatch({ type: 'PLANT_CROP', cellRow: sel.row, cellCol: sel.col, cropId });
+        confirmDialog.value = null;
+        if (result.success) cropMenuOpen.value = false;
+      },
+      onCancel: () => { confirmDialog.value = null; },
+      actionId: 'plant-single',
+      origin: 'manual',
+    };
+    return;
+  }
 
   const result = dispatch({ type: 'PLANT_CROP', cellRow: sel.row, cellCol: sel.col, cropId });
   if (result.success) {
@@ -333,13 +375,20 @@ export function plantBulk(scope: 'all' | 'row' | 'col', cropId: string, index?: 
     if (_liveState.economy.cash >= totalCost) {
       // Can afford all full rows — confirm, then route through processCommand
       // so all engine validation (planting window, cash, etc.) applies at execution time
+      // #71: Enhance message for first perennial plant
+      const isPerennialFirst = cropDef.type === 'perennial' && !_liveState.flags['perennialWarningShown'];
+      const perennialNote = isPerennialFirst
+        ? ` These trees take ${cropDef.yearsToEstablish ?? 3} years to produce their first harvest. You won't see revenue from them until Year ${_liveState.calendar.year + (cropDef.yearsToEstablish ?? 3)}.`
+        : '';
       confirmDialog.value = {
-        message: `Plant all ${fullRowCells.length} plots with ${cropDef.name} for $${totalCost.toLocaleString()}?`,
+        message: `Plant all ${fullRowCells.length} plots with ${cropDef.name} for $${totalCost.toLocaleString()}?${perennialNote}`,
         onConfirm: () => {
           if (!_liveState) return;
+          if (isPerennialFirst) _liveState.flags['perennialWarningShown'] = true;
           processCommand(_liveState, { type: 'PLANT_BULK', scope: 'all', cropId }, _activeScenario);
           confirmDialog.value = null;
           publishState();
+          maybeShowPlayPrompt();
         },
         onCancel: () => { confirmDialog.value = null; },
         actionId: 'plant-all',
@@ -353,10 +402,15 @@ export function plantBulk(scope: 'all' | 'row' | 'col', cropId: string, index?: 
 
     if (result.partialOffer) {
       const offer = result.partialOffer;
+      const isPerennialFirstPartial = cropDef.type === 'perennial' && !_liveState.flags['perennialWarningShown'];
+      const perennialNotePartial = isPerennialFirstPartial
+        ? ` These trees take ${cropDef.yearsToEstablish ?? 3} years to produce their first harvest.`
+        : '';
       confirmDialog.value = {
-        message: `You can afford to plant ${offer.affordableRows} full row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Plant ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?`,
+        message: `You can afford to plant ${offer.affordableRows} full row${offer.affordableRows > 1 ? 's' : ''} (${offer.affordablePlots} plots) for $${offer.totalCost.toLocaleString()}. Plant ${offer.affordableRows} row${offer.affordableRows > 1 ? 's' : ''}?${perennialNotePartial}`,
         onConfirm: () => {
           if (!_liveState) return;
+          if (isPerennialFirstPartial) _liveState.flags['perennialWarningShown'] = true;
           const cells: Cell[] = [];
           let rowsCollected = 0;
           for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
@@ -369,6 +423,7 @@ export function plantBulk(scope: 'all' | 'row' | 'col', cropId: string, index?: 
           executeBulkPlant(_liveState, cells, cropId, costPerCell);
           confirmDialog.value = null;
           publishState();
+          maybeShowPlayPrompt();
         },
         onCancel: () => { confirmDialog.value = null; },
         actionId: 'plant-partial',
@@ -382,9 +437,32 @@ export function plantBulk(scope: 'all' | 'row' | 'col', cropId: string, index?: 
   }
 
   // Row/Column scope: no confirmation needed (all-or-nothing per DD-1)
+  // But #71: still show perennial warning on first perennial plant
+  const rowColCropDef = getCropDefinition(cropId);
+  const isPerennialFirstRowCol = rowColCropDef.type === 'perennial' && !_liveState.flags['perennialWarningShown'];
+  if (isPerennialFirstRowCol) {
+    const yrs = rowColCropDef.yearsToEstablish ?? 3;
+    confirmDialog.value = {
+      message: `Plant ${rowColCropDef.name}? These trees take ${yrs} years to produce their first harvest. You won't see revenue from them until Year ${_liveState.calendar.year + yrs}.`,
+      onConfirm: () => {
+        if (!_liveState) return;
+        _liveState.flags['perennialWarningShown'] = true;
+        processCommand(_liveState, { type: 'PLANT_BULK', scope, cropId, index }, _activeScenario);
+        confirmDialog.value = null;
+        publishState();
+        maybeShowPlayPrompt();
+      },
+      onCancel: () => { confirmDialog.value = null; },
+      actionId: 'plant-all',
+      origin: 'manual',
+    };
+    return;
+  }
+
   const result = processCommand(_liveState, { type: 'PLANT_BULK', scope, cropId, index }, _activeScenario);
   if (result.success) {
     publishState();
+    maybeShowPlayPrompt();
   }
 }
 
@@ -392,25 +470,58 @@ export function harvestBulk(scope: 'all' | 'row' | 'col', index?: number): void 
   dispatch({ type: 'HARVEST_BULK', scope, index });
 }
 
-export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
+export type WaterBulkResult = 'applied_full' | 'applied_partial' | 'failed';
+
+export function waterBulk(scope: 'all' | 'row' | 'col', index?: number, opts?: { skipConfirm?: boolean }): WaterBulkResult | void {
   if (!_liveState) return;
 
   if (scope === 'all') {
-    // SPEC §2.6: Always show confirmation for field-scope water
     const plantedCells = _liveState.grid.flat().filter(c => c.crop !== null);
     if (plantedCells.length === 0) {
       processCommand(_liveState, { type: 'WATER', scope }, _activeScenario);
       publishState();
-      return;
+      return opts?.skipConfirm ? 'failed' : undefined;
     }
 
     const costMultiplier = getIrrigationCostMultiplier(_liveState);
     const effectiveCostPerCell = IRRIGATION_COST_PER_CELL * costMultiplier;
     const totalCost = plantedCells.length * effectiveCostPerCell;
 
+    // #52: Skip confirm when called from auto-pause (single-action water)
+    if (opts?.skipConfirm) {
+      if (_liveState.economy.cash >= totalCost) {
+        // Can afford all
+        processCommand(_liveState, { type: 'WATER', scope: 'all' }, _activeScenario);
+        publishState();
+        return 'applied_full';
+      }
+      // Try partial — route through engine for partial offer
+      const result = processCommand(_liveState, { type: 'WATER', scope }, _activeScenario);
+      if (result.partialOffer) {
+        const offer = result.partialOffer;
+        const cells: Cell[] = [];
+        let rowsCollected = 0;
+        for (let r = 0; r < GRID_ROWS && rowsCollected < offer.affordableRows; r++) {
+          const rowPlanted = _liveState.grid[r].filter(c => c.crop !== null);
+          if (rowPlanted.length > 0) {
+            cells.push(...rowPlanted);
+            rowsCollected++;
+          }
+        }
+        executeWater(_liveState, cells, _activeScenario);
+        addNotification(_liveState, 'info', `Watered ${cells.length} of ${plantedCells.length} plots. Insufficient funds for remaining.`);
+        publishState();
+        return 'applied_partial';
+      }
+      // Can't afford any
+      addNotification(_liveState, 'info', `Cannot afford irrigation ($${effectiveCostPerCell} per plot).`);
+      publishState();
+      return 'failed';
+    }
+
+    // SPEC §2.6: Manual path — always show confirmation for field-scope water
     if (_liveState.economy.cash >= totalCost) {
       // Can afford all — confirm, then route through processCommand
-      // so all engine validation applies at execution time
       confirmDialog.value = {
         message: `Water all ${plantedCells.length} planted plots for $${totalCost.toLocaleString()}?`,
         onConfirm: () => {
@@ -418,6 +529,7 @@ export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
           processCommand(_liveState, { type: 'WATER', scope: 'all' }, _activeScenario);
           confirmDialog.value = null;
           publishState();
+          maybeShowPlayPrompt();
         },
         onCancel: () => { confirmDialog.value = null; },
         actionId: 'water-all',
@@ -447,6 +559,7 @@ export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
           executeWater(_liveState, cells, _activeScenario);
           confirmDialog.value = null;
           publishState();
+          maybeShowPlayPrompt();
         },
         onCancel: () => { confirmDialog.value = null; },
         actionId: 'water-partial',
@@ -463,6 +576,7 @@ export function waterBulk(scope: 'all' | 'row' | 'col', index?: number): void {
   const result = processCommand(_liveState, { type: 'WATER', scope, index }, _activeScenario);
   if (result.success) {
     publishState();
+    maybeShowPlayPrompt();
   }
 }
 
@@ -493,6 +607,7 @@ export function coverCropBulk(scope: 'all' | 'row' | 'col', coverCropId: string,
           processCommand(_liveState, { type: 'SET_COVER_CROP_BULK', scope: 'all', coverCropId }, _activeScenario);
           confirmDialog.value = null;
           publishState();
+          maybeShowPlayPrompt();
         },
         onCancel: () => { confirmDialog.value = null; },
         actionId: 'cover-crop-all',
@@ -525,6 +640,7 @@ export function coverCropBulk(scope: 'all' | 'row' | 'col', coverCropId: string,
           executeBulkCoverCrop(_liveState, cells, coverCropId, costPerCell);
           confirmDialog.value = null;
           publishState();
+          maybeShowPlayPrompt();
         },
         onCancel: () => { confirmDialog.value = null; },
         actionId: 'cover-crop-partial',
@@ -541,6 +657,7 @@ export function coverCropBulk(scope: 'all' | 'row' | 'col', coverCropId: string,
   const result = processCommand(_liveState, { type: 'SET_COVER_CROP_BULK', scope, coverCropId, index }, _activeScenario);
   if (result.success) {
     publishState();
+    maybeShowPlayPrompt();
   }
 }
 
@@ -563,10 +680,23 @@ export function handleDismissAutoPause(): void {
 
   if (_liveState.yearEndSummaryPending && _liveState.autoPauseQueue.length === 0) {
     resetYearlyTracking(_liveState);
+    // #54: Advance display calendar to next day (Year N+1) without changing totalDay.
+    // simulateTick reads totalDay as prevTotalDay and recomputes the full calendar,
+    // so these display fields are overwritten on the next tick. No day skip.
+    const nextCal = totalDayToCalendar(_liveState.calendar.totalDay + 1);
+    _liveState.calendar.year = nextCal.year;
+    _liveState.calendar.month = nextCal.month;
+    _liveState.calendar.day = nextCal.day;
+    _liveState.calendar.season = nextCal.season;
   }
 
   if (_liveState.gameOver && _liveState.autoPauseQueue.length === 0) {
     screen.value = 'game-over';
+  }
+
+  // #50: Show play prompt if paused after dismissing
+  if (_liveState.speed === 0 && _liveState.autoPauseQueue.length === 0) {
+    needsPlayPrompt.value = true;
   }
 
   publishState();
@@ -640,6 +770,7 @@ export function loadSavedGame(slotName: string): void {
   _activeScenario = resolveScenario(state.scenarioId, state);
   _liveState = state;
   logSessionStart(_liveState);
+  autoSave(_liveState); // #68: sync autosave to loaded manual save
   batch(() => {
     publishState();
     screen.value = 'playing';

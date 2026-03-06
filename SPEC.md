@@ -874,7 +874,8 @@ The end-of-game score rewards **resilient, sustainable farming** — not just ma
 #### 32.3 Calendar Display Lag (#54)
 - **When** I click "Continue to Year N", **I should see** the calendar update immediately (not wait for next simulation tick).
 
-#### 32.4 Event Clustering Cap (#47)
+#### 32.4 Event Clustering Cap (#47) — DEFERRED TO SLICE 5
+- **Deferred.** Touches engine scheduling + balance. Will be designed alongside Slice 5 event surface expansion.
 - **When** events fire during a season, **the system should** cap at 2 events per season (excluding advisors, which have their own cadence).
 - **When** a third event would fire in the same season, **the system should** defer it to the next season or suppress it.
 

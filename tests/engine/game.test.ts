@@ -3,6 +3,7 @@ import {
   createInitialState, processCommand, simulateTick,
   getAvailableCrops, getGrowthProgress, getYieldPercentage,
   resetYearlyTracking, dismissAutoPause, executeBulkPlant, executeWater,
+  addNotification,
 } from '../../src/engine/game.ts';
 import type { GameState, Command } from '../../src/engine/types.ts';
 import {
@@ -946,5 +947,55 @@ describe('DD-1 complete rows', () => {
 
     expect(result.success).toBe(true);
     expect(result.cellsAffected).toBe(64);
+  });
+});
+
+// ============================================================================
+// #61 Notification Batching + Cap + Age-based Trim
+// ============================================================================
+
+describe('Notification batching (#61)', () => {
+  it('bulk harvest emits one notification per crop type, not one per cell', () => {
+    // Plant 8 corn in row 0
+    state.calendar = { day: 60, month: 3, season: 'spring', year: 1, totalDay: 59 };
+    processCommand(state, { type: 'PLANT_BULK', scope: 'row', cropId: 'silage-corn', index: 0 }, SLICE_1_SCENARIO);
+
+    // Force crops to harvestable
+    for (const cell of state.grid[0]) {
+      if (cell.crop) {
+        cell.crop.growthStage = 'harvestable';
+        cell.crop.gddAccumulated = 9999;
+      }
+    }
+
+    const notifsBefore = state.notifications.length;
+    processCommand(state, { type: 'HARVEST_BULK', scope: 'row', index: 0 }, SLICE_1_SCENARIO);
+
+    const harvestNotifs = state.notifications.slice(notifsBefore).filter(n => n.type === 'harvest');
+    expect(harvestNotifs).toHaveLength(1); // One notification, not 8
+    expect(harvestNotifs[0].message).toContain('8 plots');
+    expect(harvestNotifs[0].message).toContain('Silage Corn');
+  });
+
+  it('notification cap: max 30 notifications at any time', () => {
+    for (let i = 0; i < 35; i++) {
+      addNotification(state, 'info', `Test notification ${i}`);
+    }
+    expect(state.notifications.length).toBeLessThanOrEqual(30);
+  });
+
+  it('single-cell harvest still produces individual notification', () => {
+    state.calendar = { day: 60, month: 3, season: 'spring', year: 1, totalDay: 59 };
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+    state.grid[0][0].crop!.growthStage = 'harvestable';
+    state.grid[0][0].crop!.gddAccumulated = 9999;
+
+    const notifsBefore = state.notifications.length;
+    processCommand(state, { type: 'HARVEST', cellRow: 0, cellCol: 0 }, SLICE_1_SCENARIO);
+
+    const harvestNotifs = state.notifications.slice(notifsBefore).filter(n => n.type === 'harvest');
+    expect(harvestNotifs).toHaveLength(1);
+    // Single-cell harvest shows detailed per-unit info
+    expect(harvestNotifs[0].message).toContain('Silage Corn');
   });
 });

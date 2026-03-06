@@ -407,9 +407,27 @@ function processHarvestBulk(state: GameState, scope: 'all' | 'row' | 'col', inde
     return { success: false, reason: 'No crops ready to harvest.' };
   }
 
+  // #61: Batch harvest notifications by crop type
+  const cropRevenue = new Map<string, { count: number; revenue: number }>();
   let totalRevenue = 0;
   for (const cell of harvestable) {
-    totalRevenue += harvestCell(state, cell);
+    const cropId = cell.crop!.cropId;
+    const rev = harvestCell(state, cell, true); // silent: suppress per-cell notifications
+    totalRevenue += rev;
+    const entry = cropRevenue.get(cropId);
+    if (entry) {
+      entry.count++;
+      entry.revenue += rev;
+    } else {
+      cropRevenue.set(cropId, { count: 1, revenue: rev });
+    }
+  }
+
+  // Emit one notification per crop type
+  for (const [cropId, data] of cropRevenue) {
+    const cropDef = getCropDefinition(cropId);
+    addNotification(state, 'harvest',
+      `Harvested ${data.count} plots of ${cropDef.name} \u2014 $${Math.floor(data.revenue).toLocaleString()} revenue`);
   }
 
   logHarvest(state, `bulk_${scope}`, totalRevenue, harvestable.length);
@@ -889,6 +907,11 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
   if (isSeasonChange(prevTotalDay, newTotalDay)) {
     state.waterStressPausedThisSeason = false; // Reset per-season auto-pause flag
     state.eventsThisSeason = 0; // Reset event clustering counter
+
+    // #61: Age-based notification trim — remove notifications older than 180 days (2 seasons)
+    const maxAge = 180;
+    state.notifications = state.notifications.filter(n => (newTotalDay - n.day) <= maxAge);
+
     const seasonName = getSeasonName(state.calendar.season);
     addNotification(state, 'season_change', `${seasonName} — Year ${state.calendar.year}`);
 
@@ -1407,7 +1430,7 @@ export function computeOMYieldFactor(organicMatter: number): number {
 // Harvest Calculation
 // ============================================================================
 
-export function harvestCell(state: GameState, cell: Cell): number {
+export function harvestCell(state: GameState, cell: Cell, silent?: boolean): number {
   const crop = cell.crop!;
   const cropDef = getCropDefinition(crop.cropId);
 
@@ -1493,12 +1516,14 @@ export function harvestCell(state: GameState, cell: Cell): number {
 
   const netRevenue = grossRevenue - laborCost - repayment;
 
-  if (repayment > 0) {
-    addNotification(state, 'harvest',
-      `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost}, loan repayment: $${repayment.toFixed(0)})`);
-  } else {
-    addNotification(state, 'harvest',
-      `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost})`);
+  if (!silent) {
+    if (repayment > 0) {
+      addNotification(state, 'harvest',
+        `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost}, loan repayment: $${repayment.toFixed(0)})`);
+    } else {
+      addNotification(state, 'harvest',
+        `Harvested ${cropDef.name}: ${yieldAmount.toFixed(1)} ${cropDef.yieldUnit} at $${actualPrice.toFixed(2)}/${cropDef.yieldUnit} = $${grossRevenue.toFixed(0)} (labor: $${laborCost})`);
+    }
   }
 
   // Track yield ratio for adaptation scoring (before price/economic multipliers)
@@ -1637,6 +1662,8 @@ function groupByRow(cells: Cell[]): Map<number, Cell[]> {
   return map;
 }
 
+const MAX_NOTIFICATIONS = 30;
+
 export function addNotification(state: GameState, type: Notification['type'], message: string): void {
   state.notifications.push({
     id: state.nextNotificationId++,
@@ -1644,6 +1671,10 @@ export function addNotification(state: GameState, type: Notification['type'], me
     message,
     day: state.calendar.totalDay,
   });
+  // #61: Cap notifications — drop oldest when exceeding limit
+  while (state.notifications.length > MAX_NOTIFICATIONS) {
+    state.notifications.shift();
+  }
 }
 
 export function dismissNotification(state: GameState, notificationId: number): void {

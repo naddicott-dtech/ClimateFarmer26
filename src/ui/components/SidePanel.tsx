@@ -11,6 +11,7 @@ import {
   IRRIGATION_COST_PER_CELL,
 } from '../../engine/types.ts';
 import { CropMenu } from './CropMenu.tsx';
+import { CROP_ART } from './FarmCell.tsx';
 import styles from '../styles/SidePanel.module.css';
 
 export function SidePanel() {
@@ -40,7 +41,7 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
   const state = gameState.value;
 
   const canPlant = !crop && cropsAvailable.length > 0;
-  const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe');
+  const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') && !crop.harvestedThisSeason;
   const canRemove = crop?.isPerennial === true;
   const isFall = state?.calendar.season === 'fall';
   const isDeciduousPerennial = crop?.isPerennial && cropDef?.dormantSeasons && cropDef.dormantSeasons.length > 0;
@@ -67,7 +68,11 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
   // Harvest tooltip for non-ready crops
   let harvestTooltip = '';
   if (crop && !canHarvest) {
-    harvestTooltip = `${cropDef?.name} \u2014 ${Math.round(progress * 100)}% grown.`;
+    if (crop.harvestedThisSeason) {
+      harvestTooltip = `Already harvested this season.`;
+    } else {
+      harvestTooltip = `Not ready yet \u2014 ${cropDef?.name}, ${Math.round(progress * 100)}% grown.`;
+    }
   }
 
   function handlePlantClick() {
@@ -98,8 +103,29 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
         <div class={styles.sectionTitle}>Plot (Row {row + 1}, Col {col + 1})</div>
         <div class={styles.cellDetail}>
           <span data-testid="sidebar-crop-name" class={styles.cropName}>
-            {cropDef ? cropDef.name : 'Empty'}
+            {cropDef ? cropDef.name : (coverCropId ? 'Fallow (Cover Crop)' : 'Empty')}
           </span>
+          {crop && cropDef && (() => {
+            const artKey = crop.isDormant ? 'dormant' : crop.growthStage;
+            const artSrc = CROP_ART[crop.cropId]?.[artKey];
+            const stageLabel = crop.isDormant ? 'Dormant'
+              : crop.growthStage === 'harvestable' ? 'Ready to Harvest!'
+              : crop.growthStage === 'overripe' ? 'Overripe'
+              : crop.growthStage.charAt(0).toUpperCase() + crop.growthStage.slice(1);
+            return artSrc ? (
+              <div class={styles.cropPreview}>
+                <img
+                  src={artSrc}
+                  alt={`${cropDef.name} — ${stageLabel}`}
+                  class={styles.cropPreviewImg}
+                  data-testid="sidebar-crop-preview"
+                />
+                <span class={styles.cropPreviewLabel} data-testid="sidebar-crop-stage-label">
+                  {cropDef.name} — {stageLabel}
+                </span>
+              </div>
+            ) : null;
+          })()}
           {crop && (
             <>
               <span class={styles.cropStage}>{growthText}</span>
@@ -253,6 +279,11 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
           >
             Harvest
           </button>
+          {crop?.harvestedThisSeason && (
+            <span data-testid="harvested-this-season" class={styles.harvestedLabel}>
+              Harvested this season
+            </span>
+          )}
 
           {canRemove && (
             <button
@@ -457,7 +488,7 @@ function BulkActions() {
               class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
               onClick={() => plantBulk('row', cropId, sel.row)}
             >
-              Plant Row {sel.row + 1}: {def.name}
+              Plant Row {sel.row + 1}: {def.name} (${def.seedCostPerAcre}/plot)
             </button>
           );
         })}
@@ -471,7 +502,7 @@ function BulkActions() {
               class={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
               onClick={() => plantBulk('col', cropId, sel.col)}
             >
-              Plant Col {sel.col + 1}: {def.name}
+              Plant Col {sel.col + 1}: {def.name} (${def.seedCostPerAcre}/plot)
             </button>
           );
         })}

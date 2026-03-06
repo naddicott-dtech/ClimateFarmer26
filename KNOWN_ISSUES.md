@@ -115,19 +115,19 @@ Severity: MEDIUM (event noise). `tomato-market-surge` had no precondition requir
 
 **47. Event clustering feels spammy.**
 Severity: MEDIUM (UX). Multiple events sometimes fire in the same season (heatwave + water cut + pumping ban + tomato surge). Each auto-pauses the game, requiring separate dismissal. Students reported it feeling more like whack-a-mole than strategic decision-making.
-Status: Deferred to Slice 4. Likely fix: per-season event cap (max 1-2 events per season) or mutual exclusion groups for related events. Needs design discussion — cap could suppress important events.
+Status: Deferred to Slice 5. Touches engine scheduling + balance — will be designed alongside Slice 5 event surface expansion. Likely fix: per-season event cap (max 1-2 events per season) or mutual exclusion groups for related events.
 
-**48. "Already harvested this season" confusion with perennials.**
-Severity: LOW (UX polish). Players repeatedly clicked harvest on already-harvested perennials, getting failure messages. The validation works correctly, but the UI doesn't clearly indicate that a perennial has already been harvested this season.
-Status: Deferred. Fix: disable/gray out harvest button when `crop.harvestedThisSeason === true`, add visual indicator on cell.
+**48. "Already harvested this season" confusion with perennials.** RESOLVED (4e).
+Severity: LOW (UX polish). Players repeatedly clicked harvest on already-harvested perennials, getting failure messages.
+Resolution: Harvest button disabled when `crop.harvestedThisSeason === true`. "Harvested this season" label shown in SidePanel. Tooltip explains status.
 
 **49. Cover crop / soil health pedagogy not landing.**
 Severity: LOW (content design). Organic matter trended steadily down (1.97% → 1.19% over 30 years) but the student never engaged with cover crops. The payoff isn't visible enough in the UI. OM decline has no dramatic consequence the student can feel — it's a slow, invisible drain.
 Status: Deferred. Needs design discussion — possible interventions: OM-triggered advisor warning, visible soil quality tier (Healthy → Degraded → Depleted), yield penalty at low OM thresholds.
 
-**50. Pause-to-play transition is not intuitive.**
-Severity: MEDIUM (UX). After planting/watering at game start (or after any auto-pause), the game is paused at 0x speed. There is no clear UI signal that the player needs to press play to continue. Multiple playtesters were confused about why nothing was happening. The current speed controls exist but don't draw attention when they're the required next action.
-Status: Deferred. Needs design discussion. Options: (a) auto-resume at 1x after player actions when game is paused, (b) pulsing/highlighting speed controls when game is paused and player has taken an action, (c) contextual prompt ("Press play to continue"). Each has tradeoffs — auto-resume may surprise students; visual hints are less disruptive.
+**50. Pause-to-play transition is not intuitive.** RESOLVED (4e).
+Severity: MEDIUM (UX).
+Resolution: Pulsing "Press Play to continue" prompt shown near speed controls when speed === 0 and player has taken an action or dismissed an auto-pause. Prompt disappears when speed changes to > 0.
 
 ### Playtest Findings — Slice 4b Bad-Play QA (2026-03-02)
 
@@ -140,17 +140,17 @@ Status: Inconclusive. Regression tests in place (`slice3a1.test.ts`). Will monit
 **57. Game Over "Total expenses" shows only final-year expenses.** RESOLVED.
 Severity: LOW (misleading label). Bankruptcy panel said "Total revenue/expenses" but data came from `yearlyRevenue`/`yearlyExpenses` which reset each year. Label changed to "Final year revenue/expenses". TODO: show lifetime totals in 4e using `tracking.yearSnapshots`.
 
-**58. Pre-loan vs post-loan cash confusion at year-end boundary.**
-Severity: LOW (UX polish). Year-end panel shows pre-loan snapshot cash while TopBar shows post-loan live cash simultaneously. Not a bug — auto-pause queue ordering is correct (year_end data frozen before loan). Confusing for students.
-Status: Deferred to 4d. Fix: add explicit copy in year-end panel ("Pre-loan cash") or sequence panels to avoid conflicting numbers.
+**58. Pre-loan vs post-loan cash confusion at year-end boundary.** RESOLVED (4e).
+Severity: LOW (UX polish).
+Resolution: Year-end panel cash label changed from "Cash Balance" to "Cash Balance (before loan)" to clarify the snapshot timing.
 
-**60. SidePanel shows "Empty" for cells with cover crops.**
-Severity: LOW (UX confusion). When a cell has only a cover crop (no primary crop), SidePanel shows "Empty" as the primary label alongside "Cover Crop: Clover/Vetch Mix". Should show "Empty (Cover Crop)" or separate the label state.
-Status: Deferred to 4d.
+**60. SidePanel shows "Empty" for cells with cover crops.** RESOLVED (4e).
+Severity: LOW (UX confusion).
+Resolution: Changed label to "Fallow (Cover Crop)" when cell has a cover crop but no primary crop.
 
-**61. Notification backlog overwhelms normal gameplay.**
-Severity: MEDIUM (classroom readability). Good-play QA showed notification counts of +113, +167, +183, +260. Not a logic bug, but clear UX concern. Needs batching, summarization, or escalation design.
-Status: Deferred. Requires design discussion on notification model.
+**61. Notification backlog overwhelms normal gameplay.** RESOLVED (4e).
+Severity: **HIGH** (classroom readability — confirmed in live classroom run).
+Resolution: Three-pronged fix: (1) Bulk harvest notifications batched by crop type (one notification per crop per bulk harvest). (2) Hard cap of 30 notifications — oldest dropped when exceeded. (3) Age-based trim at season boundaries — notifications older than 180 days removed.
 
 **62. Harvest affordance misleads when selected plot is not ready.**
 Severity: LOW (UX). "Harvest Field" button shows green/active when ANY plot is harvestable, even if the currently selected plot is at 85%. Students click expecting to harvest the selected cell. Should show "Harvest Field (N plots ready)" or clarify selected-plot state.
@@ -161,8 +161,8 @@ Severity: MEDIUM (design/balance). Events with 10% daily probability evaluated ~
 Status: **RESOLVED** in Sub-Slice 4b.5. Moved 8 random-gated events to seasonal draw semantics (one roll per season, modulated by stress level, family caps). 6 condition-only advisors remain per-tick. Balance thresholds need re-establishment in 4c.
 
 **59. Water warning click-fatigue.**
-Severity: LOW (UX). Repeated water_stress auto-pauses across multiple seasons cause dismissal fatigue. Related to #47 (event clustering).
-Status: Deferred. Consider suppression/escalation UX pass after 4c balance tuning and #47 event cap implementation.
+Severity: **HIGH** (classroom UX — confirmed in live classroom run). Repeated water_stress auto-pauses across multiple seasons cause dismissal fatigue. Classroom evidence: 13 water actions in 4 years, each requiring warning → confirm → resume loop. Related to #47 (event clustering) and #52 (double-gate).
+Status: Open. **Recommended fix: automated irrigation as an early tech tree unlock** — the first purchasable tech, offered ~Year 2 at an affordable price. Teaches the tech tree mechanic while solving the #1 UX pain point. If refused, offer again later (~Year 4) so students who couldn't afford it initially get a second chance. This makes the tech tree immediately valuable and the irrigation loop opt-out rather than mandatory suffering. Requires tech tree infrastructure (deferred to future slice).
 
 ### AI QA Playthrough Findings (2026-03-04)
 
@@ -180,28 +180,69 @@ Status: Deferred to future slice. Requires design discussion on what metrics to 
 Severity: LOW (design). `advisor-soil-nitrogen` fires max 3 times (intentional cap in events.ts). Cover crops provide recurring nitrogen restoration (+50N per incorporation), but there's no explicit "fertilize" or "soil amendment" action. After early advisor hints stop, players lack ongoing feedback about soil health trajectory.
 Status: Deferred. Design question: add recurring soil tools (fertilizer purchase, soil testing), raise/remove advisor caps, or accept current cover-crop-only path. Cover crops ARE the intended answer pedagogically — but players may not realize it without continued prompting.
 
-**67. "Continue Saved Game" can appear but do nothing when auto-save is invalid/corrupt.**
+**67. "Continue Saved Game" can appear but do nothing when auto-save is invalid/corrupt.** RESOLVED (4e).
 Severity: MEDIUM (resume UX + trust).
-Status: Open.
+Resolution: `hasSaveData()` now calls `loadAutoSave() !== null` instead of checking key existence. Corrupt autosave = Continue button hidden.
 
-What happens: `Continue Saved Game` is shown based on key existence only. If `climateFarmer_autosave` exists but cannot be parsed/validated, clicking Continue silently no-ops.
+### Exploit-Hunter QA Findings (2026-03-05)
 
-Expected: If resume is not possible, either hide the button or show a clear error and offer to clear the bad save.
+AI agent ran targeted exploit-hunting session. Cross-referenced against code.
 
-Actual: Button is visible; click path returns early without user feedback.
+**68. Autosave desyncs after loading a manual save.** RESOLVED (4e).
+Severity: MEDIUM (data integrity / resume UX).
+Resolution: Added `autoSave(_liveState)` call at end of `loadSavedGame()`. One-line fix.
 
-Repro:
-1. In devtools, set `localStorage.setItem('climateFarmer_autosave', 'not-json')`.
-2. Reload title screen.
-3. Click `Continue Saved Game`.
-4. Nothing happens; no visible error.
+**69. "New Game" button has no confirmation guard.** RESOLVED (4e).
+Severity: LOW (UX — auto-save provides safety net).
+Resolution: Added confirm dialog before `returnToTitle()`. Uses `'return-to-title'` ConfirmActionId with message "Return to title screen? Your game is auto-saved at each season boundary."
+
+**70. Confirm dialog can be overwritten by scripted interaction (automation only).**
+Severity: LOW (automation hardening — human clicks blocked by overlay).
+Status: Open / Deferred.
+
+What happens: No guard checks `confirmDialog.value` before assignment. If a scripted `.click()` fires on a SidePanel bulk button while a confirm dialog is open, the pending confirm is silently replaced. Human clicks are blocked by the full-viewport overlay (`position: fixed; inset: 0; z-index: 100`).
+
+Expected: Either guard against overwrite or explicitly cancel the pending confirm's callbacks before replacement.
+
+Actual: Pending confirm's `onConfirm`/`onCancel` callbacks are silently dropped.
 
 Evidence:
-- Visibility check uses key presence only: `hasSaveData()` in `src/save/storage.ts`.
-- Resume path returns if load fails: `resumeGame()` in `src/adapter/signals.ts`.
-Refs: src/save/storage.ts:163, src/adapter/signals.ts:199
+- All 7 `confirmDialog.value = {...}` assignments have no guard: `src/adapter/signals.ts:336,356,414,434,489,510` + `src/ui/components/SidePanel.tsx:83`.
+- Overlay CSS blocks human clicks: `src/ui/styles/Overlay.module.css:3-11`.
+Refs: src/adapter/signals.ts:336, src/ui/styles/Overlay.module.css:3
 
-Suggested fix: Gate visibility on `loadAutoSave() !== null`, or keep current visibility and surface an explicit error/cleanup action when resume fails.
+Suggested fix: Add `if (confirmDialog.value) return;` guard at top of each bulk action, or disable action handlers when confirm is open.
+
+**Non-issues confirmed:**
+- EX-01: No cash duplication via save/load. Engine state is snapshot-based; loading overwrites, doesn't merge.
+- EX-02: No double-harvest payout. `harvestedThisSeason` flag prevents re-harvest.
+- EX-10: No out-of-season replant exploit. `processPlant` validates planting window.
+- EX-04/05: Speed buttons clickable during dialogs — cosmetic only. Overlay blocks human clicks; tick loop is independently gated by `autoPauseQueue.length === 0`. No state corruption.
+- EX-07: Cross-session save visibility — by design (BUG-09, KNOWN_ISSUES line 228). Save keys are global, not player-namespaced.
+
+### Classroom Reality-Check Findings (2026-03-05)
+
+Observed during live classroom session with students + TA feedback. High-confidence findings.
+
+**71. No perennial onboarding warning — multi-year zero-revenue trap.** RESOLVED (4e).
+Severity: **HIGH** (classroom UX + pedagogy).
+Resolution: First perennial plant per game shows years-to-first-harvest warning in confirm dialog. Flag persisted via `state.flags['perennialWarningShown']` — survives save/load, resets on new game.
+
+**72. Advisor recommendation timing mismatch ("plant winter wheat").** RESOLVED (4e).
+Severity: MEDIUM (classroom confusion).
+Resolution: Updated notification text to be season-agnostic: "Dr. Santos recommends planting winter wheat in the fall to restore nitrogen naturally. Cover crops also help rebuild soil fertility."
+
+**73. No running net P/L visible during the year.** RESOLVED (4e).
+Severity: MEDIUM (classroom comprehension).
+Resolution: Added "Year net: +$X,XXX" / "Year net: -$X,XXX" display to TopBar. Green when positive, red when negative. Uses existing `yearlyRevenue - yearlyExpenses` data.
+
+**74. Crop icon color/state misread as harvest-ready on Chromebook screens.** RESOLVED (4e).
+Severity: MEDIUM (classroom UX — TA-observed).
+Resolution: Three reinforcing signals: (1) "Ready!" text badge on harvestable cells (color-independent). (2) SidePanel growth text enhanced with explicit "Not ready yet" prefix for growing crops. (3) Disabled harvest button tooltip shows crop name + growth %. Additionally, all growth stages replaced with custom art images (no emoji), improving visual distinction between stages.
+
+**Non-issues (repro needed before promoting):**
+- "Load Game non-functional" — cannot reproduce; load system works in all tests. Treat as tester interaction issue until repro steps provided.
+- "Continue requires Player ID confusion" — by design (BUG-09). Continue uses auto-save, not player ID.
 
 ### Deferred — Accepted for Slice 1
 
@@ -230,34 +271,21 @@ Automated playtest by Claude agent. Triaged per senior engineer review. Verified
 **51. "Plant Field" bulk buttons silently fail when some plots are occupied.** RESOLVED.
 Severity: HIGH (functional). Root cause: `plantBulk()` in `signals.ts` returned early with no feedback when no fully-empty rows existed. The engine had the right error message; the adapter never asked for it. BUG-03 is the same root cause. Fixed: adapter now routes through `processCommand` and shows an info notification with the engine's error message ("No fully empty rows available. Use Plant Row to fill specific rows.").
 
-**52. Water Warning action chains into second confirm dialog (double-gate).**
+**52. Water Warning action chains into second confirm dialog (double-gate).** RESOLVED (4e).
 Severity: **HIGH** (automation + UX flow friction in long sessions).
-Status: Open / Deferred.
+Resolution: Added `skipConfirm` option to `waterBulk()` with 3-way affordability return type (`applied_full` | `applied_partial` | `failed`). Auto-pause primary action uses `skipConfirm: true` — single click applies water directly. Manual side-panel watering still shows confirm dialog. Auto-pause only dismisses on success (full or partial); stays open if player can't afford any irrigation.
 
-What happens: From Water Warning auto-pause, clicking primary action (`Water Field`) calls `waterBulk('all')`, which opens a confirm dialog. This creates a two-step gate during an already-blocking pause and is easy to mishandle in automation.
+**53. Year-end expenses don't break down categories.** RESOLVED (4e).
+Severity: MEDIUM (transparency).
+Resolution: Year-end panel now shows 9-category expense breakdown (planting, watering, harvest labor, maintenance, cover crops, annual overhead, loan repayment, event costs, crop removal) with zero-value suppression. Data was already in `event.data.expenseBreakdown` — just needed UI rendering.
 
-Expected: Auto-pause primary should either execute watering directly (single decision point) or clearly indicate that a second confirm is intentionally required.
+**54. Calendar display doesn't advance immediately after "Continue to Year 2".** RESOLVED (4e).
+Severity: LOW (cosmetic).
+Resolution: `handleDismissAutoPause()` now advances display calendar fields (year/month/day/season) to next day values before publishing state, preventing one-frame lag.
 
-Actual: Primary action triggers another modal confirm. In automation, this often looks like the first action "did not work" unless confirm is prioritized.
-
-Evidence:
-- Auto-pause primary for water calls `waterBulk('all')`: `src/ui/components/AutoPausePanel.tsx`.
-- `waterBulk('all')` always opens confirm for field scope: `src/adapter/signals.ts`.
-Refs: src/ui/components/AutoPausePanel.tsx:48, src/adapter/signals.ts:395
-
-Suggested fix: Add `skipConfirm` path for auto-pause-origin watering, or dispatch a direct engine `WATER` command for this context; keep manual side-panel watering confirmed.
-
-**53. Year-end expenses don't break down categories.**
-Severity: MEDIUM (transparency). Not a logic bug — the $1,600 discrepancy is exactly 8 almonds × $200 annual maintenance, correctly charged at year-end. But the year-end summary only shows aggregated "Expenses" with no line items. Violates cause-and-effect transparency principle.
-Status: Deferred. Fix: add expense breakdown (planting, watering, maintenance, loan repayment) to year-end summary.
-
-**54. Calendar display doesn't advance immediately after "Continue to Year 2".**
-Severity: LOW (cosmetic). Header shows "Winter — December, Year 1" after clicking continue until the next simulation tick updates the calendar. Revenue/Expenses reset correctly.
-Status: Deferred. Fix: call `publishState()` after `resetYearlyTracking` in the dismiss handler.
-
-**55. Row/Column plant buttons don't show per-plot cost.**
-Severity: LOW (UX polish). "Plant Field" buttons show "$X/plot" but row/column variants don't. Inconsistent.
-Status: Deferred.
+**55. Row/Column plant buttons don't show per-plot cost.** RESOLVED (4e).
+Severity: LOW (UX polish).
+Resolution: Added `($/plot)` to row and column plant buttons, matching field-level pattern.
 
 **Non-bugs (verified):**
 - BUG-07 (selected cell after load): Code clears `selectedCell.value = null` in both `resumeGame` and `loadSavedGame`. Could not reproduce — likely transient rendering.

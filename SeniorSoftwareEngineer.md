@@ -102,7 +102,38 @@ Keep these current at all times:
 4. What must be measured (performance, reliability, usability) before moving on?
 5. What assumptions are still unverified?
 
-## Fresh Context Bootstrap (2026-02-26, Post-Slice-3)
+## Current State Snapshot (2026-03-05, Post-4c/4d + External QA)
+
+### Executive Status
+1. Slice 4 balance rework (4c + 4d) is effectively complete and validated against prior blocker #45 (economy no longer trivially forgiving).
+2. We are **not** ready to begin Slice 5 planning yet.
+3. Current gate is classroom-UX readiness, not core engine correctness.
+
+### Latest Verified Signals
+1. Unit tests: 581 passing (latest verified run in this phase).
+2. Browser tests: expanded suite passing overall; known targeted flake remains in foreshadow natural-flow test under stress repeat.
+3. Build: clean, ~41.72KB gzipped JS (latest verified run in this phase).
+4. External QA coverage completed this cycle:
+   - good-faith optimizer pass
+   - exploit-seeker pass
+   - classroom-reality pass (STOP_AND_FIX triggered early)
+   - teaching-assistant manual pass (mental-model mismatch on crop visuals/harvest readiness)
+
+### Slice-4 Remaining Must-Fix Themes (Before Slice 5)
+1. Water-warning click-tax / repeated interruption burden (classroom time sink).
+2. Notification backlog and stale message accumulation.
+3. Perennial onboarding clarity (multi-year maturation and delayed revenue must be explicit).
+4. Advisor-action alignment (recommendations must map to currently actionable choices or clearly time-shifted advice).
+5. Real-time financial clarity (running net/profit context, not year-end only).
+6. Harvest readiness affordance clarity (in-progress visual states should not look harvest-ready).
+7. Pause-state guidance after actions/auto-pauses.
+
+### Recommended Next Step (Supervisory)
+1. Run a focused **Slice 4e Classroom UX Clarity Pass** (small, testable vertical fixes for the themes above).
+2. Re-run external classroom-reality test to Year 10 gate after 4e fixes.
+3. Only begin Slice 5 planning after classroom gate passes without repeated High-severity friction.
+
+## Historical Bootstrap (2026-02-26, Post-Slice-3)
 
 ### Must-Read Order Before Any Slice 4 Work
 1. `HANDOFF.md` — fastest current-state snapshot (what shipped, exact metrics, priorities).

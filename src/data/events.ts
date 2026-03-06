@@ -390,7 +390,7 @@ export const STORYLETS: readonly Storylet[] = [
         label: 'Thanks for the Heads Up',
         description: 'Take note and plan to rotate crops next season to rebuild soil health naturally.',
         effects: [
-          { type: 'add_notification', message: 'Dr. Santos recommends planting winter wheat or another light feeder to restore nitrogen naturally.', notificationType: 'event_result' },
+          { type: 'add_notification', message: 'Dr. Santos recommends planting winter wheat in the fall to restore nitrogen naturally. Cover crops also help rebuild soil fertility.', notificationType: 'event_result' },
         ],
       },
     ],

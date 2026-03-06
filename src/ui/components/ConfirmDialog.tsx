@@ -12,6 +12,7 @@ export function ConfirmDialog() {
 
 function getAriaLabel(actionId: ConfirmActionId): string {
   switch (actionId) {
+    case 'plant-single': return 'Confirm planting crop';
     case 'plant-all': return 'Confirm planting entire field';
     case 'plant-partial': return 'Confirm partial field planting';
     case 'water-all': return 'Confirm watering entire field';
@@ -19,6 +20,7 @@ function getAriaLabel(actionId: ConfirmActionId): string {
     case 'cover-crop-all': return 'Confirm cover crop planting';
     case 'cover-crop-partial': return 'Confirm partial cover crop planting';
     case 'remove-crop': return 'Confirm crop removal';
+    case 'return-to-title': return 'Confirm return to title screen';
   }
 }
 

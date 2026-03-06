@@ -8,6 +8,17 @@ Purpose: reliable UI navigation guidance for AI/manual QA agents. This is naviga
 - Tutorial may appear after starting. Dismiss with `data-testid="tutorial-skip"`.
 - `Continue Saved Game` appears only if the auto-save key exists (`data-testid="save-resume"`).
 
+## 1.5) Log Preservation Rules (Important for QA)
+- Avoid full page navigations/reloads during a run (`page.goto(...)`, hard refresh, reopen tab). They reset JS context and lose in-memory console history.
+- Prefer in-game transitions:
+  - Return to title: `save-new-game`
+  - Load menu: `save-load-toggle`
+  - Resume autosave: `save-resume`
+- If a full reload is unavoidable, do a quick pre-clear check first:
+  1. Scan console for `error`/`warn` messages.
+  2. Capture any suspicious messages (copy to notes).
+  3. Then reload.
+
 ## 2) Debug API (Important: Not Read-Only)
 Debug API is exposed as `window.__gameDebug`.
 
@@ -129,4 +140,3 @@ clearInterval(window._cfHandler);
 - Water Warning auto-pause can chain into a second confirm dialog for watering-all.
 - Speed does not auto-resume after dismissing auto-pauses.
 - `Continue Saved Game` visibility is key-presence based; corrupted auto-save can lead to a visible button that does nothing.
-

@@ -5,60 +5,67 @@ import type { Cell } from '../../engine/types.ts';
 import { WATER_VISUAL_WARNING_THRESHOLD, WATER_WILTING_THRESHOLD } from '../../engine/types.ts';
 import styles from '../styles/FarmCell.module.css';
 
-const CROP_ICONS: Record<string, Record<string, string>> = {
+/** Unified crop art — all growth stages + dormant use images (no emoji) */
+const base = import.meta.env.BASE_URL;
+export const CROP_ART: Record<string, Record<string, string>> = {
   'processing-tomatoes': {
-    seedling: '\u{1F331}',
-    vegetative: '\u{1FAB4}',
-    flowering: '\u{1F33B}',
-    mature: '\u{1F345}',
+    seedling: `${base}assets/crops/crop-tomatoes-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-tomatoes-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-tomatoes-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-tomatoes-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-tomatoes_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-tomatoes_48x48.jpeg`,
   },
   'silage-corn': {
-    seedling: '\u{1F331}',
-    vegetative: '\u{1FAB4}',
-    flowering: '\u{1F33E}',
-    mature: '\u{1F33D}',
+    seedling: `${base}assets/crops/crop-corn-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-corn-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-corn-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-corn-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-corn_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-corn_48x48.jpeg`,
   },
   'winter-wheat': {
-    seedling: '\u{1F331}',
-    vegetative: '\u{1FAB4}',
-    flowering: '\u{1F33E}',
-    mature: '\u{1F33E}',
-  },
-  'almonds': {
-    seedling: '\u{1F333}',
-    vegetative: '\u{1F333}',
-    flowering: '\u{1F338}',
-    mature: '\u{1F333}',
-  },
-  'pistachios': {
-    seedling: '\u{1F333}',
-    vegetative: '\u{1F333}',
-    flowering: '\u{1F338}',
-    mature: '\u{1F333}',
+    seedling: `${base}assets/crops/crop-wheat-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-wheat-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-wheat-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-wheat-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-wheat_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-wheat_48x48.jpeg`,
   },
   'sorghum': {
-    seedling: '\u{1F331}',
-    vegetative: '\u{1FAB4}',
-    flowering: '\u{1F33E}',
-    mature: '\u{1F33E}',
+    seedling: `${base}assets/crops/crop-sorghum-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-sorghum-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-sorghum-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-sorghum-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-sorghum_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-sorghum_48x48.jpeg`,
+  },
+  'almonds': {
+    seedling: `${base}assets/crops/crop-almonds-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-almonds-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-almonds-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-almonds-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-almonds_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-almonds_48x48.jpeg`,
+    dormant: `${base}assets/crops/crop-almonds-dormant_48x48.jpeg`,
+  },
+  'pistachios': {
+    seedling: `${base}assets/crops/crop-pistachios-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-pistachios-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-pistachios-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-pistachios-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-pistachios_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-pistachios_48x48.jpeg`,
+    dormant: `${base}assets/crops/crop-pistachios-dormant_48x48.jpeg`,
   },
   'citrus-navels': {
-    seedling: '\u{1F333}',
-    vegetative: '\u{1F333}',
-    flowering: '\u{1F338}',
-    mature: '\u{1F333}',
+    seedling: `${base}assets/crops/crop-citrus-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-citrus-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-citrus-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-citrus-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-citrus_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-citrus_48x48.jpeg`,
   },
-};
-
-/** Crop art images used for harvestable/overripe stages */
-const CROP_ART: Record<string, string> = {
-  'processing-tomatoes': `${import.meta.env.BASE_URL}assets/crops/crop-tomatoes_48x48.jpeg`,
-  'silage-corn': `${import.meta.env.BASE_URL}assets/crops/crop-corn_48x48.jpeg`,
-  'winter-wheat': `${import.meta.env.BASE_URL}assets/crops/crop-wheat_48x48.jpeg`,
-  'sorghum': `${import.meta.env.BASE_URL}assets/crops/crop-sorghum_48x48.jpeg`,
-  'almonds': `${import.meta.env.BASE_URL}assets/crops/crop-almonds_48x48.jpeg`,
-  'pistachios': `${import.meta.env.BASE_URL}assets/crops/crop-pistachios_48x48.jpeg`,
-  'citrus-navels': `${import.meta.env.BASE_URL}assets/crops/crop-citrus_48x48.jpeg`,
 };
 
 interface FarmCellProps {
@@ -77,13 +84,9 @@ export function FarmCell({ cell }: FarmCellProps) {
     crop && moistureRatio < WATER_VISUAL_WARNING_THRESHOLD ? styles.moistureWarning :
     '';
 
-  // Crop icon — dormant perennials show a bare tree
-  // Harvestable/overripe stages use crop art images; other stages use emoji
-  const useArt = crop && !crop.isDormant && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe');
-  const cropArtSrc = crop && useArt ? CROP_ART[crop.cropId] : null;
-  const icon = crop
-    ? (crop.isDormant ? '\u{1FAB5}' : (useArt ? '' : (CROP_ICONS[crop.cropId]?.[crop.growthStage] ?? '\u{1F331}')))
-    : '';
+  // Crop art — all stages (including dormant) use <img>, no emoji
+  const artKey = crop?.isDormant ? 'dormant' : crop?.growthStage;
+  const cropArtSrc = crop && artKey ? (CROP_ART[crop.cropId]?.[artKey] ?? null) : null;
   const dormantClass = crop?.isDormant ? styles.dormant : '';
 
   // Growth progress (0-1)
@@ -118,10 +121,13 @@ export function FarmCell({ cell }: FarmCellProps) {
       aria-selected={isSelected}
       tabIndex={row === 0 && col === 0 ? 0 : -1}
     >
-      {cropArtSrc ? (
+      {cropArtSrc && (
         <img class={styles.cropArt} src={cropArtSrc} alt="" aria-hidden="true" width="36" height="36" />
-      ) : (
-        icon && <span class={styles.cropIcon} aria-hidden="true">{icon}</span>
+      )}
+      {crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') && (
+        <span class={styles.readyBadge} data-testid={`harvest-indicator-${row}-${col}`}>
+          {crop.growthStage === 'overripe' ? 'Harvest!' : 'Ready!'}
+        </span>
       )}
       {coverCropId && (
         <span

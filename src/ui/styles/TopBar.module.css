@@ -131,3 +131,36 @@
 .newGameBtn:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+.netPositive {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+
+.netNegative {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(220, 38, 38, 0.25);
+  color: #fca5a5;
+}
+
+.playPrompt {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(250, 204, 21, 0.3);
+  color: #fef08a;
+  animation: pulse-prompt 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-prompt {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

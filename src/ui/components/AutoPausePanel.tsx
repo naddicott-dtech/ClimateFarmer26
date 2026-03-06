@@ -44,10 +44,13 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
         harvestBulk('all');
         handleDismissAutoPause();
         break;
-      case 'water_stress':
-        waterBulk('all');
-        handleDismissAutoPause();
+      case 'water_stress': {
+        const waterResult = waterBulk('all', undefined, { skipConfirm: true });
+        if (waterResult !== 'failed') {
+          handleDismissAutoPause();
+        }
         break;
+      }
       case 'year_end':
         handleDismissAutoPause();
         break;
@@ -144,11 +147,18 @@ interface EventConfig {
   suggestion?: string;
 }
 
+interface ExpenseLineItem {
+  label: string;
+  amount: number;
+  testId: string;
+}
+
 interface YearEndData {
   revenue: number;
   expenses: number;
   net: number;
   cash: number;
+  breakdown?: ExpenseLineItem[];
 }
 
 function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types.ts').GameState | null): EventConfig {
@@ -168,16 +178,35 @@ function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types
       };
 
     case 'year_end': {
-      const data = event.data as Record<string, number> | undefined;
+      const data = event.data as Record<string, unknown> | undefined;
+      const breakdown = data?.expenseBreakdown as Record<string, number> | undefined;
+      // Canonical expense display order (maps to ExpenseBreakdown fields)
+      const expenseCategories: { key: string; label: string; testId: string }[] = [
+        { key: 'planting', label: 'Planting', testId: 'expense-line-planting' },
+        { key: 'watering', label: 'Watering', testId: 'expense-line-watering' },
+        { key: 'harvestLabor', label: 'Harvest labor', testId: 'expense-line-harvestLabor' },
+        { key: 'maintenance', label: 'Maintenance', testId: 'expense-line-maintenance' },
+        { key: 'coverCrops', label: 'Cover crops', testId: 'expense-line-coverCrops' },
+        { key: 'annualOverhead', label: 'Annual overhead', testId: 'expense-line-annualOverhead' },
+        { key: 'loanRepayment', label: 'Loan repayment', testId: 'expense-line-loanRepayment' },
+        { key: 'eventCosts', label: 'Event costs', testId: 'expense-line-eventCosts' },
+        { key: 'removal', label: 'Crop removal', testId: 'expense-line-removal' },
+      ];
+      const breakdownLines = breakdown
+        ? expenseCategories
+            .filter(cat => (breakdown[cat.key] ?? 0) > 0)
+            .map(cat => ({ label: cat.label, amount: breakdown[cat.key], testId: cat.testId }))
+        : undefined;
       return {
         title: `Year ${data?.year ?? '?'} Complete`,
-        primaryLabel: `Continue to Year ${(data?.year ?? 0) + 1}`,
+        primaryLabel: `Continue to Year ${((data?.year as number) ?? 0) + 1}`,
         wide: true,
         summaryData: data ? {
-          revenue: data.revenue,
-          expenses: data.expenses,
-          net: data.netProfit,
-          cash: data.cash,
+          revenue: data.revenue as number,
+          expenses: data.expenses as number,
+          net: data.netProfit as number,
+          cash: data.cash as number,
+          breakdown: breakdownLines,
         } : undefined,
       };
     }
@@ -251,24 +280,32 @@ function YearEndTable({ data }: { data: YearEndData }) {
   const isProfit = data.net >= 0;
 
   return (
-    <table class={styles.summaryTable}>
+    <table class={styles.summaryTable} data-testid="year-end-summary">
       <tbody>
         <tr>
           <td>Revenue</td>
           <td class={styles.positive}>${Math.floor(data.revenue).toLocaleString()}</td>
         </tr>
-        <tr>
+        <tr class={styles.expenseHeader}>
           <td>Expenses</td>
           <td class={styles.negative}>-${Math.floor(data.expenses).toLocaleString()}</td>
         </tr>
-        <tr>
+        {data.breakdown && data.breakdown.length > 0 && (
+          data.breakdown.map(line => (
+            <tr key={line.testId} data-testid={line.testId} class={styles.expenseLine}>
+              <td class={styles.expenseIndent}>{line.label}</td>
+              <td class={styles.expenseAmount}>${Math.floor(line.amount).toLocaleString()}</td>
+            </tr>
+          ))
+        )}
+        <tr class={styles.netRow}>
           <td>Net {isProfit ? 'Profit' : 'Loss'}</td>
           <td class={isProfit ? styles.positive : styles.negative}>
             {isProfit ? '+' : '-'}${Math.floor(Math.abs(data.net)).toLocaleString()}
           </td>
         </tr>
         <tr>
-          <td>Cash Balance</td>
+          <td>Cash Balance (before loan)</td>
           <td>${Math.floor(data.cash).toLocaleString()}</td>
         </tr>
       </tbody>

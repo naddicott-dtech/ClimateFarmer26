@@ -36,6 +36,29 @@
   color: var(--color-text);
 }
 
+/* Crop preview thumbnail */
+.cropPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.cropPreviewImg {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--border-radius);
+  image-rendering: auto;
+}
+
+.cropPreviewLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-align: center;
+}
+
 .cropStage {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -296,6 +319,12 @@
 .actionBtnCover:hover:not(:disabled) {
   background: #66bb6a;
   color: white;
+}
+
+.harvestedLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  font-style: italic;
 }
 
 .coverCropStatus {

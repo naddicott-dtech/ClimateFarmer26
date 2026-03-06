@@ -705,6 +705,10 @@ test.describe('New Game from TopBar', () => {
     await expect(page.getByTestId('save-new-game')).toBeVisible();
     await page.getByTestId('save-new-game').click();
 
+    // #69: confirm dialog now appears before returning to title
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+    await page.getByTestId('confirm-accept').click();
+
     // Should be back on new game screen
     await expect(page.getByTestId('newgame-player-id')).toBeVisible();
   });
@@ -791,8 +795,9 @@ test.describe('Manual Save/Load/Delete', () => {
     await page.getByTestId('save-button').click();
     await expect(page.getByTestId('notify-bar')).toContainText('saved');
 
-    // Return to title screen
+    // Return to title screen (#69: confirm dialog)
     await page.getByTestId('save-new-game').click();
+    await page.getByTestId('confirm-accept').click();
     await expect(page.getByTestId('newgame-player-id')).toBeVisible();
 
     // Load Game toggle should be visible
@@ -820,8 +825,9 @@ test.describe('Manual Save/Load/Delete', () => {
     // Save
     await page.getByTestId('save-button').click();
 
-    // Return to title, open load menu, load the save
+    // Return to title (#69: confirm dialog), open load menu, load the save
     await page.getByTestId('save-new-game').click();
+    await page.getByTestId('confirm-accept').click();
     await page.getByTestId('save-load-toggle').click();
 
     // Click Load on the first save entry
@@ -1029,6 +1035,8 @@ test.describe('Perennial Crops', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-almonds').click();
+    // #71: first perennial plant shows warning confirm
+    await page.getByTestId('confirm-accept').click();
 
     // Cell is still selected after planting — sidebar updates automatically
     // Sidebar should show perennial status
@@ -1050,6 +1058,7 @@ test.describe('Perennial Crops', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
 
     // Cell is still selected after planting — sidebar updates automatically
     // Remove button should be visible
@@ -1069,6 +1078,7 @@ test.describe('Perennial Crops', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
 
     // Cell is still selected after planting — click Remove
     await page.getByTestId('action-remove-crop').click();
@@ -1356,6 +1366,7 @@ test.describe('Chill Hours Sidebar', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
 
     // Flag should now be set
     const flagAfter = await page.evaluate(() => {
@@ -1433,6 +1444,7 @@ test.describe('New Crops — Citrus Navels', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-citrus-navels').click();
+    await page.getByTestId('confirm-accept').click();
 
     // Sidebar should show perennial info
     await expect(page.getByTestId('sidebar-perennial-status')).toBeVisible();
@@ -1448,6 +1460,7 @@ test.describe('New Crops — Citrus Navels', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-citrus-navels').click();
+    await page.getByTestId('confirm-accept').click();
 
     // chillHoursRevealed flag should be set (same as other perennials)
     const flag = await page.evaluate(() => {
@@ -1528,6 +1541,7 @@ test.describe('Perennial Yield Curve UI', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
 
     // Phase should show "Establishing"
     await expect(page.getByTestId('sidebar-perennial-phase')).toBeVisible();
@@ -1542,6 +1556,7 @@ test.describe('Perennial Yield Curve UI', () => {
     await page.getByTestId('farm-cell-0-0').click();
     await page.getByTestId('action-plant').click();
     await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
 
     // Use debug to set perennial to established at peak age
     await page.evaluate(() => {
@@ -1722,5 +1737,188 @@ test.describe('Weather Service Advisor', () => {
     const cash = parseInt(cashText!.replace(/[^0-9]/g, ''));
     // Started at 50000, spent seed cost + $150 for protection
     expect(cash).toBeLessThan(50000);
+  });
+});
+
+// ==========================================================================
+// §32 — Sub-Slice 4e: UX Polish & Art Overhaul
+// ==========================================================================
+
+test.describe('4e: Play Prompt (#50)', () => {
+  test('play prompt appears after planting at speed 0 and disappears on play', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Game starts at speed 0 — plant a crop
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Play prompt should be visible
+    await expect(page.getByTestId('play-prompt')).toBeVisible();
+
+    // Click play (testId is 'speed-play')
+    await page.getByTestId('speed-play').click();
+
+    // Prompt should disappear
+    await expect(page.getByTestId('play-prompt')).not.toBeVisible();
+  });
+});
+
+test.describe('4e: Year Net P/L (#73)', () => {
+  test('topbar shows year net after planting', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant field — spends money
+    await page.getByTestId('action-plant-all-silage-corn').click();
+    await page.getByTestId('confirm-accept').click();
+
+    // Year net should show negative (planting cost)
+    const netEl = page.getByTestId('topbar-year-net');
+    await expect(netEl).toBeVisible();
+    await expect(netEl).toContainText('-');
+  });
+});
+
+test.describe('4e: Harvest Indicator (#74)', () => {
+  test('harvest indicator appears on harvestable cells', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant corn
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Set crop to harvestable via getState (returns _liveState) + publish
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      const state = debug.getState();
+      const crop = state.grid[0][0].crop;
+      if (crop) {
+        crop.growthStage = 'harvestable';
+        crop.overripeDaysRemaining = 30;
+      }
+      debug.publish();
+    });
+
+    // Harvest indicator should be visible on cell 0,0
+    await expect(page.getByTestId('harvest-indicator-0-0')).toBeVisible();
+    await expect(page.getByTestId('harvest-indicator-0-0')).toContainText('Ready!');
+  });
+});
+
+test.describe('4e: Year-End Expense Breakdown (#53)', () => {
+  test('year-end panel shows expense breakdown lines', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant a single crop so there are planting expenses
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Give enough cash to survive + advance to 1 day before year-end
+    // Year-end fires at totalDay 364 (when (364+1) % 365 === 0)
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.setCash(100000);
+      debug.setDay(363);
+    });
+
+    // Run at fastest speed — only 1 tick needed to reach year-end
+    await page.getByTestId('speed-fastest').click();
+
+    // Poll: dismiss non-year-end auto-pauses, stop when year-end-summary appears.
+    // Double-check before clicking primary to avoid race where year-end panel
+    // renders between the year-end-summary check and the primary button click.
+    for (let i = 0; i < 150; i++) {
+      if (await page.getByTestId('year-end-summary').isVisible().catch(() => false)) break;
+
+      // Dismiss non-year-end auto-pauses
+      const dismissBtn = page.getByTestId('autopause-dismiss');
+      if (await dismissBtn.isVisible().catch(() => false)) {
+        await dismissBtn.click();
+        await page.getByTestId('speed-fastest').click().catch(() => {});
+        await page.waitForTimeout(50);
+        continue;
+      }
+      const primaryBtn = page.getByTestId('autopause-action-primary');
+      if (await primaryBtn.isVisible().catch(() => false)) {
+        // Re-check: if year-end-summary appeared, don't click primary (it's year-end's button)
+        if (await page.getByTestId('year-end-summary').isVisible().catch(() => false)) break;
+        await primaryBtn.click();
+        await page.getByTestId('speed-fastest').click().catch(() => {});
+        await page.waitForTimeout(50);
+        continue;
+      }
+
+      // Handle events/advisors
+      for (const prefix of ['event-choice-', 'advisor-choice-']) {
+        const choice = page.locator(`[data-testid^="${prefix}"]`).first();
+        if (await choice.isVisible().catch(() => false)) {
+          await choice.click();
+          await page.getByTestId('speed-fastest').click().catch(() => {});
+          break;
+        }
+      }
+
+      await page.waitForTimeout(100);
+    }
+
+    // Year-end summary should contain expense breakdown
+    await expect(page.getByTestId('year-end-summary')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('expense-line-planting')).toBeVisible();
+    await expect(page.getByTestId('expense-line-annualOverhead')).toBeVisible();
+  });
+});
+
+test.describe('4e: New Game Confirm Guard (#69)', () => {
+  test('new game button shows confirm dialog, cancel keeps game', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.getByTestId('save-new-game').click();
+
+    // Confirm dialog should appear
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+    await expect(page.getByTestId('confirm-dialog')).toHaveAttribute('data-confirm-action', 'return-to-title');
+
+    // Cancel — should stay in game
+    await page.getByTestId('confirm-cancel').click();
+    await expect(page.getByTestId('confirm-dialog')).not.toBeVisible();
+    await expect(page.getByTestId('farm-grid')).toBeVisible();
+  });
+});
+
+test.describe('4e: Crop Art Overhaul', () => {
+  test('planted cells render img elements not emoji text', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant a crop
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Cell should contain an <img> element
+    const img = page.getByTestId('farm-cell-0-0').locator('img');
+    await expect(img).toBeVisible();
+  });
+
+  test('sidebar crop preview shows when cell with crop selected', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant a crop
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // Sidebar should show crop preview image and stage label
+    await expect(page.getByTestId('sidebar-crop-preview')).toBeVisible();
+    await expect(page.getByTestId('sidebar-crop-stage-label')).toBeVisible();
+    await expect(page.getByTestId('sidebar-crop-stage-label')).toContainText('Silage Corn');
   });
 });
