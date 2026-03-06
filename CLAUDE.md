@@ -117,6 +117,34 @@ These come from post-mortem analysis of the previous attempt and research on wel
 - **Bulk actions from day one.** Students must never click 100 times for routine work. Row/column/field-level actions are mandatory, not stretch goals.
 - **Cause-and-effect transparency.** Every outcome the student sees must explain *why* it happened in plain language.
 
+## Codebase Exploration Tools
+
+**jcodemunch MCP** is available for structured codebase understanding. Two indexes exist:
+- `naddicott-dtech/ClimateFarmer26` — indexed from GitHub
+- `local/ClimateFarmer26` — indexed from local filesystem (richer: includes test files)
+
+**Use the local index (`local/ClimateFarmer26`) as the default.** Re-index after significant code changes:
+```
+mcp__jcodemunch__index_folder(path="/Users/naddicott/ClimateFarmer26", incremental=true)
+```
+
+### When to use which tool
+
+| Task | Best tool | Why |
+|------|-----------|-----|
+| "What functions are in this file?" | `get_file_outline` | Returns all symbols with signatures + line numbers in one call. Better than regex for multi-line signatures. |
+| "What functions exist for X?" | `search_symbols` | Searches names, signatures, summaries across the whole repo. |
+| "Where is X referenced/used?" | `Grep` or `search_text` | Both are exhaustive across function bodies, string literals, comments. Grep supports regex; `search_text` is substring-only but stays within jcodemunch's token accounting. |
+| "How is feature X wired across the codebase?" | `Grep` | Regex flexibility + context lines (`-A`/`-B`/`-C`) make it best for tracing cross-cutting concerns. |
+| "What's the project structure?" | `get_repo_outline` / `get_file_tree` | Instant structural overview without multiple ls/Glob calls. |
+| "Show me the source of function Y" | `get_symbol` | Retrieves exact source by symbol ID. Avoids reading an entire large file. |
+| Broad multi-query exploration | `Agent` (subagent_type=Explore) | For deep research requiring many searches. |
+
+### Limitations
+- jcodemunch's parser can't extract symbols from some files (notably `events.ts` data arrays, some JSX components, test files). These files still work with `search_text` and `Grep`.
+- `search_symbols` only matches symbol metadata (names/signatures/summaries), not function bodies. Use `search_text` or `Grep` when you need to find references inside implementations.
+- After code changes, the index goes stale. Run incremental re-index before relying on jcodemunch for modified files.
+
 ## Files to Exclude from Code Review Context
 
 - `SeniorSoftwareEngineer.md` — Role instructions and notes for a separate reviewer agent. Not part of the codebase.

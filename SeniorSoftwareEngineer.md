@@ -111,7 +111,7 @@ Keep these current at all times:
 
 ### Latest Verified Signals
 1. Unit tests: 589 passing (19 test files).
-2. Browser tests: 96 total (95 passing; 1 known flaky foreshadow natural-flow test under stress repeat — non-blocking).
+2. Browser tests: 96 total, all passing (foreshadow natural-flow test may flake under `--repeat-each` stress — non-blocking).
 3. Build: clean, ~43.8KB gzipped JS + ~5.1KB CSS.
 4. SAVE_VERSION = '7.0.0'. Migration chain: V1→V2→V3→V4→V5→V6→V7.
 5. 5 calibrated climate scenarios in `scenarios.ts`.

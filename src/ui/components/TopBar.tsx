@@ -97,7 +97,7 @@ export function TopBar() {
           ))}
         </div>
 
-        {needsPlayPrompt.value && speed === 0 && (
+        {needsPlayPrompt.value && speed === 0 && state.autoPauseQueue.length === 0 && (
           <span data-testid="play-prompt" class={styles.playPrompt}>
             Press Play to continue
           </span>

@@ -1763,6 +1763,26 @@ test.describe('4e: Play Prompt (#50)', () => {
     // Prompt should disappear
     await expect(page.getByTestId('play-prompt')).not.toBeVisible();
   });
+
+  test('play prompt is hidden while an auto-pause panel is active', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Set prompt true from a paused manual action.
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+    await expect(page.getByTestId('play-prompt')).toBeVisible();
+
+    // Trigger an auto-pause event while still paused.
+    await page.evaluate(() => {
+      const debug = (window as Record<string, any>).__gameDebug;
+      debug.triggerEvent('weather-frost-alert');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await expect(page.getByTestId('play-prompt')).not.toBeVisible();
+  });
 });
 
 test.describe('4e: Year Net P/L (#73)', () => {
