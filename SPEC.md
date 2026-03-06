@@ -882,8 +882,16 @@ The end-of-game score rewards **resilient, sustainable farming** — not just ma
 #### 32.5 Pause-to-Play Transition (#50)
 - **When** the game is paused at 0x speed and I have taken an action (planted, watered, etc.), **I should see** a visual prompt near the speed controls indicating I need to press play to continue.
 
-#### 32.6 Harvested Indicator (#48)
-- **When** a perennial has been harvested this season, **I should see** a visual indicator on the cell and the harvest button should be disabled.
+#### 32.6 Harvest-Ready Badge and Post-Harvest Suppression (#48, #79)
+- **When** a crop reaches harvestable stage, **I should see** a "Ready!" badge on the cell (`harvest-indicator-{row}-{col}`).
+- **When** a crop is overripe, **I should see** a "Harvest!" badge on the cell.
+- **When** a perennial has been harvested this season (`harvestedThisSeason === true`), **I should NOT see** the Ready/Harvest badge, the harvest button should be disabled, and the SidePanel should show "Already harvested this season".
+- **When** a perennial is dormant, **I should NOT see** the Ready/Harvest badge and the harvest button should be disabled with a "Trees are dormant during winter" tooltip.
+
+#### 32.7 TopBar Layout Stability (#78)
+- **When** right-side content changes during gameplay (debt appearing/disappearing, frost protection indicator), the speed controls in the center of the TopBar **must not** drift more than 2px horizontally.
+- **When** the viewport is narrow (1024px), the Save and New Game buttons **must** remain within the viewport.
+- **When** the viewport is very narrow (900px), speed controls **must not** overlap the right-group content.
 
 ### Slice 4 data-testid Coverage
 
@@ -902,7 +910,7 @@ The end-of-game score rewards **resilient, sustainable farming** — not just ma
 - `expense-breakdown` — year-end expense category breakdown
 - `expense-line-{category}` — individual expense line item
 - `play-prompt` — visual prompt to resume after action while paused
-- `harvest-indicator-{row}-{col}` — harvested-this-season indicator
+- `harvest-indicator-{row}-{col}` — harvest-ready badge (shows "Ready!" or "Harvest!"; suppressed when `harvestedThisSeason` is true or crop is dormant)
 
 ---
 

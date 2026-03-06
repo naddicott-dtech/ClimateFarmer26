@@ -138,7 +138,7 @@ Severity: MEDIUM. QA log shows `event_fired: tomato-market-surge` at Year 2 spri
 Status: Inconclusive. Regression tests in place (`slice3a1.test.ts`). Will monitor in future QA runs.
 
 **57. Game Over "Total expenses" shows only final-year expenses.** RESOLVED.
-Severity: LOW (misleading label). Bankruptcy panel said "Total revenue/expenses" but data came from `yearlyRevenue`/`yearlyExpenses` which reset each year. Label changed to "Final year revenue/expenses". TODO: show lifetime totals in 4e using `tracking.yearSnapshots`.
+Severity: LOW (misleading label). Bankruptcy panel said "Total revenue/expenses" but data came from `yearlyRevenue`/`yearlyExpenses` which reset each year. Label changed to "Final year revenue/expenses".
 
 **58. Pre-loan vs post-loan cash confusion at year-end boundary.** RESOLVED (4e).
 Severity: LOW (UX polish).
@@ -154,7 +154,7 @@ Resolution: Three-pronged fix: (1) Bulk harvest notifications batched by crop ty
 
 **62. Harvest affordance misleads when selected plot is not ready.**
 Severity: LOW (UX). "Harvest Field" button shows green/active when ANY plot is harvestable, even if the currently selected plot is at 85%. Students click expecting to harvest the selected cell. Should show "Harvest Field (N plots ready)" or clarify selected-plot state.
-Status: Deferred to 4d.
+Status: Deferred to Slice 5.
 
 **63. Event probabilities are effectively guaranteed annual occurrences.**
 Severity: MEDIUM (design/balance). Events with 10% daily probability evaluated ~90 days/season have `1 - 0.9^90 ≈ 99.98%` chance per season.
@@ -262,7 +262,7 @@ Resolution: Three reinforcing signals: (1) "Ready!" text badge on harvestable ce
 - **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums.
 - **K + Zn nutrients** — Only nitrogen is modeled.
 - **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule remain.
-- **Additional climate scenarios** — Only 1 scenario exists. Need 5-8 for classroom use.
+- **Additional climate scenarios** — 5 calibrated scenarios exist (`scenarios.ts`). Additional scenarios optional for future slices.
 
 ### AI Playtest Findings — Slice 3b Build (2026-02-26)
 
@@ -319,16 +319,27 @@ Status: Open / Deferred.
 
 AI test agents sometimes send `RESPOND_EVENT` commands when no event panel is active (e.g., rapid sequential clicks). The engine correctly rejects these (no-op), but they create noise in test logs. Optional fix: suppress or debounce stale event responses in test harness.
 
-### Deferred to Slice 4 / Later Discussion
+**78. TopBar speed controls drift 30-118px during gameplay.**
+Severity: MEDIUM (UX — pause button is a moving target).
+Status: RESOLVED.
+Resolution: Replaced flex layout with CSS Grid `1fr auto 1fr` on `.topbar`. Center column (speed controls) is structurally fixed regardless of left/right content changes. Added responsive breakpoints at 1100px (hide scenario name) and 900px (compact right-group labels). Playwright geometry regression tests verify ≤2px drift and no overlap at narrow viewports.
 
-- **Balance testing suite** — Headless automated strategy tests running full 30-year games against multiple scenarios (ARCHITECTURE.md §12 Layer 2). Required before classroom deployment. Strategies to test: monoculture almond, monoculture corn, diversified adaptive, zero-irrigation, maximum debt. Target: monoculture should fail in ≥60% of drought-heavy scenarios; well-diversified strategies should survive ≥80%. See playtest findings #45.
-- **Economic rebalancing** — Starting cash, maintenance costs, drought severity, event impacts all need systematic tuning based on balance test results. NOT hand-tuned — data-driven from headless test suite.
-- **Event system tuning** — Per-season event cap, mutual exclusion groups, relevance gating (see #46, #47).
-- **Web-aware AI exploratory QA** — Supplement headless balance bots with AI agents playing the actual web UI via Playwright/browser automation. Catches UX, decision-quality, and exploitability issues that headless engine-only bots cannot see. Six player personas defined: (1) Optimal-seeking strategist, (2) Intentional self-sabotage, (3) Advisor maximizer, (4) Advisor skeptic, (5) Low-effort student, (6) Late adapter. Each run produces: decision log by year/season, top-5 observations, outcome summary, bugs/UX issues. Planned timing: initial runs after 4b baseline (optimal + sabotage), regression during 4c tuning (optimal + low-effort), full sweep after 4d+4e for classroom sign-off. See Slice 4 plan sub-slice 4d.5.
+**79. Perennial harvest UI confusion — "Ready!" badge shows after harvest.**
+Severity: MEDIUM (student confusion — contradictory UI state).
+Status: RESOLVED.
+Resolution: Three fixes: (1) Engine clamps `gddAccumulated` at 99% of `gddToMaturity` when `harvestedThisSeason` is true, preventing re-entry to harvestable stage. (2) FarmCell Ready badge gated on `!harvestedThisSeason`. (3) SidePanel growth text priority: isDormant → harvestedThisSeason ("Already harvested this season") → harvestable/overripe.
+
+### Deferred to Slice 5+ / Later Discussion
+
+- ~~**Balance testing suite**~~ — RESOLVED in Slice 4a. 5 bots × 5 scenarios × 20 seeds = 500 headless 30-year runs.
+- ~~**Economic rebalancing**~~ — RESOLVED in Slice 4c/4d. Four levers + annual overhead.
+- **Event system tuning** — Per-season event cap, mutual exclusion groups (see #47).
+- **Web-aware AI exploratory QA** — Supplement headless bots with AI agents playing the web UI. Six player personas defined. Not yet executed as a full sweep.
 - **Automation policies** — Replant-same, harvest-when-ready, water-when-dry. Unlocked via tech tree.
 - **Glossary / Information Index** — In-game educational reference with progressive disclosure.
 - **Solar lease event chain** — Multi-phase storylet (option → construction → operations → agrivoltaics).
-- **Completion code + Google Form** — End-of-game reporting for teacher assessment.
+- **Scoring + Completion code + Google Form** — Weighted composite scoring (SPEC §31) + end-of-game reporting for teacher assessment.
+- **Year-30 reflection panel** — Educational summary using yearSnapshots data (#65).
 - **Advanced accessibility** (colorblind modes, full screen reader support) — Baseline keyboard nav + ARIA in Slice 1.
 - **Sound / music** — Not essential for classroom use.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.

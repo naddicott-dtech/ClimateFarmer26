@@ -1922,3 +1922,128 @@ test.describe('4e: Crop Art Overhaul', () => {
     await expect(page.getByTestId('sidebar-crop-stage-label')).toContainText('Silage Corn');
   });
 });
+
+test.describe('TopBar Grid Geometry Regression', () => {
+  test('speed controls stay centered within 2px between different right-side states', async ({ page }) => {
+    // Use 1366×768 viewport (common Chromebook resolution)
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // State A: baseline — no frost, no debt
+    await page.evaluate(() => {
+      const dbg = (window as any).__gameDebug;
+      dbg.setDebt(0);
+      // Ensure no frost protection
+      const state = dbg.getState();
+      state.frostProtectionEndsDay = 0;
+      dbg.publish();
+    });
+
+    const speedGroup = page.locator('[data-testid="speed-pause"]').locator('..');
+    const boxA = await speedGroup.boundingBox();
+    expect(boxA).toBeTruthy();
+
+    // State B: add debt + frost protection (max right-side content)
+    await page.evaluate(() => {
+      const dbg = (window as any).__gameDebug;
+      dbg.setDebt(50000);
+      const state = dbg.getState();
+      state.frostProtectionEndsDay = state.calendar.totalDay + 30;
+      dbg.publish();
+    });
+
+    const boxB = await speedGroup.boundingBox();
+    expect(boxB).toBeTruthy();
+
+    // Speed controls x-position must not drift more than 2px
+    const drift = Math.abs(boxA!.x - boxB!.x);
+    expect(drift).toBeLessThanOrEqual(2);
+  });
+
+  test('save/new-game buttons stay within viewport at 1024px width', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Add maximum right-side content
+    await page.evaluate(() => {
+      const dbg = (window as any).__gameDebug;
+      dbg.setDebt(50000);
+      const state = dbg.getState();
+      state.frostProtectionEndsDay = state.calendar.totalDay + 30;
+      dbg.publish();
+    });
+
+    const newGameBtn = page.getByTestId('save-new-game');
+    const box = await newGameBtn.boundingBox();
+    expect(box).toBeTruthy();
+    // Right edge of button must be within viewport
+    expect(box!.x + box!.width).toBeLessThanOrEqual(1024);
+  });
+
+  test('speed controls do not overlap right-group at narrow viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 768 });
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Add debt + frost to maximize right-side content
+    await page.evaluate(() => {
+      const dbg = (window as any).__gameDebug;
+      dbg.setDebt(50000);
+      const state = dbg.getState();
+      state.frostProtectionEndsDay = state.calendar.totalDay + 30;
+      dbg.publish();
+    });
+
+    const speedGroup = page.locator('[data-testid="speed-pause"]').locator('..');
+    const speedBox = await speedGroup.boundingBox();
+    const cashBox = await page.getByTestId('topbar-cash').boundingBox();
+    expect(speedBox).toBeTruthy();
+    expect(cashBox).toBeTruthy();
+
+    // Speed controls right edge must not overlap cash section left edge
+    expect(speedBox!.x + speedBox!.width).toBeLessThanOrEqual(cashBox!.x + 2);
+  });
+});
+
+test.describe('Perennial Harvest Badge Regression', () => {
+  test('no harvest indicator badge when harvestedThisSeason is true', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Plant almonds (perennial — triggers confirm dialog)
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Confirm the perennial planting dialog
+    await page.getByTestId('confirm-accept').click();
+
+    // Wait for crop to be planted (sidebar shows crop name)
+    await expect(page.getByTestId('sidebar-crop-name')).toContainText('Almonds');
+
+    // Set up: established perennial, harvested this season, harvestable stage
+    await page.evaluate(() => {
+      const dbg = (window as any).__gameDebug;
+      const state = dbg.getState();
+      const crop = state.grid[0][0].crop;
+      if (crop) {
+        crop.perennialAge = 4;
+        crop.perennialEstablished = true;
+        crop.harvestedThisSeason = true;
+        crop.growthStage = 'harvestable';
+      }
+      dbg.publish();
+    });
+
+    // Wait for the sidebar to re-render with the new state
+    await expect(page.locator('[data-testid="sidebar-cell-detail"]')).toContainText('Already harvested this season');
+
+    // No harvest indicator badge should show
+    await expect(page.getByTestId('harvest-indicator-0-0')).not.toBeVisible();
+
+    // Harvest button should be disabled
+    await expect(page.getByTestId('action-harvest')).toBeDisabled();
+  });
+});

@@ -124,7 +124,7 @@ export function FarmCell({ cell }: FarmCellProps) {
       {cropArtSrc && (
         <img class={styles.cropArt} src={cropArtSrc} alt="" aria-hidden="true" />
       )}
-      {crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') && (
+      {crop && !crop.isDormant && !crop.harvestedThisSeason && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') && (
         <span class={styles.readyBadge} data-testid={`harvest-indicator-${row}-${col}`}>
           {crop.growthStage === 'overripe' ? 'Harvest!' : 'Ready!'}
         </span>

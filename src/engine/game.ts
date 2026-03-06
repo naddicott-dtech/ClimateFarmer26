@@ -391,6 +391,10 @@ function processHarvest(state: GameState, row: number, col: number): CommandResu
     return { success: false, reason: `Crop is not ready to harvest (${stage}).` };
   }
 
+  if (cell.crop.isPerennial && cell.crop.isDormant) {
+    return { success: false, reason: 'Trees are dormant during winter and cannot be harvested.' };
+  }
+
   if (cell.crop.isPerennial && cell.crop.harvestedThisSeason) {
     return { success: false, reason: 'Already harvested this season. Trees produce one crop per year.' };
   }
@@ -1267,6 +1271,11 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState, scena
       // Enter dormancy: reset chill accumulation for this winter
       crop.isDormant = true;
       crop.chillHoursAccumulated = 0;
+      // Reset harvestable/overripe state — dormant trees aren't harvestable
+      if (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') {
+        crop.growthStage = 'mature';
+        crop.overripeDaysRemaining = -1;
+      }
       // Fall through to dormant block below for first day's accumulation
     } else if (!shouldBeDormant && crop.isDormant) {
       // Spring awakening: exit dormancy, reset GDD for new growing season
@@ -1301,6 +1310,7 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState, scena
         crop.growthStage = 'mature';
         crop.overripeDaysRemaining = -1;
         crop.gddAccumulated = cropDef.gddToMaturity * 0.8; // reset to mature stage
+        crop.harvestedThisSeason = true; // prevent regrowth to harvestable this season
         addNotification(state, 'info',
           `Your ${cropDef.name} in row ${cell.row + 1} missed the harvest window. No yield this season, but the trees survive.`);
         return;
@@ -1340,6 +1350,10 @@ function simulateCrop(cell: Cell, weather: DailyWeather, state: GameState, scena
   if (crop.isPerennial && !crop.perennialEstablished) {
     // During establishment: cap growth at vegetative (no fruit production)
     crop.growthStage = getGrowthStage(Math.min(progress, 0.49));
+  } else if (crop.isPerennial && crop.harvestedThisSeason) {
+    // Already harvested this season — cap at mature, don't re-enter harvestable
+    crop.gddAccumulated = Math.min(crop.gddAccumulated, cropDef.gddToMaturity * 0.99);
+    crop.growthStage = getGrowthStage(Math.min(progress, 0.99));
   } else {
     crop.growthStage = getGrowthStage(progress);
   }
@@ -1643,6 +1657,7 @@ function getHarvestableCells(state: GameState, scope: 'all' | 'row' | 'col', ind
   return getCellsInScope(state, scope, index).filter(
     c => c.crop !== null &&
       (c.crop.growthStage === 'harvestable' || c.crop.growthStage === 'overripe') &&
+      !c.crop.isDormant &&
       !(c.crop.isPerennial && c.crop.harvestedThisSeason),
   );
 }

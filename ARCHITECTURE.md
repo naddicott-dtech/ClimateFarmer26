@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Technical Design Document (Draft)
 
-> **Status: Living document. Slices 1-3 implemented and reviewed. Slice 4 next.**
+> **Status: Living document. Slices 1-4 implemented and reviewed. Slice 5 planning next.**
 > Cross-references: `reference/SIMULATION_PATTERNS.md`, `reference/BackgroundDeepResearch.md`
 
 ## 1. Overview
@@ -858,32 +858,24 @@ Adaptation tradeoffs, perennial lifecycle, cover crop system, and weather adviso
 - 3b: Cover crop system (legume + bare, fall planting, spring auto-incorporate) + V3→V4 save migration
 - 3c: Weather Service advisor (NWS Fresno, 3 storylets) + frost protection mechanism + advisor UI routing
 
-**Explicitly deferred to Slice 4+:** Tech tree, K+Zn nutrients, insurance/credit expansion, multi-scenario, remaining advisors (Financial, Community), automation policies.
+**Explicitly deferred to Slice 5+:** Tech tree, K+Zn nutrients, insurance/credit expansion, remaining advisors (Financial, Community), automation policies. Multi-scenario resolved in Slice 4a (5 scenarios).
 
-### Slice 4: Balance, Scoring & Classroom Readiness
-Everything needed to hand this to students with confidence. **Balance testing is the gating prerequisite** — no other Slice 4 work ships until the balance suite passes.
+### Slice 4: Balance, Scoring & Classroom Readiness (Complete)
+Everything needed to hand this to students with confidence.
 
-**Phase 1 — Balance Testing Infrastructure (BLOCKER):**
-- Headless strategy bot framework (5 bots minimum, see §12 Layer 2)
-- 5 calibrated climate scenarios required for sign-off (see §12.1 Scenario Calibration)
-- Full test matrix: 5 bots × 5 scenarios × ≥20 seeds = ≥500 headless 30-year runs
-- Produce baseline metrics showing current balance failures
-- All bots use `processCommand()` / `simulateTick()` — no UI, no adapter
+**4a — Balance Testing Infrastructure:** Headless strategy bot framework (5 bots: monoculture-corn, monoculture-almond, idle, diversified-adaptive, zero-irrigation). 5 calibrated climate scenarios in `scenarios.ts`. Full test matrix: 5 bots × 5 scenarios × 20 seeds = 500 headless 30-year runs. Save migration V4→V5.
 
-**Phase 2 — Economic Rebalancing (data-driven from Phase 1):**
-- Tune parameters ONLY based on failing balance test metrics
-- Likely levers: maintenance costs, drought severity ramp, water allocation, event economic impacts, monoculture pest/disease pressure, OM yield penalties
-- Rerun full test matrix after each parameter change
-- Gate: all Layer 2 pass/fail metrics green before proceeding
+**4b + 4b.5 — Event System Refactor:** Seasonal draw semantics (8 random-gated events drawn once per season). Stress-modulated probability. Family caps (max 1 per type per season). 6 condition-only advisors remain per-tick. Save migration V5→V6.
 
-**Phase 3 — Scoring & Classroom Polish:**
-- Scoring formula: weighted composite (financial 30%, soil 20%, diversity 20%, adaptation 20%, consistency 10%) — see SPEC.md §31
-- Completion code + Google Form integration
-- UX fixes from playtesting (#47, #48, #50, #52, #53, #54)
-- Year-end expense breakdown
-- Event clustering cap (max 2 per season)
+**4c — Economic Rebalancing:** Four levers (OM yield penalty, water allocation enforcement, nitrogen tightening, irrigation cost increase). Data-driven from balance test results.
 
-**Deferred to post-classroom (Slice 5+):** Automation policies, glossary, solar lease event chain, additional scenarios beyond the 5 required, tech tree, remaining advisors, insurance/credit systems.
+**4d — Annual Overhead:** $2,000/year overhead. Corn monoculture ~69% survival (risky), diversified 100%, idle 0%.
+
+**4e — Classroom UX Clarity Pass:** Water warning double-gate fix (#52), year-end expense breakdown (#53), notification backlog fix (#61), perennial onboarding warning (#71), running net P/L in TopBar (#73), crop art overhaul (#74), play prompt (#50), continue button integrity (#67), autosave sync (#68), new game confirm guard (#69). Save migration V6→V7.
+
+**Stabilization:** TopBar CSS Grid layout (#78), perennial harvest UI fix (#79).
+
+**Deferred to Slice 5+:** Scoring + completion code, tech tree, automation policies, glossary, solar lease event chain, remaining advisors, insurance/credit systems, year-30 reflection panel.
 
 ## 14. Open Questions
 

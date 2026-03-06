@@ -6,7 +6,7 @@ Purpose: reliable UI navigation guidance for AI/manual QA agents. This is naviga
 - Title screen primary button is `Start New Game` (`data-testid="newgame-start"`).
 - Enter any non-empty Player ID first (`data-testid="newgame-player-id"`).
 - Tutorial may appear after starting. Dismiss with `data-testid="tutorial-skip"`.
-- `Continue Saved Game` appears only if the auto-save key exists (`data-testid="save-resume"`).
+- `Continue Saved Game` appears only if a valid auto-save exists (validated via `loadAutoSave()`, not key presence) (`data-testid="save-resume"`).
 
 ## 1.5) Log Preservation Rules (Important for QA)
 - Avoid full page navigations/reloads during a run (`page.goto(...)`, hard refresh, reopen tab). They reset JS context and lose in-memory console history.
@@ -137,6 +137,10 @@ clearInterval(window._cfHandler);
 ```
 
 ## 11) Current Caveats for QA Agents
-- Water Warning auto-pause can chain into a second confirm dialog for watering-all.
-- Speed does not auto-resume after dismissing auto-pauses.
-- `Continue Saved Game` visibility is key-presence based; corrupted auto-save can lead to a visible button that does nothing.
+- Speed does not auto-resume after dismissing auto-pauses. Click a speed button to resume.
+- A pulsing "Press Play to continue" prompt (`data-testid="play-prompt"`) appears when speed === 0 after the player takes an action.
+- `Continue Saved Game` validates auto-save integrity before showing — corrupt/missing auto-save hides the button.
+- Water Warning auto-pause uses `skipConfirm: true` — single click applies water directly (no second confirm dialog).
+- `getState()` returns a mutable reference to `_liveState`. Call `publish()` after direct mutations to trigger UI re-render.
+- `setDay()` sets the day counter without simulating intermediate growth/weather — prefer `fastForward()` for realistic testing.
+- TopBar uses CSS Grid layout — speed controls are structurally centered and do not drift when right-side content changes.

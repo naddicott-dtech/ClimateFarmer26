@@ -47,49 +47,49 @@ All crop stages rendered as images on farm grid cells — no emoji. Mapped via `
 | `crop-pistachios` | `public/assets/crops/crop-pistachios_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Pistachios (tree) |
 | `crop-citrus` | `public/assets/crops/crop-citrus_48x48.jpeg` | 48x48 | FarmCell (harvestable/overripe) | Complete | Citrus navels (tree) |
 
-### Growth Stage Art (28 images — placeholder, needs final art from Neal)
+### Growth Stage Art (28 images — complete)
 
 | Asset ID | File Path | Dimensions | Used In | Status | Notes |
 |----------|-----------|------------|---------|--------|-------|
-| `crop-tomatoes-seedling` | `public/assets/crops/crop-tomatoes-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Tiny sprout emerging from soil |
-| `crop-tomatoes-vegetative` | `public/assets/crops/crop-tomatoes-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Bushy green tomato plant, no fruit |
-| `crop-tomatoes-flowering` | `public/assets/crops/crop-tomatoes-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | Yellow flowers visible on plant |
-| `crop-tomatoes-mature` | `public/assets/crops/crop-tomatoes-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Green tomatoes on vine, not yet ripe |
-| `crop-corn-seedling` | `public/assets/crops/crop-corn-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Small corn sprout |
-| `crop-corn-vegetative` | `public/assets/crops/crop-corn-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Leafy corn stalk, no tassels |
-| `crop-corn-flowering` | `public/assets/crops/crop-corn-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | Corn tassels visible |
-| `crop-corn-mature` | `public/assets/crops/crop-corn-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Full ears with husks |
-| `crop-wheat-seedling` | `public/assets/crops/crop-wheat-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Tiny wheat sprout |
-| `crop-wheat-vegetative` | `public/assets/crops/crop-wheat-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Green wheat tillers |
-| `crop-wheat-flowering` | `public/assets/crops/crop-wheat-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | Wheat heads forming |
-| `crop-wheat-mature` | `public/assets/crops/crop-wheat-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Golden wheat heads |
-| `crop-sorghum-seedling` | `public/assets/crops/crop-sorghum-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Small sorghum sprout |
-| `crop-sorghum-vegetative` | `public/assets/crops/crop-sorghum-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Leafy sorghum stalk |
-| `crop-sorghum-flowering` | `public/assets/crops/crop-sorghum-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | Sorghum heads forming |
-| `crop-sorghum-mature` | `public/assets/crops/crop-sorghum-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Full sorghum grain head |
-| `crop-almonds-seedling` | `public/assets/crops/crop-almonds-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Small almond sapling |
-| `crop-almonds-vegetative` | `public/assets/crops/crop-almonds-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Young almond tree with leaf canopy |
-| `crop-almonds-flowering` | `public/assets/crops/crop-almonds-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | White/pink almond blossoms |
-| `crop-almonds-mature` | `public/assets/crops/crop-almonds-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Green almonds among leaves |
-| `crop-pistachios-seedling` | `public/assets/crops/crop-pistachios-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Small pistachio sapling |
-| `crop-pistachios-vegetative` | `public/assets/crops/crop-pistachios-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Young pistachio tree with leaf canopy |
-| `crop-pistachios-flowering` | `public/assets/crops/crop-pistachios-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | Pistachio blossoms |
-| `crop-pistachios-mature` | `public/assets/crops/crop-pistachios-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Green pistachio clusters among leaves |
-| `crop-citrus-seedling` | `public/assets/crops/crop-citrus-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Placeholder | Small citrus sapling |
-| `crop-citrus-vegetative` | `public/assets/crops/crop-citrus-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Placeholder | Young citrus tree with glossy leaves |
-| `crop-citrus-flowering` | `public/assets/crops/crop-citrus-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Placeholder | White citrus blossoms |
-| `crop-citrus-mature` | `public/assets/crops/crop-citrus-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Placeholder | Small green oranges among leaves |
+| `crop-tomatoes-seedling` | `public/assets/crops/crop-tomatoes-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Tiny sprout emerging from soil |
+| `crop-tomatoes-vegetative` | `public/assets/crops/crop-tomatoes-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Bushy green tomato plant, no fruit |
+| `crop-tomatoes-flowering` | `public/assets/crops/crop-tomatoes-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | Yellow flowers visible on plant |
+| `crop-tomatoes-mature` | `public/assets/crops/crop-tomatoes-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Green tomatoes on vine, not yet ripe |
+| `crop-corn-seedling` | `public/assets/crops/crop-corn-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Small corn sprout |
+| `crop-corn-vegetative` | `public/assets/crops/crop-corn-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Leafy corn stalk, no tassels |
+| `crop-corn-flowering` | `public/assets/crops/crop-corn-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | Corn tassels visible |
+| `crop-corn-mature` | `public/assets/crops/crop-corn-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Full ears with husks |
+| `crop-wheat-seedling` | `public/assets/crops/crop-wheat-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Tiny wheat sprout |
+| `crop-wheat-vegetative` | `public/assets/crops/crop-wheat-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Green wheat tillers |
+| `crop-wheat-flowering` | `public/assets/crops/crop-wheat-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | Wheat heads forming |
+| `crop-wheat-mature` | `public/assets/crops/crop-wheat-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Golden wheat heads |
+| `crop-sorghum-seedling` | `public/assets/crops/crop-sorghum-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Small sorghum sprout |
+| `crop-sorghum-vegetative` | `public/assets/crops/crop-sorghum-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Leafy sorghum stalk |
+| `crop-sorghum-flowering` | `public/assets/crops/crop-sorghum-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | Sorghum heads forming |
+| `crop-sorghum-mature` | `public/assets/crops/crop-sorghum-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Full sorghum grain head |
+| `crop-almonds-seedling` | `public/assets/crops/crop-almonds-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Small almond sapling |
+| `crop-almonds-vegetative` | `public/assets/crops/crop-almonds-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Young almond tree with leaf canopy |
+| `crop-almonds-flowering` | `public/assets/crops/crop-almonds-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | White/pink almond blossoms |
+| `crop-almonds-mature` | `public/assets/crops/crop-almonds-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Green almonds among leaves |
+| `crop-pistachios-seedling` | `public/assets/crops/crop-pistachios-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Small pistachio sapling |
+| `crop-pistachios-vegetative` | `public/assets/crops/crop-pistachios-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Young pistachio tree with leaf canopy |
+| `crop-pistachios-flowering` | `public/assets/crops/crop-pistachios-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | Pistachio blossoms |
+| `crop-pistachios-mature` | `public/assets/crops/crop-pistachios-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Green pistachio clusters among leaves |
+| `crop-citrus-seedling` | `public/assets/crops/crop-citrus-seedling_48x48.jpeg` | 48x48 | FarmCell (seedling) | Complete | Small citrus sapling |
+| `crop-citrus-vegetative` | `public/assets/crops/crop-citrus-vegetative_48x48.jpeg` | 48x48 | FarmCell (vegetative) | Complete | Young citrus tree with glossy leaves |
+| `crop-citrus-flowering` | `public/assets/crops/crop-citrus-flowering_48x48.jpeg` | 48x48 | FarmCell (flowering) | Complete | White citrus blossoms |
+| `crop-citrus-mature` | `public/assets/crops/crop-citrus-mature_48x48.jpeg` | 48x48 | FarmCell (mature) | Complete | Small green oranges among leaves |
 
 ### Dormant Art (2 images — deciduous perennials only)
 
 | Asset ID | File Path | Dimensions | Used In | Status | Notes |
 |----------|-----------|------------|---------|--------|-------|
-| `crop-almonds-dormant` | `public/assets/crops/crop-almonds-dormant_48x48.jpeg` | 48x48 | FarmCell (dormant) | Placeholder | Bare almond tree branches, no leaves |
-| `crop-pistachios-dormant` | `public/assets/crops/crop-pistachios-dormant_48x48.jpeg` | 48x48 | FarmCell (dormant) | Placeholder | Bare pistachio tree branches, no leaves |
+| `crop-almonds-dormant` | `public/assets/crops/crop-almonds-dormant_48x48.jpeg` | 48x48 | FarmCell (dormant) | Complete | Bare almond tree branches, no leaves |
+| `crop-pistachios-dormant` | `public/assets/crops/crop-pistachios-dormant_48x48.jpeg` | 48x48 | FarmCell (dormant) | Complete | Bare pistachio tree branches, no leaves |
 
 ### Growth Stage Art Direction (for prompting)
 
-Each stage should be visually distinct from its neighbors at 36×36 CSS px rendering size.
+Each stage should be visually distinct from its neighbors. Crop art renders responsively to fill the farm cell (minus 4px padding).
 
 - **Seedling:** Tiny green sprout emerging from brown soil. For trees: small sapling with 2-3 leaves. Predominantly soil-colored with a touch of green.
 - **Vegetative:** Healthy leafy growth, no fruit/flowers visible. For trees: young tree with full leaf canopy. Predominantly green.
@@ -99,11 +99,11 @@ Each stage should be visually distinct from its neighbors at 36×36 CSS px rende
 
 ### Crop Art Spec
 
-- **Size:** 48x48 pixels (renders at 36x36 CSS px)
+- **Size:** 48x48 pixels (renders responsively to fill cell, CSS `width: calc(100% - 4px)`)
 - **Style:** Stylized semi-realistic, painterly, approachable for high school students
 - **Palette:** sun-baked earth (#A97142), wheat gold (#D8B45A), irrigation blue (#4A90B8), leaf green (#6FA35B), sky haze (#C9DCE8), orchard dark (#2F5D3A), accent orange (#E38B3A)
-- **Background:** Soil/earth tones (no transparent background for crops — they sit on farm cells)
-- **Constraints:** No text, no logos, no watermarks. High readability at 36×36 CSS px
+- **Background:** Soil/earth tones — crops sit on farm cells, so background should blend with the cell background
+- **Constraints:** No text, no logos, no watermarks
 
 ## UI Icons (Future)
 

@@ -41,7 +41,7 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
   const state = gameState.value;
 
   const canPlant = !crop && cropsAvailable.length > 0;
-  const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') && !crop.harvestedThisSeason;
+  const canHarvest = crop && (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') && !crop.isDormant && !crop.harvestedThisSeason;
   const canRemove = crop?.isPerennial === true;
   const isFall = state?.calendar.season === 'fall';
   const isDeciduousPerennial = crop?.isPerennial && cropDef?.dormantSeasons && cropDef.dormantSeasons.length > 0;
@@ -55,6 +55,8 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
     const pctDone = Math.round(progress * 100);
     if (crop.isDormant) {
       growthText = 'Dormant \u2014 waiting for spring';
+    } else if (crop.harvestedThisSeason) {
+      growthText = 'Already harvested this season';
     } else if (crop.growthStage === 'harvestable') {
       growthText = 'Ready to harvest!';
     } else if (crop.growthStage === 'overripe') {
@@ -68,7 +70,9 @@ function CellDetail({ cell, row, col }: { cell: import('../../engine/types.ts').
   // Harvest tooltip for non-ready crops
   let harvestTooltip = '';
   if (crop && !canHarvest) {
-    if (crop.harvestedThisSeason) {
+    if (crop.isDormant) {
+      harvestTooltip = `Trees are dormant during winter.`;
+    } else if (crop.harvestedThisSeason) {
       harvestTooltip = `Already harvested this season.`;
     } else {
       harvestTooltip = `Not ready yet \u2014 ${cropDef?.name}, ${Math.round(progress * 100)}% grown.`;

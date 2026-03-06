@@ -641,6 +641,59 @@ describe('Perennial Single Harvest Per Season', () => {
 });
 
 // ============================================================================
+// Regression: perennial GDD clamp after harvest
+// ============================================================================
+
+describe('Perennial Harvest GDD Clamp', () => {
+  it('does not re-enter harvestable after harvestedThisSeason is set', () => {
+    const state = makeState();
+    processCommand(state, {
+      type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds',
+    }, SLICE_1_SCENARIO);
+
+    const crop = state.grid[0][0].crop!;
+    const cropDef = getCropDefinition('almonds');
+    crop.perennialAge = 4;
+    crop.perennialEstablished = true;
+    crop.harvestedThisSeason = true;
+    // Set GDD well past maturity
+    crop.gddAccumulated = cropDef.gddToMaturity * 1.5;
+    crop.growthStage = 'mature';
+
+    // Simulate a tick — growth stage should stay capped at mature
+    state.speed = 1;
+    state.autoPauseQueue = [];
+    simulateTick(state, SLICE_1_SCENARIO);
+
+    expect(crop.growthStage).toBe('mature');
+    expect(crop.gddAccumulated).toBeLessThanOrEqual(cropDef.gddToMaturity * 0.99);
+  });
+
+  it('caps gddAccumulated when harvestedThisSeason and GDD exceeds threshold', () => {
+    const state = makeState();
+    processCommand(state, {
+      type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'pistachios',
+    }, SLICE_1_SCENARIO);
+
+    const crop = state.grid[0][0].crop!;
+    const cropDef = getCropDefinition('pistachios');
+    crop.perennialAge = 5;
+    crop.perennialEstablished = true;
+    crop.harvestedThisSeason = true;
+    crop.gddAccumulated = cropDef.gddToMaturity * 2.0;
+
+    state.speed = 1;
+    state.autoPauseQueue = [];
+    simulateTick(state, SLICE_1_SCENARIO);
+
+    // GDD should be clamped
+    expect(crop.gddAccumulated).toBeLessThanOrEqual(cropDef.gddToMaturity * 0.99);
+    // Growth stage must not be harvestable or overripe
+    expect(['seedling', 'vegetative', 'flowering', 'mature']).toContain(crop.growthStage);
+  });
+});
+
+// ============================================================================
 // Balance Tests (deterministic: seed 42, fixed strategies)
 // ============================================================================
 

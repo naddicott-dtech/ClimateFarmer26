@@ -102,36 +102,43 @@ Keep these current at all times:
 4. What must be measured (performance, reliability, usability) before moving on?
 5. What assumptions are still unverified?
 
-## Current State Snapshot (2026-03-05, Post-4c/4d + External QA)
+## Current State Snapshot (2026-03-06, Post-Slice 4 Complete)
 
 ### Executive Status
-1. Slice 4 balance rework (4c + 4d) is effectively complete and validated against prior blocker #45 (economy no longer trivially forgiving).
-2. We are **not** ready to begin Slice 5 planning yet.
-3. Current gate is classroom-UX readiness, not core engine correctness.
+1. Slice 4 is **complete** (4a balance infrastructure → 4b event refactor → 4c economic rebalancing → 4d overhead tuning → 4e classroom UX pass → stabilization fixes).
+2. Project is **ready for Slice 5 planning**.
+3. All classroom-critical UX issues from external QA rounds resolved.
 
 ### Latest Verified Signals
-1. Unit tests: 581 passing (latest verified run in this phase).
-2. Browser tests: expanded suite passing overall; known targeted flake remains in foreshadow natural-flow test under stress repeat.
-3. Build: clean, ~41.72KB gzipped JS (latest verified run in this phase).
-4. External QA coverage completed this cycle:
-   - good-faith optimizer pass
-   - exploit-seeker pass
-   - classroom-reality pass (STOP_AND_FIX triggered early)
-   - teaching-assistant manual pass (mental-model mismatch on crop visuals/harvest readiness)
+1. Unit tests: 589 passing (19 test files).
+2. Browser tests: 96 total (95 passing; 1 known flaky foreshadow natural-flow test under stress repeat — non-blocking).
+3. Build: clean, ~43.8KB gzipped JS + ~5.1KB CSS.
+4. SAVE_VERSION = '7.0.0'. Migration chain: V1→V2→V3→V4→V5→V6→V7.
+5. 5 calibrated climate scenarios in `scenarios.ts`.
+6. External QA coverage completed: good-faith optimizer, exploit-seeker, classroom-reality, teaching-assistant, structured 4e acceptance (21/21 gameplay checks).
 
-### Slice-4 Remaining Must-Fix Themes (Before Slice 5)
-1. Water-warning click-tax / repeated interruption burden (classroom time sink).
-2. Notification backlog and stale message accumulation.
-3. Perennial onboarding clarity (multi-year maturation and delayed revenue must be explicit).
-4. Advisor-action alignment (recommendations must map to currently actionable choices or clearly time-shifted advice).
-5. Real-time financial clarity (running net/profit context, not year-end only).
-6. Harvest readiness affordance clarity (in-progress visual states should not look harvest-ready).
-7. Pause-state guidance after actions/auto-pauses.
+### Slice-4 Completed Fixes (All 7 Themes Resolved)
+1. Water-warning click-tax → `skipConfirm` auto-pause watering (#52).
+2. Notification backlog → batch + cap + age trim (#61).
+3. Perennial onboarding → confirm dialog with years-to-first-harvest warning (#71).
+4. Advisor-action alignment → season-agnostic recommendation text (#72).
+5. Real-time financial clarity → running net P/L in TopBar (#73).
+6. Harvest readiness affordance → custom crop art for all stages + text badges (#74) + perennial harvest UI fix (#79).
+7. Pause-state guidance → pulsing "Press Play" prompt (#50).
+
+### Remaining Open Items (Slice 5 Candidates)
+- **#47:** Event clustering (spammy multi-event seasons)
+- **#49:** Cover crop pedagogy not landing (OM decline invisible)
+- **#59:** Water warning click-fatigue (recommended: automated irrigation as tech tree unlock)
+- **#62:** Harvest affordance misleads when selected plot is not ready
+- **#65:** Year-30 completion panel lacks educational summary
+- **#66:** Soil management limited agency after advisor caps
+- **#70:** Confirm dialog overwrite (automation hardening)
 
 ### Recommended Next Step (Supervisory)
-1. Run a focused **Slice 4e Classroom UX Clarity Pass** (small, testable vertical fixes for the themes above).
-2. Re-run external classroom-reality test to Year 10 gate after 4e fixes.
-3. Only begin Slice 5 planning after classroom gate passes without repeated High-severity friction.
+1. Begin **Slice 5 planning** — scoring/completion code, tech tree, additional content.
+2. Prioritize items by classroom impact: #59 (water fatigue) and #65 (year-30 summary) likely highest value.
+3. Consider web-aware AI exploratory QA sweep before Slice 5 implementation starts.
 
 ## Historical Bootstrap (2026-02-26, Post-Slice-3)
 
@@ -147,16 +154,16 @@ Keep these current at all times:
 Run these first in any new session:
 1. `/bin/zsh -lc "TMPDIR=$PWD git status --short"` (inspect local changes before review).
 2. `npx tsc -b` (type-check must be clean).
-3. `npm test` (expect 451 unit tests passing).
-4. `npm run test:browser` (expect 84 Playwright tests passing).
-5. `npm run build` (expect successful production build, ~37.80 KB gzipped JS).
+3. `npm test` (unit tests — expect all passing).
+4. `npm run test:browser` (Playwright tests — expect all passing except known flaky foreshadow test).
+5. `npm run build` (expect successful production build, <200KB gzipped).
 
-### Current Slice 4 Review Priorities
-1. **Pre-classroom blocker (#45):** economy/balance is too lenient. Implement headless balance-testing suite and tune from data, not ad hoc playfeel.
-2. **Event cadence UX:** reduce event clustering spam while preserving educational signal and deterministic behavior.
-3. **Decision transparency UX:** year-end expense breakdown (especially perennial maintenance and recurring costs).
-4. **Onboarding friction:** paused-state play confusion and related UX flow issues from human playtests.
-5. **Slice-4 scope discipline:** prioritize classroom-polish outcomes (balance suite, scenarios, clarity) over new speculative mechanics.
+### Slice 5 Review Priorities (Proposed)
+1. **Scoring + completion code:** weighted composite formula (SPEC §31) + Google Form integration for teacher assessment.
+2. **Year-30 reflection panel (#65):** educational summary using yearSnapshots data — most important screen students see.
+3. **Water fatigue / tech tree (#59):** automated irrigation as first tech tree unlock — highest-impact UX win.
+4. **Event clustering (#47):** per-season event cap or mutual exclusion groups.
+5. **Scope discipline:** prioritize classroom-impact outcomes over speculative mechanics.
 
 Review discipline reminders:
 - Never accept pass-count claims without rerunning tests locally.

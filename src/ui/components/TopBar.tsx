@@ -65,7 +65,7 @@ export function TopBar() {
           >
             {SEASON_ICONS[calendar.season] ?? ''}
           </span>
-          <span data-testid="topbar-date" aria-label={`${getMonthName(calendar.month)} Year ${calendar.year}, ${getSeasonName(calendar.season)}`}>
+          <span class={styles.dateText} data-testid="topbar-date" aria-label={`${getMonthName(calendar.month)} Year ${calendar.year}, ${getSeasonName(calendar.season)}`}>
             {getSeasonName(calendar.season)} &mdash; {getMonthName(calendar.month)}, Year {calendar.year}
           </span>
           <span class={styles.scenarioName} data-testid="scenario-name" aria-label={`Scenario: ${getActiveScenarioName()}`}>
