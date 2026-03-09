@@ -1229,6 +1229,40 @@ test.describe('Advisor Panel', () => {
     await expect(page.getByTestId('advisor-panel')).not.toBeVisible();
   });
 
+  test('Chen advisor renders correct portrait, name, role, and subtitle', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('advisor-chen-intro');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await expect(page.getByTestId('advisor-name')).toHaveText('Marcus Chen');
+    await expect(page.getByTestId('advisor-role')).toHaveText('Valley Farm Credit — Agricultural Lender');
+    await expect(page.getByTestId('advisor-subtitle')).toHaveText('Focused on returns and financial growth');
+    await expect(page.getByTestId('event-title')).toHaveText('A Visit from Valley Farm Credit');
+
+    // Dismiss Chen panel
+    await page.getByTestId('advisor-choice-welcome-review').click();
+    await expect(page.getByTestId('advisor-panel')).not.toBeVisible();
+
+    // Now trigger Forum and verify it renders correctly
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('advisor-forum-intro');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await expect(page.getByTestId('advisor-name')).toHaveText('Valley Growers Forum');
+    await expect(page.getByTestId('advisor-role')).toHaveText('Local Farming Community');
+    await expect(page.getByTestId('advisor-subtitle')).toHaveText('Word-of-mouth from neighboring farms');
+    await expect(page.getByTestId('event-title')).toHaveText('Valley Growers Forum Meetup');
+
+    // Dismiss Forum panel
+    await page.getByTestId('advisor-choice-attend-meeting').click();
+    await expect(page.getByTestId('advisor-panel')).not.toBeVisible();
+  });
+
   test('non-advisor event still uses event-choice testids', async ({ page }) => {
     await startNewGame(page);
     await waitForGameScreen(page);
