@@ -252,7 +252,7 @@ Format: **Date — Decision — Rationale**
 
 2026-02-25 — Cover crop ET formula — `ET = et0 × max(getCropCoefficient(crop), coverCrop.winterETMultiplier)` for cells with crops; `ET = et0 × coverCrop.winterETMultiplier` for empty cells with cover. Dormant perennial + cover: max(0.2, 0.2) = 0.2 — cover doesn't add water cost.
 
-2026-02-25 — Cover crop halts OM decomposition — When `coverCropId` is set, OM decomposition is skipped during winter simulation. Cover crop roots protect soil.
+2026-02-25 — Cover crop reduces OM decomposition — When `coverCropId` is set, OM decomposition rate is reduced by 50% (`COVER_CROP_OM_PROTECTION = 0.50`). Cover crop roots protect soil but don't halt decay entirely. *(Originally halted decomposition completely; revised in Slice 5d.2 for more realistic soil dynamics and balance.)*
 
 2026-02-25 — DD-1 pattern for cover crop bulk ops — Same partial-offer / complete-rows pattern as existing plant/water bulk operations. Consistency with established UX.
 
@@ -369,3 +369,27 @@ Format: **Date — Decision — Rationale**
 2026-03-09 — Event cap: separate pools for tech vs. non-tech — Max 1 tech-unlock event + max 1 non-tech event (climate/market/regulatory) per season. Prevents tech offers from starving climate pressure and vice versa. Condition-only advisors remain uncapped.
 
 2026-03-09 — Late-game decision gates include economic + regime state — Tech levels alone are too coarse for decisions 5-7. Add cash/debt band and active regime flags (water/market/heat) to storylet preconditions, so late-game offers stay simulation-accurate even when tech levels have converged.
+
+## Slice 5d.2 Design Decisions
+
+### Monoculture Streak Penalty
+
+2026-03-10 — Escalating per-cell streak penalty, not flat or concentration-based — Flat 15% penalty was insufficient (corn $572K vs diversified $220K). Concentration-based penalty cascaded non-linearly and was too blunt. Streak-based (per-cell, escalating) is grounded in NIFA/Illinois/SDSU rotation research: pest buildup compounds year-over-year in the same soil. Formula: `max(0.50, 1.0 - 0.15 × streak)`. Produces: 2nd=0.85, 3rd=0.70, 4th=0.55, 5th+=0.50 (floor).
+
+2026-03-10 — Perennials exempt from streak penalty — A citrus tree producing annually isn't "replanting." Gate: `!crop.isPerennial`. Only annuals trigger the penalty.
+
+2026-03-10 — Cover crops and fallow do NOT reset streak — Penalty represents pest/disease buildup in soil from repeated same-crop planting. A winter cover crop doesn't address corn rootworm or allelopathy. Only planting a DIFFERENT main crop resets the streak counter.
+
+2026-03-10 — One-time notification on first monoculture penalty — Penalty must be surfaced or it risks feeling like hidden punishment. `state.flags['monoculture_penalty_shown']` prevents spam. Future: consider surfacing in year-end summary or advisor feedback.
+
+### Cover Crop OM Protection
+
+2026-03-10 — Cover crops reduce OM decomposition by 50%, not halt it entirely — Original 100% halt made OM effectively immortal for any player using cover crops, neutralizing the OM yield penalty system. `COVER_CROP_OM_PROTECTION = 0.50` is more realistic and creates genuine soil management tension.
+
+### Balance Philosophy
+
+2026-03-10 — One lever at a time, observe then set thresholds — Don't move multiple balance levers simultaneously (can't attribute cause). Don't predeclare exact numerical targets. Run suite, observe, verify qualitative goals, THEN set regression thresholds from observed data with margin. Bots are diagnostic instruments, not design targets.
+
+2026-03-10 — Corn drought/heat quality penalty deferred to Slice 6 — Adding waterStressDays-based penalty double-counts with existing `waterFactor = 1 - ky * stressFraction` in the yield chain. Needs separate heat stress day tracking. Price/quality lever (not yield) is the right approach for drought effects on corn.
+
+2026-03-10 — Diversified bot must actually rotate to be a valid diagnostic — Original diversified bot planted same crops on same rows every year, making it "3-4 parallel monocultures." Fixing the bot to rotate corn/tomatoes by year was as important as the penalty mechanic itself.

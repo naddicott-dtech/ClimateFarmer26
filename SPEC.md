@@ -1,6 +1,6 @@
 # SPEC.md — Acceptance Tests & Requirements
 
-> **Status: Living document. Slices 1-4 implemented and reviewed. Slice 5 ("Adapt or Fail") in planning.**
+> **Status: Living document. Slices 1-5d implemented. Classroom-Ready Build deployed.**
 > Format: **When** [user action], **I should see** [expected result].
 > Negative cases use: **When** [action], **I should NOT see** [bad outcome] / **the system should** [prevent it].
 

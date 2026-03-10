@@ -174,7 +174,7 @@ Status: Deferred to future content slice. Fix: tighten the firing window to pre-
 
 **65. Year-30 completion panel lacks educational summary.** RESOLVED (5c).
 Severity: MEDIUM (educational value).
-Resolution: `buildReflectionData()` + `buildReflectionSummary()` generate text-only reflection covering financial arc, soil trend, tech decisions, and crop diversity. Renders in AutoPausePanel for both year-30 completion and bankruptcy. Note: bankruptcy via loan-decline still routes to title without showing reflection (#88).
+Resolution: `buildReflectionData()` + `buildReflectionSummary()` generate text-only reflection covering financial arc, soil trend, tech decisions, and crop diversity. Renders in AutoPausePanel for both year-30 completion and bankruptcy. Loan-decline path also shows reflection (#88, resolved in 5d).
 
 **66. Soil management has limited agency after early advisor caps.**
 Severity: LOW (design). `advisor-soil-nitrogen` fires max 3 times (intentional cap in events.ts). Cover crops provide recurring nitrogen restoration (+50N per incorporation), but there's no explicit "fertilize" or "soil amendment" action. After early advisor hints stop, players lack ongoing feedback about soil health trajectory.

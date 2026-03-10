@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Technical Design Document (Draft)
 
-> **Status: Living document. Slices 1-4 complete. Slice 5a (systems infrastructure) implemented. Slice 5b-5d in progress.**
+> **Status: Living document. Slices 1-5d complete. Classroom-Ready Build deployed.**
 > Cross-references: `reference/SIMULATION_PATTERNS.md`, `reference/BackgroundDeepResearch.md`
 
 ## 1. Overview
@@ -875,14 +875,14 @@ Everything needed to hand this to students with confidence.
 
 **Stabilization:** TopBar CSS Grid layout (#78), perennial harvest UI fix (#79).
 
-### Slice 5: Adapt or Fail (In Progress)
+### Slice 5: Adapt or Fail (Complete)
 Strategic depth, competing advisors, tech branching, and climate escalation. Transforms strategic flatness into genuine decision-making.
 
 **Sub-slices:**
-- 5a: System extensions ✅ COMPLETE — New condition types (`not_has_flag`, `tech_level_below`, `tech_level_at_least`), `getTechLevel()` reconvergence (3 tracks: water/soil/crop), K-lite potassium (per-cell depletion + price factor + symptom cues), auto-irrigation hook (tech-gated with cost multipliers), crop gating via `requiredFlag`, permanent regime shift modifiers (water/market/heat), separate tech/non-tech event clustering caps, harvest affordance count, `pickMessage()` for message variety, agave as first gated crop, save migration V7→V8 (SAVE_VERSION='8.0.0'). 666 unit tests passing.
-- 5b: Advisors + first tech branch ✅ COMPLETE — Marcus Chen (`farm-credit`) + Valley Growers Forum (`growers-forum`) advisor characters with intro storylets, water irrigation tech unlock (year 3, drip irrigation → auto-irrigation end-to-end), auto-irrigation notification with 3-message rotating pool (no-repeat), `autoIrrigationMsgIdx` on GameState. 712 unit tests passing.
-- 5c: Full content + regime shifts (remaining tech decisions years 6-24, 3 regime shifts, 2-3 novel crops, Year-30 reflection panel)
-- 5d: Balance + validate (bot updates for tech paths, Monte Carlo variety metrics, AI playtesting)
+- 5a: System extensions ✅ — New condition types (19 total), `getTechLevel()` reconvergence (3 tracks: water/soil/crop), K-lite potassium (per-cell depletion + price factor + symptom cues), auto-irrigation hook (tech-gated with cost multipliers), crop gating via `requiredFlag`, permanent regime shift modifiers (water/market/heat), separate tech/non-tech event clustering caps, harvest affordance count, `pickMessage()` for message variety, agave as first gated crop, save migration V7→V8 (SAVE_VERSION='8.0.0').
+- 5b: Advisors + first tech branch ✅ — Marcus Chen (`farm-credit`) + Valley Growers Forum (`growers-forum`) advisor characters with intro storylets, water irrigation tech unlock (year 3, drip irrigation → auto-irrigation end-to-end), auto-irrigation notification with 3-message rotating pool (no-repeat), `autoIrrigationMsgIdx` on GameState.
+- 5c: Full content + regime shifts ✅ — Remaining tech decisions (soil testing, crop tech, advanced water, late-game regime-aware offers), 3 regime shifts (water allocation Y10-12, market crash Y15-18, heat threshold Y20-25), 2 novel crops (agave + heat-tolerant avocados), Year-30 reflection panel, tech soft-lock fix (#80). 22 storylets total, 9 crops.
+- 5d: Balance + validate ✅ — UX fixes (#81 bulk plant feedback, #82 advisor thresholds, #87 year-end copy, #88 bankruptcy reflection). 5d.2 "Corn Dominance Fix": monoculture streak penalty (escalating yield loss), cover crop OM protection reduction (50%), diversified bot rotation rewrite. Balance: diversified ($301K) > corn ($193K) > citrus ($86K).
 
 **Key systems:** Tech decisions via storylets (not separate UI). Tech level abstraction (water 0-3, soil 0-3, crop 0-2) for reconvergence. Pain-triggered offers. Hybrid reoffer policy. Persistent regime shifts via flags.
 

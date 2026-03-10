@@ -1,9 +1,7 @@
-# HANDOFF.md — Post-Slice 4 Completion Snapshot
+# HANDOFF.md — Post-Slice 5d Completion Snapshot
 
-> **ARCHIVAL DOCUMENT.** This snapshot reflects the project state as of 2026-03-06, after Slice 4 completion. Slice 5a implementation is now in progress — see CLAUDE.md, DECISIONS.md, and ARCHITECTURE.md for current status. Metrics, architecture references, and deferred feature lists below are stale.
-
-**Date:** 2026-03-06
-**Status:** Slice 4 complete (sub-slices 4a + 4b + 4b.5 + 4c + 4d + 4e + stabilization). Ready for Slice 5 planning.
+**Date:** 2026-03-10
+**Status:** Slices 1-5d complete. Classroom-Ready Build deployed. Students start as early as Thursday March 13, 2026.
 
 ## What Was Built
 
@@ -16,60 +14,34 @@ Event/storylet engine + loans + 3 climate events (heatwave, water allocation cut
 ### Slice 3 (Complete)
 Stretch events (tomato surge, pumping ban). 2 new crops (sorghum, citrus navels — 7 total). Perennial yield curves (ramp→peak→decline). Cover crop system (legume, fall planting, spring auto-incorporation). Weather Service advisor (NWS Fresno, 3 storylets). Frost protection mechanism. Save migration V3→V4.
 
-### Slice 4a: Balance Testing Infrastructure
-- Headless strategy bot framework (5 bots: monoculture corn, almond, idle, diversified-adaptive, zero-irrigation)
-- 5 calibrated climate scenarios (`scenarios.ts`): gradual-warming, early-drought, whiplash, late-escalation, mild-baseline
-- Full test matrix: 5 bots × 5 scenarios × 20 seeds = 500 headless 30-year runs
-- Save migration V4→V5 (tracking fields + cell-level tracking)
+### Slice 4 (Complete)
+- **4a:** Headless bot framework (6 bots: corn/almond monoculture, idle, diversified-adaptive, zero-irrigation, citrus-stability). 5 calibrated scenarios. Save migration V4→V5.
+- **4b/4b.5:** Seasonal draw refactor (8 random-gated + 14 condition-only). Stress-modulated probability. Family caps. Save migration V5→V6.
+- **4c:** Economic rebalancing — 4 levers (OM yield penalty, water allocation, N tightening, irrigation cost).
+- **4d:** $2,000/year annual overhead. Save migration V6→V7.
+- **4e:** Classroom UX clarity pass — 16 fixes including year-end expense breakdown, running net P/L, crop art overhaul, play prompt, confirm guards.
+- **Stabilization:** TopBar CSS Grid layout (#78), perennial harvest UI fix (#79).
 
-### Slice 4b + 4b.5: Event System Refactor
-- Seasonal draw semantics: 8 random-gated events drawn once per season at boundary
-- Stress-modulated probability: `adjustedProbability = min(0.95, baseProbability × (0.5 + stressLevel))`
-- Family caps: max 1 per type (climate/regulatory/market/advisor) per season
-- 6 condition-only advisors remain per-tick
-- Save migration V5→V6 (seasonalEventQueue + yearStressLevel)
+### Slice 5a: Systems Infrastructure (Complete)
+New condition/effect types, `getTechLevel()` reconvergence (water/soil/crop tracks 0-3), K-lite potassium (per-cell depletion + price factor + symptom cues), auto-irrigation hook (tech-gated with cost multipliers), crop gating via `requiredFlag`, permanent regime shift modifiers (water/market/heat), separate tech/non-tech event clustering caps, harvest affordance count (#62), `pickMessage()` for message variety, agave as first gated crop. Save migration V7→V8. `SAVE_VERSION = '8.0.0'`.
 
-### Slice 4c: Economic Rebalancing
-Four levers to fix #45 (economy too lenient):
-1. OM yield penalty: `computeOMYieldFactor()` — yield drops as OM declines
-2. Water allocation enforcement: `effectiveDose = WATER_DOSE_INCHES × allocation`
-3. Nitrogen tightening: N consumed at harvest, mineralization via OM
-4. Irrigation cost increase: $24/cell
+### Slice 5b: Advisors + First Tech Branch (Complete)
+Marcus Chen (`farm-credit`) + Valley Growers Forum (`growers-forum`) advisor characters with intro storylets. Water irrigation tech unlock (year 3, drip irrigation → auto-irrigation end-to-end). Auto-irrigation notification with 3-message rotating pool.
 
-### Slice 4d: Annual Overhead + Fine-tuning
-- $2,000/year annual overhead expense
-- Balance result: corn monoculture ~69% survival (risky), diversified 100%, idle 0%
+### Slice 5c: Full Content + Regime Shifts (Complete)
+Remaining tech decisions (soil testing, crop tech, advanced water, late-game regime-aware offers). 3 regime shifts (water allocation reduction Y10-12, market crash Y15-18, heat threshold Y20-25). 2 novel crops (agave + heat-tolerant avocados). Year-30 reflection panel (#65). Tech soft-lock fix (#80). 19 condition types, 10 effect types, 22 storylets total (8 seasonal draw + 14 condition-only). 9 crops (4 annual + 5 perennial).
 
-### Slice 4e: Classroom UX Clarity Pass
-- Water warning double-gate fix (#52): `skipConfirm` for auto-pause watering
-- Year-end expense breakdown (#53): 9-category line items
-- Calendar display lag fix (#54)
-- Row/column cost display (#55)
-- Notification backlog fix (#61): batch + cap + age trim
-- Game Over label fix (#57): "Final year" not "Total"
-- Year-end cash label fix (#58): "before loan"
-- Cover crop cell label fix (#60): "Fallow (Cover Crop)"
-- Perennial onboarding warning (#71): confirm dialog on first perennial plant
-- Advisor timing fix (#72): season-agnostic recommendation text
-- Running net P/L in TopBar (#73)
-- Crop art overhaul (#74): custom images for all 7 crops × all growth stages (no emoji)
-- Play prompt (#50): pulsing "Press Play to continue"
-- Continue button integrity (#67): validates auto-save before showing
-- Autosave sync on manual load (#68)
-- New Game confirm guard (#69)
-- Save migration V6→V7 (scenarioId field)
-
-### Stabilization (Post-4e)
-- TopBar CSS Grid layout (#78): `1fr auto 1fr` eliminates speed control drift
-- Perennial harvest UI fix (#79): GDD clamp after harvest, Ready badge gated on `!harvestedThisSeason`
+### Slice 5d: Balance + Validate (Complete)
+- **5d.1:** UX fixes — advisor threshold tuning (#82), bulk plant full-field feedback (#81), year-end "before loan" conditional copy (#87), bankruptcy reflection on loan decline (#88).
+- **5d.2 "Corn Dominance Fix":** Monoculture streak penalty (escalating yield loss: 2nd=0.85, 3rd=0.70, 4th=0.55, 5th+=0.50 floor), cover crop OM protection reduction (50% vs 100%), diversified bot rewrite (proper rotation). Balance result: diversified ($301K) > corn ($193K) > citrus ($86K), all 100% survival. 6 bots × 5 scenarios tested.
 
 ## Current Metrics
 
 ```
-npm test             # 589 unit tests, all passing (19 test files)
-npm run test:browser # 96 Playwright browser tests (all passing; foreshadow natural-flow test may flake under --repeat-each stress)
-npm run build        # ~43.8 KB gzipped JS, ~5.1 KB CSS
-SAVE_VERSION         # '7.0.0'
+npm test             # 783 unit tests, all passing (23 test files)
+npm run test:browser # 99 Playwright browser tests (all passing; foreshadow natural-flow test may flake under --repeat-each stress)
+npm run build        # ~52.1 KB gzipped JS, ~5.1 KB CSS
+SAVE_VERSION         # '8.0.0'
 ```
 
 ## Architecture Quick Reference
@@ -80,13 +52,14 @@ src/
     types.ts         GameState root type, Command union, CropInstance, constants
     game.ts          createInitialState, processCommand, simulateTick, harvestCell,
                      getPerennialAgeFactor, getPerennialPhase, executeBulkPlant,
-                     executeWater, executeBulkCoverCrop, addNotification
+                     executeWater, executeBulkCoverCrop, addNotification, pickMessage
+    tech-levels.ts   getTechLevel() reconvergence (water/soil/crop tracks 0-3)
     calendar.ts      Day↔calendar conversion (STARTING_DAY=59 = March 1)
     weather.ts       generateDailyWeather, updateExtremeEvents
     rng.ts           Mulberry32 seeded PRNG
     playtest-log.ts  Opt-in verbose logging for human QA
     events/
-      types.ts       Storylet (with advisorId), Condition (16 types), Effect (10 types),
+      types.ts       Storylet (with advisorId), Condition (19 types), Effect (10 types),
                      Choice, Foreshadowing, ActiveEvent, ActiveEffect
       selector.ts    evaluateEvents — precondition checking, seasonal draw, weighted selection
       effects.ts     applyEffects — processes all Effect types including activate_frost_protection
@@ -95,12 +68,12 @@ src/
                      Debug hooks: window.__gameDebug (setCash, setDay, setDebt, triggerEvent,
                      setFlag, getState, publish, setScenario, fastForward)
   data/
-    crops.ts         7 crop definitions (4 annual + 3 perennial) with yield curves
+    crops.ts         9 crop definitions (4 annual + 5 perennial) with yield curves, requiredFlag gating
     cover-crops.ts   Cover crop definitions (legume-cover)
-    scenarios.ts     5 calibrated climate scenarios with chillHours per year
-    events.ts        STORYLETS array (3 climate + 2 market/regulatory + 6 Dr. Santos + 3 NWS = 14 total)
+    scenarios.ts     5 calibrated climate scenarios with chillHours per year, marketCrashTargetCropId
+    events.ts        STORYLETS array (22 storylets: 8 seasonal draw + 14 condition-only)
   save/
-    storage.ts       localStorage: auto-save, manual saves, V1→V2→V3→V4→V5→V6→V7 migration chain
+    storage.ts       localStorage: auto-save, manual saves, V1→V8 migration chain
   ui/
     components/      Preact components (App, GameScreen, NewGameScreen, TopBar, FarmGrid,
                      FarmCell, SidePanel, CropMenu, AutoPausePanel, NotificationBar,
@@ -109,41 +82,66 @@ src/
 tests/
   engine/            Unit tests: game, weather, calendar, save, rng, events, chill,
                      advisors, perennials, yieldcurve, covercrop, weather-advisor,
-                     slice3a1, economy, seasonal-events, balance-harness
-  browser/           Playwright specs (game.spec.ts — 96 tests)
+                     slice3a1, economy, seasonal-events, balance-harness, tracking,
+                     slice5a, slice5b, slice5c, slice5d (23 files)
+  engine/balance/    Bot runner + 6 bots + smoke/full balance suites + scenario tests
+  browser/           Playwright specs (game.spec.ts — 99 tests)
 ```
 
-## Open Issues for Slice 5
+## Key Balance Mechanics
 
-### UX (deferred from Slice 4)
-- **#47:** Event clustering (medium — spammy multi-event seasons). Likely fix: per-season event cap.
-- **#49:** Cover crop / soil health pedagogy not landing (OM decline invisible).
-- **#59:** Water warning click-fatigue. Recommended fix: automated irrigation as tech tree unlock.
-- **#62:** Harvest affordance misleads when selected plot is not ready. Show "N plots ready" context.
-- **#65:** Year-30 completion panel lacks educational summary / reflection prompts.
-- **#66:** Soil management has limited agency after early advisor caps.
-- **#70:** Confirm dialog can be overwritten by scripted interaction (automation hardening).
+**Economic levers (4c/4d/5d.2):**
+1. OM yield penalty: `computeOMYieldFactor()` — yield drops as OM declines (floor=0.40 at OM=0.5%)
+2. Water allocation enforcement: `effectiveDose = WATER_DOSE_INCHES × allocation`
+3. Nitrogen tightening: N consumed at harvest, mineralization via OM
+4. Irrigation cost: $8/cell
+5. Annual overhead: $2,000/year
+6. Monoculture streak penalty: escalating yield loss for consecutive same annual crop per cell
+7. Cover crop OM protection: 50% decomposition reduction (not halt)
+
+**Balance results (5d.2, 75-run smoke suite):**
+- Diversified-adaptive: 100% survival, $301K median
+- Corn monoculture: 100% survival, $193K median
+- Citrus stability: 100% survival, $86K median
+- Almond monoculture: 0% survival (establishment cost kills)
+- Zero irrigation: 0% survival
+- Idle farm: 0% survival (bankrupt Y26-29)
+
+## Open / Deferred Issues
 
 ### Known test issue
-- Foreshadowing browser test (`game.spec.ts:890`) is flaky (~10% failure rate under stress). Non-blocking.
+- Foreshadowing browser test (`game.spec.ts:890`) is flaky (~10% failure rate under `--repeat-each` stress). Non-blocking.
 
-### Deferred features → Slice 5+
-- **Tech tree** — Fog-of-war event-driven tech unlocks (automated irrigation as first unlock)
-- **Remaining advisors** — Financial Advisor/Banker, Farming Community
-- **Insurance / credit systems** — Credit rating, variable loan rates
-- **K + Zn nutrients** — Only nitrogen is modeled
-- **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule
-- **Scoring + completion code** — Weighted composite formula + Google Form
-- **Automation policies** — Replant-same, harvest-when-ready, water-when-dry
-- **Glossary / Information Index** — In-game educational reference
-- **Solar lease event chain** — Multi-phase storylet
-- **Year-30 reflection panel** — Educational summary using yearSnapshots data
+### Open issues (low severity)
+- **#47:** Event clustering feels spammy in some seasons. Seasonal caps exist but not per-family mutual exclusion.
+- **#70:** Confirm dialog can be overwritten by scripted interaction (automation-only, overlay blocks humans).
+- **#83:** Economic tension under-signaled in UI (cash trend, bankruptcy warning).
+- **#84:** Crop/water messaging inconsistency (winter wheat "low water" vs. water warnings).
+- **#85:** Advisor advice in notification bar feels like background toast.
+- **#86:** No guidance after mid-summer harvest leaves nothing plantable.
+
+### Deferred features → Slice 6+
+- **Scoring + completion code + Google Form** — Weighted composite scoring (SPEC §31) + end-of-game reporting
+- **Corn heat/drought quality penalty** — Needs proper heat stress day tracking (separate from waterStressDays to avoid double-counting with waterFactor)
+- **Monoculture pest event chain** — Rootworm, corn rot as foreshadowed storylets connecting to pellagra case study
+- **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums
+- **Automation policies** — Replant-same, harvest-when-ready, water-when-dry (beyond auto-irrigation)
+- **Glossary / Information Index** — In-game educational reference with progressive disclosure
+- **Solar lease event chain** — Multi-phase storylet (option → construction → operations → agrivoltaics)
+- **Additional crops** — Table grapes (stretch). Stone Fruit, Opuntia, Guayule unlikely.
+- **Zinc nutrient** — Deferred from K-lite implementation
+- **Advanced accessibility** — Colorblind modes, full screen reader support
+- **5 avocado art files** — ASSETS.md has specs
 
 ## Verification Commands
 
 ```bash
-npm test             # Unit tests
-npm run test:browser # Playwright browser tests (builds first)
+npm test             # 783 unit tests (23 files)
+npm run test:browser # 99 Playwright browser tests (builds first)
 npm run test:all     # All tests in sequence
-npm run build        # Production build (<200KB gzipped)
+npm run build        # Production build (~52KB gzipped JS)
+npm run test:balance # Balance smoke (75 runs, ~5-8 min)
 ```
+
+## Deployed
+GitHub Pages: https://naddicott-dtech.github.io/ClimateFarmer26/
