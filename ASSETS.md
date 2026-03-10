@@ -117,6 +117,20 @@ Agave is a perennial (no dormancy, evergreen like citrus). Wired in CROP_ART in 
 | `crop-agave-mature` | `public/assets/crops/crop-agave-mature_48x48.jpeg` | 48x48 | Complete | Full mature rosette, large thick leaves, blue-grey |
 | `crop-agave` | `public/assets/crops/crop-agave_48x48.jpeg` | 48x48 | Complete | Harvestable piña/heart visible, used for harvestable + overripe |
 
+### Heat-Tolerant Avocado Crop Art (Slice 5c — tech-gated crop, complete)
+
+Avocado is a perennial (no dormancy, evergreen like citrus). Wired in CROP_ART in FarmCell.tsx.
+
+| Asset ID | File Path | Dimensions | Status | Notes |
+|----------|-----------|------------|--------|-------|
+| `crop-avocado-seedling` | `public/assets/crops/crop-avocado-seedling_48x48.jpeg` | 48x48 | Complete | Small avocado sapling, few broad glossy leaves |
+| `crop-avocado-vegetative` | `public/assets/crops/crop-avocado-vegetative_48x48.jpeg` | 48x48 | Complete | Young avocado tree with dense dark-green leaf canopy |
+| `crop-avocado-flowering` | `public/assets/crops/crop-avocado-flowering_48x48.jpeg` | 48x48 | Complete | Small yellow-green flower clusters among leaves |
+| `crop-avocado-mature` | `public/assets/crops/crop-avocado-mature_48x48.jpeg` | 48x48 | Complete | Small green avocados hanging among leaves |
+| `crop-avocado` | `public/assets/crops/crop-avocado_48x48.jpeg` | 48x48 | Complete | Ripe dark avocados on tree, used for harvestable + overripe |
+
+**Prompting notes:** Avocado is a heat-adapted variety for inland California. Dense evergreen canopy, broad glossy leaves, pear-shaped fruit. Should look distinctly tropical compared to the existing deciduous tree crops. No dormant stage (evergreen).
+
 ### Slice 5b Advisor Portraits (art ready, not yet wired in engine)
 
 | Asset ID | File Path | Dimensions | Status | Notes |

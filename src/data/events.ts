@@ -619,8 +619,9 @@ export const STORYLETS: readonly Storylet[] = [
       { type: 'min_year', year: 3 },
       { type: 'has_crop' },
       { type: 'tech_level_below', track: 'water', level: 1 },
-      { type: 'has_flag', flag: 'met_chen' },
-      { type: 'has_flag', flag: 'met_forum' },
+      // met_chen/met_forum gates removed: dismissing an intro at the auto-pause overlay
+      // consumes its maxOccurrences without setting the flag, permanently soft-locking tech.
+      // Advisors still host this panel via advisorId; intros are flavor, not gates.
     ],
     priority: 100,
     cooldownDays: 365,
@@ -662,8 +663,7 @@ export const STORYLETS: readonly Storylet[] = [
       { type: 'min_year', year: 6 },
       { type: 'has_crop' },
       { type: 'tech_level_below', track: 'soil', level: 1 },
-      { type: 'has_flag', flag: 'met_chen' },
-      { type: 'has_flag', flag: 'met_forum' },
+      // met_chen/met_forum gates removed (same reason as tech-water-irrigation)
     ],
     priority: 100,
     cooldownDays: 365,

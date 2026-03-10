@@ -161,10 +161,9 @@ describe('Slice 5b: tech-water-irrigation', () => {
 
   beforeEach(() => {
     state = makeState();
-    // Set up default conditions: year 3, has crop, met both advisors
+    // Set up default conditions: year 3, has crop
+    // Note: met_chen/met_forum gates removed to prevent soft-lock from dismissed intros
     state.calendar.year = 3;
-    state.flags['met_chen'] = true;
-    state.flags['met_forum'] = true;
     processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
   });
 
@@ -177,18 +176,8 @@ describe('Slice 5b: tech-water-irrigation', () => {
     expect(storylet.cooldownDays).toBe(365);
   });
 
-  it('fires when all conditions met (year 3, has_crop, water level 0, met both)', () => {
+  it('fires when all conditions met (year 3, has_crop, water level 0)', () => {
     expect(evaluateNonRandomConditions(getStorylet('tech-water-irrigation'), state)).toBe(true);
-  });
-
-  it('does NOT fire without met_chen flag', () => {
-    state.flags['met_chen'] = false;
-    expect(evaluateNonRandomConditions(getStorylet('tech-water-irrigation'), state)).toBe(false);
-  });
-
-  it('does NOT fire without met_forum flag', () => {
-    state.flags['met_forum'] = false;
-    expect(evaluateNonRandomConditions(getStorylet('tech-water-irrigation'), state)).toBe(false);
   });
 
   it('does NOT fire when water tech level >= 1', () => {

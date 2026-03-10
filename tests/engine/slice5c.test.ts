@@ -55,10 +55,9 @@ describe('Slice 5c: tech-soil-management', () => {
 
   beforeEach(() => {
     state = makeState();
-    // Set up default conditions: year 6, has crop, met both advisors, soil level 0
+    // Set up default conditions: year 6, has crop, soil level 0
+    // Note: met_chen/met_forum gates removed to prevent soft-lock from dismissed intros
     setYear(state, 6);
-    state.flags['met_chen'] = true;
-    state.flags['met_forum'] = true;
     plantCrop(state);
   });
 
@@ -77,18 +76,8 @@ describe('Slice 5c: tech-soil-management', () => {
     expect(hasRandom).toBe(false);
   });
 
-  it('fires when all conditions met (year >= 6, has_crop, soil level 0, met_chen, met_forum)', () => {
+  it('fires when all conditions met (year >= 6, has_crop, soil level 0)', () => {
     expect(evaluateNonRandomConditions(getStorylet('tech-soil-management'), state)).toBe(true);
-  });
-
-  it('does NOT fire without met_chen flag', () => {
-    delete state.flags['met_chen'];
-    expect(evaluateNonRandomConditions(getStorylet('tech-soil-management'), state)).toBe(false);
-  });
-
-  it('does NOT fire without met_forum flag', () => {
-    delete state.flags['met_forum'];
-    expect(evaluateNonRandomConditions(getStorylet('tech-soil-management'), state)).toBe(false);
   });
 
   it('does NOT fire when soil tech level >= 1 (tech_soil_testing set)', () => {
@@ -161,6 +150,51 @@ describe('Slice 5c: tech-soil-management', () => {
   it('has tech-unlock tag', () => {
     const storylet = getStorylet('tech-soil-management');
     expect(storylet.tags).toContain('tech-unlock');
+  });
+});
+
+// ============================================================================
+// §1b: Regression — dismissed advisor intros must NOT block tech events (#80)
+// ============================================================================
+
+describe('Slice 5c: dismissed advisor intros do not soft-lock tech tree (#80)', () => {
+  it('tech-soil-management fires even when advisor intros were dismissed (met_* flags unset)', () => {
+    const state = makeState();
+    setYear(state, 6);
+    plantCrop(state);
+
+    // Simulate dismissing both advisor intros — logs __dismissed__ as occurrence,
+    // consuming maxOccurrences without setting met_chen / met_forum flags
+    state.eventLog.push(
+      { storyletId: 'advisor-chen-intro', choiceId: '__dismissed__', day: 367 },
+      { storyletId: 'advisor-forum-intro', choiceId: '__dismissed__', day: 367 },
+    );
+
+    // met_* flags are NOT set (this is the dismiss path, not the accept path)
+    expect(state.flags['met_chen']).toBeUndefined();
+    expect(state.flags['met_forum']).toBeUndefined();
+
+    // Tech events must still be eligible despite unset met_* flags
+    const soilStorylet = getStorylet('tech-soil-management');
+    expect(evaluateNonRandomConditions(soilStorylet, state)).toBe(true);
+  });
+
+  it('tech-water-irrigation fires even when advisor intros were dismissed', () => {
+    const state = makeState();
+    setYear(state, 3);
+    plantCrop(state);
+
+    // Dismiss both advisor intros
+    state.eventLog.push(
+      { storyletId: 'advisor-chen-intro', choiceId: '__dismissed__', day: 367 },
+      { storyletId: 'advisor-forum-intro', choiceId: '__dismissed__', day: 367 },
+    );
+
+    expect(state.flags['met_chen']).toBeUndefined();
+    expect(state.flags['met_forum']).toBeUndefined();
+
+    const waterStorylet = getStorylet('tech-water-irrigation');
+    expect(evaluateNonRandomConditions(waterStorylet, state)).toBe(true);
   });
 });
 

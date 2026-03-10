@@ -152,9 +152,9 @@ Resolution: Changed label to "Fallow (Cover Crop)" when cell has a cover crop bu
 Severity: **HIGH** (classroom readability — confirmed in live classroom run).
 Resolution: Three-pronged fix: (1) Bulk harvest notifications batched by crop type (one notification per crop per bulk harvest). (2) Hard cap of 30 notifications — oldest dropped when exceeded. (3) Age-based trim at season boundaries — notifications older than 180 days removed.
 
-**62. Harvest affordance misleads when selected plot is not ready.**
-Severity: LOW (UX). "Harvest Field" button shows green/active when ANY plot is harvestable, even if the currently selected plot is at 85%. Students click expecting to harvest the selected cell. Should show "Harvest Field (N plots ready)" or clarify selected-plot state.
-Status: Deferred to Slice 5.
+**62. Harvest affordance misleads when selected plot is not ready.** RESOLVED (5c).
+Severity: LOW (UX).
+Resolution: "Harvest Field" button now shows "(N ready)" count. Harvest-ready predicate correctly excludes dormant crops and already-harvested perennials. FieldSummary harvestable count uses same predicate.
 
 **63. Event probabilities are effectively guaranteed annual occurrences.**
 Severity: MEDIUM (design/balance). Events with 10% daily probability evaluated ~90 days/season have `1 - 0.9^90 ≈ 99.98%` chance per season.
@@ -172,9 +172,9 @@ Status: Open. **Recommended fix: automated irrigation as an early tech tree unlo
 Severity: LOW (design). Event fires after summer harvest in 16/28 years, meaning the price bonus has no strategic value — player can't act on it. In late years, the event often fires when no tomatoes exist or harvest is already complete.
 Status: Deferred to future content slice. Fix: tighten the firing window to pre-harvest (spring/early summer), or add a "forward contract" mechanic so the price bonus applies to next season's harvest.
 
-**65. Year-30 completion panel lacks educational summary.**
-Severity: MEDIUM (educational value). Current UI: "Congratulations!" title + "Start New Game" button. No financial arc, soil health delta, key decision highlights, or reflection prompts. The tracking data exists in `yearSnapshots` — the UI just doesn't surface it. For a classroom tool, this is the most important screen students will see.
-Status: Deferred to future slice. Requires design discussion on what metrics to highlight and what reflection questions to prompt.
+**65. Year-30 completion panel lacks educational summary.** RESOLVED (5c).
+Severity: MEDIUM (educational value).
+Resolution: `buildReflectionData()` + `buildReflectionSummary()` generate text-only reflection covering financial arc, soil trend, tech decisions, and crop diversity. Renders in AutoPausePanel for both year-30 completion and bankruptcy. Note: bankruptcy via loan-decline still routes to title without showing reflection (#88).
 
 **66. Soil management has limited agency after early advisor caps.**
 Severity: LOW (design). `advisor-soil-nitrogen` fires max 3 times (intentional cap in events.ts). Cover crops provide recurring nitrogen restoration (+50N per incorporation), but there's no explicit "fertilize" or "soil amendment" action. After early advisor hints stop, players lack ongoing feedback about soil health trajectory.
@@ -257,11 +257,11 @@ Resolution: Three reinforcing signals: (1) "Ready!" text badge on harvestable ce
 - ~~Additional crops~~ — Sorghum (drought-tolerant annual) and Citrus Navels (evergreen perennial) added in 3a1
 
 **Still deferred → Slice 5+:**
-- **Tech tree** — Fog-of-war event-driven tech unlocks (ARCHITECTURE.md §5.4). Not started.
-- **Remaining advisors** — Financial Advisor/Banker, Farming Community. (Weather Service completed in 3c.)
+- ~~**Tech tree**~~ — RESOLVED in Slice 5b/5c. Water/soil/crop tracks with `getTechLevel()` reconvergence. 5 tech storylets.
+- ~~**Remaining advisors**~~ — RESOLVED in Slice 5b. Chen (farm-credit) + Forum (growers-forum) added. 4 advisors total.
 - **Insurance / credit systems** — Credit rating, variable loan rates, insurance premiums.
-- **K + Zn nutrients** — Only nitrogen is modeled.
-- **Additional crops** — Grapes, Stone Fruit, Agave, Heat-tolerant Avocados, Opuntia, Guayule remain.
+- ~~**K + Zn nutrients**~~ — RESOLVED in Slice 5a. K-lite potassium implemented (affects price not yield, hidden until soil testing tech).
+- ~~**Additional crops**~~ — Agave (5c) + Heat-tolerant Avocados (5c) added. Grapes deferred. Stone Fruit, Opuntia, Guayule unlikely for Classroom-Ready Build.
 - **Additional climate scenarios** — 5 calibrated scenarios exist (`scenarios.ts`). Additional scenarios optional for future slices.
 
 ### AI Playtest Findings — Slice 3b Build (2026-02-26)
@@ -336,6 +336,50 @@ Severity: MEDIUM (student confusion — contradictory UI state).
 Status: RESOLVED.
 Resolution: Three fixes: (1) Engine clamps `gddAccumulated` at 99% of `gddToMaturity` when `harvestedThisSeason` is true, preventing re-entry to harvestable stage. (2) FarmCell Ready badge gated on `!harvestedThisSeason`. (3) SidePanel growth text priority: isDormant → harvestedThisSeason ("Already harvested this season") → harvestable/overripe.
 
+### Slice 5c Student Testing + Browser Validation (2026-03-09)
+
+AI-assisted student playthrough (6-year run) + browser regression validation. Issue 1 resolved; remainder triaged.
+
+**80. HIGH: Tech tree soft-locked by dismissing advisor intro.** RESOLVED (5c).
+Severity: HIGH (gameplay — blocks all downstream tech).
+Root cause: Dismissing an advisor auto-pause (e.g., `advisor-forum-intro`) logged `__dismissed__` as an eventLog occurrence, consuming `maxOccurrences` without setting the `met_forum` flag. Downstream tech events (`tech-water-irrigation`, `tech-soil-management`) had `has_flag: met_forum` / `has_flag: met_chen` preconditions, permanently gating the tech tree.
+Resolution: Removed `has_flag: met_chen` and `has_flag: met_forum` preconditions from `tech-water-irrigation` and `tech-soil-management` storylets. Advisor intros remain valuable as content but are no longer hard gates for tech progression.
+
+**81. Bulk planting silent no-op when field is full.**
+Severity: MEDIUM (UX). With a full field (e.g., all citrus), bulk plant buttons remain green/clickable but silently do nothing. Separately, a first corn bulk action showed 57/64 plots planted — confusing count that looked like the game skipped cells.
+Status: Deferred to 5d. Fix: disable bulk CTAs when no eligible plots exist and/or show explicit toast. Investigate 57/64 count discrepancy (likely partially-occupied rows excluded from field-scope bulk).
+
+**82. Financial Recovery advisor over-repeats.**
+Severity: MEDIUM (content quality). `advisor-financial-recovery` fired at starts of Years 4, 5, and 6 with identical choices, even after a profitable year. Reads as boilerplate rather than context-aware advising.
+Status: Deferred to 5d. Fix: tighten trigger conditions (e.g., require cash below threshold or consecutive unprofitable years), add message variety or branching follow-ups.
+
+**83. Economic tension under-signaled in UI.**
+Severity: MEDIUM (pedagogy). Student run had a compelling "will we go bankrupt before the orchard pays off?" arc, but the UI gave almost no help interpreting it. Year 6 revenue drop looked arbitrary. Year-end summary dismissed and not revisitable.
+Status: Deferred to 5d/6. Fix: add danger-zone signaling (cash trend indicator, bankruptcy warning), year-over-year breakdown in year-end summary, consider making year-end summary revisitable.
+
+**84. Crop/water messaging inconsistency.**
+Severity: LOW (copy). Winter Wheat described as "low water needs" but player still gets repeated water warnings. Warning copy reads like severity tiers without visible outcome differences.
+Status: Deferred to 5d. Fix: either soften crop water description or make warning tiers visibly meaningful in gameplay.
+
+**85. Advisor advice delivered in notification bar feels like background toast.**
+Severity: LOW (UX/product). When player accepts advisor choices (e.g., "tell me the advice"), the response lands in the bottom notification bar — easy to miss. Students may not read it as important guidance.
+Status: Deferred to 5d/6. Fix: consider central-dialog acknowledgement for "yes, tell me" choices; keep decline paths lightweight.
+
+**86. No guidance after mid-summer harvest leaves nothing plantable.**
+Severity: LOW (onboarding). After harvesting annuals in summer, new players face empty fields with no valid planting window and no explanation of what to do next.
+Status: Deferred to 5d. Fix: one lightweight tutorial/advisor line the first time a player enters a season with no valid planting window.
+
+**87. Year-end "Cash Total (before loan)" copy polish.**
+Severity: LOW (copy). "Before loan" annotation on year-end cash display is confusing when the player hasn't interacted with the loan system. Should only mention loans after the player has seen a loan offer.
+Status: Deferred to 5d. Fix: conditionally show loan annotation based on `state.totalLoansReceived > 0` or `state.flags['seen_loan_offer']`.
+
+**88. Bankruptcy path skips reflection summary on loan decline.**
+Severity: LOW (product decision). When a player declines the emergency loan, the game routes straight to title screen without showing any reflection/game-over summary. The reflection data exists and renders on year-30 completion.
+Status: Deferred to 5d. Fix: show game-over reflection panel (same as bankruptcy panel) before returning to title when loan is declined.
+
+**Non-issues confirmed:**
+- Avocado planting not showing confirmation dialog: correct behavior. Perennial confirm dialog only shows for the first-ever perennial plant (`perennialWarningShown` flag). If another perennial was planted first, subsequent perennials skip the confirm. Not a bug.
+
 ### Deferred to Slice 5+ / Later Discussion
 
 - ~~**Balance testing suite**~~ — RESOLVED in Slice 4a. 5 bots × 5 scenarios × 20 seeds = 500 headless 30-year runs.
@@ -346,7 +390,7 @@ Resolution: Three fixes: (1) Engine clamps `gddAccumulated` at 99% of `gddToMatu
 - **Glossary / Information Index** — In-game educational reference with progressive disclosure.
 - **Solar lease event chain** — Multi-phase storylet (option → construction → operations → agrivoltaics).
 - **Scoring + Completion code + Google Form** — Weighted composite scoring (SPEC §31) + end-of-game reporting for teacher assessment.
-- **Year-30 reflection panel** — Educational summary using yearSnapshots data (#65).
+- ~~**Year-30 reflection panel**~~ — RESOLVED in Slice 5c (#65). `buildReflectionData()` + `buildReflectionSummary()` in AutoPausePanel. Covers financial arc, soil trend, tech decisions, crop diversity. Shows on year-30 completion and bankruptcy game-over. Gap: loan-decline path still skips reflection (#88).
 - **Advanced accessibility** (colorblind modes, full screen reader support) — Baseline keyboard nav + ARIA in Slice 1.
 - **Sound / music** — Not essential for classroom use.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.

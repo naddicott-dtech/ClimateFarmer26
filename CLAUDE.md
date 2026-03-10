@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClimateFarmer26 is a browser-based educational simulation game where students role-play as California farmers across 30 years, making season-by-season decisions as climate impacts challenge their operations. 100% client-side, hosted on GitHub Pages, targeting Chromebooks.
 
-**Status: Slice 5b complete ("Adapt or Fail").** Slices 1-4 complete. 8 crops, 4 advisors (Santos, NWS, Chen, Forum), K-lite potassium, auto-irrigation end-to-end, tech tree infrastructure, regime shifts, 5 scenarios. `SAVE_VERSION = '8.0.0'`.
+**Status: Slice 5c complete ("Full Content + Regime Shifts").** Slices 1-5c complete. 9 crops (incl. agave + heat-avocado), 4 advisors (Santos, NWS, Chen, Forum), K-lite potassium with soil testing visibility toggle, auto-irrigation, tech tree (water/soil/crop tracks 0-2), 3 regime shifts (water/market/heat), Year-30 reflection panel, message variety pools, 5 scenarios. `SAVE_VERSION = '8.0.0'`.
 
 ## Workflow Rules
 
@@ -65,7 +65,7 @@ rm -rf docs && cp -r dist docs
 
 3. **UI** (`src/ui/`) — Preact components + CSS Modules. Components: App, GameScreen, NewGameScreen, TopBar, FarmGrid, FarmCell, SidePanel, CropMenu, AutoPausePanel, NotificationBar, ConfirmDialog, Tutorial, EventPanel
 
-**Data files** (`src/data/`): `crops.ts` (8 crops with yield curves, K uptake, heat sensitivity, `requiredFlag` gating), `cover-crops.ts`, `scenarios.ts` (5 climate scenarios), `events.ts` (17 storylets)
+**Data files** (`src/data/`): `crops.ts` (9 crops with yield curves, K uptake, heat sensitivity, `requiredFlag` gating), `cover-crops.ts`, `scenarios.ts` (5 climate scenarios with `marketCrashTargetCropId`), `events.ts` (22 storylets: 8 seasonal draw + 14 condition-only)
 
 **Save system** (`src/save/storage.ts`): localStorage with corruption detection + V1→V8 migration chain. Auto-save on season change. Manual saves keyed by "Year N Season".
 

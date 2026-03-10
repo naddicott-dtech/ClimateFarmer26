@@ -74,6 +74,14 @@ export const CROP_ART: Record<string, Record<string, string>> = {
     harvestable: `${base}assets/crops/crop-agave_48x48.jpeg`,
     overripe: `${base}assets/crops/crop-agave_48x48.jpeg`,
   },
+  'heat-avocado': {
+    seedling: `${base}assets/crops/crop-avocado-seedling_48x48.jpeg`,
+    vegetative: `${base}assets/crops/crop-avocado-vegetative_48x48.jpeg`,
+    flowering: `${base}assets/crops/crop-avocado-flowering_48x48.jpeg`,
+    mature: `${base}assets/crops/crop-avocado-mature_48x48.jpeg`,
+    harvestable: `${base}assets/crops/crop-avocado_48x48.jpeg`,
+    overripe: `${base}assets/crops/crop-avocado_48x48.jpeg`,
+  },
 };
 
 interface FarmCellProps {
