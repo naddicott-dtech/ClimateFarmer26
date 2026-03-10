@@ -76,6 +76,8 @@ Structured version of the same data, plus actionable choice info:
 
 **Best practice:** Before every action, call `getBlockingState()`. If `blocked: true`, handle the blocking panel first by clicking the appropriate `testid` from `choices`. Do not click speed buttons while blocked.
 
+**Preact state batching warning:** After clicking a dismiss/choice button, you MUST yield to the event loop (e.g., `await new Promise(r => setTimeout(r, 50))`) before calling `getBlockingState()` again. Preact batches state updates — a synchronous `.click()` followed by an immediate state read will see stale data. This applies to all panel dismissals, not just event/advisor panels.
+
 ### `window.__gameDebug.fastForwardUntilBlocked(maxTicks)`
 Runs simulation ticks until ANY autopause fires. Unlike `fastForward()`, does **not** auto-dismiss anything. Returns:
 ```js

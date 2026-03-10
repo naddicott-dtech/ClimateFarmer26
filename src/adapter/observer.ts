@@ -49,12 +49,23 @@ function getPanelTestId(reason: AutoPauseReason): string {
   }
 }
 
-function getPrimaryTestId(reason: AutoPauseReason): string {
+function getPrimaryChoiceInfo(reason: AutoPauseReason): { testid: string; label: string } {
   switch (reason) {
-    case 'bankruptcy': return 'gameover-new-game';
-    case 'year_30': return 'year30-new-game';
-    case 'loan_offer': return 'loan-accept';
-    default: return 'autopause-action-primary';
+    case 'bankruptcy': return { testid: 'gameover-new-game', label: 'Start New Game' };
+    case 'year_30': return { testid: 'year30-new-game', label: 'Start New Game' };
+    case 'loan_offer': return { testid: 'loan-accept', label: 'Accept Loan' };
+    case 'harvest_ready': return { testid: 'autopause-action-primary', label: 'Harvest Field' };
+    case 'water_stress': return { testid: 'autopause-action-primary', label: 'Water Field' };
+    case 'year_end': return { testid: 'autopause-action-primary', label: 'Continue to next year' };
+    default: return { testid: 'autopause-action-primary', label: 'Continue' };
+  }
+}
+
+function getDismissLabel(reason: AutoPauseReason): string {
+  switch (reason) {
+    case 'water_stress': return 'Continue without watering';
+    case 'loan_offer': return 'Decline (Game Over)';
+    default: return 'Continue';
   }
 }
 
@@ -117,14 +128,13 @@ export function getBlockingState(state: GameState): BlockingState {
     };
   }
 
-  // For standard autopauses, return primary + dismiss buttons
-  const choices: Array<{ testid: string; label: string }> = [
-    { testid: getPrimaryTestId(reason), label: 'Primary' },
-  ];
+  // For standard autopauses, return primary + dismiss buttons with real labels
+  const primary = getPrimaryChoiceInfo(reason);
+  const choices: Array<{ testid: string; label: string }> = [primary];
 
   // Most autopauses have a dismiss/secondary button
   if (reason !== 'bankruptcy' && reason !== 'year_30') {
-    choices.push({ testid: 'autopause-dismiss', label: 'Dismiss' });
+    choices.push({ testid: 'autopause-dismiss', label: getDismissLabel(reason) });
   }
 
   return {

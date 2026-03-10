@@ -45,7 +45,7 @@ describe('Observer — getBlockingState()', () => {
     expect(result.season).toBe('spring');
   });
 
-  it('returns blocked=true with harvest_ready reason', () => {
+  it('returns blocked=true with harvest_ready reason and real labels', () => {
     const state = makeState();
     state.autoPauseQueue.push({ reason: 'harvest_ready', message: 'Crops are ready!' });
     const result = getBlockingState(state);
@@ -54,19 +54,19 @@ describe('Observer — getBlockingState()', () => {
     expect(result.panelTestId).toBe('autopause-panel');
     expect(result.choices).toBeDefined();
     expect(result.choices!.length).toBeGreaterThan(0);
-    expect(result.choices!.some(c => c.testid === 'autopause-action-primary')).toBe(true);
-    expect(result.choices!.some(c => c.testid === 'autopause-dismiss')).toBe(true);
+    expect(result.choices!.some(c => c.testid === 'autopause-action-primary' && c.label === 'Harvest Field')).toBe(true);
+    expect(result.choices!.some(c => c.testid === 'autopause-dismiss' && c.label === 'Continue')).toBe(true);
   });
 
-  it('returns blocked=true with loan_offer panel info', () => {
+  it('returns blocked=true with loan_offer panel info and real labels', () => {
     const state = makeState();
     state.autoPauseQueue.push({ reason: 'loan_offer', message: 'Emergency loan available' });
     const result = getBlockingState(state);
     expect(result.blocked).toBe(true);
     expect(result.reason).toBe('loan_offer');
     expect(result.panelTestId).toBe('loan-panel');
-    expect(result.choices!.some(c => c.testid === 'loan-accept')).toBe(true);
-    expect(result.choices!.some(c => c.testid === 'autopause-dismiss')).toBe(true);
+    expect(result.choices!.some(c => c.testid === 'loan-accept' && c.label === 'Accept Loan')).toBe(true);
+    expect(result.choices!.some(c => c.testid === 'autopause-dismiss' && c.label === 'Decline (Game Over)')).toBe(true);
   });
 
   it('returns blocked=true with event choices when activeEvent is set', () => {
@@ -108,6 +108,16 @@ describe('Observer — getBlockingState()', () => {
     const result = getBlockingState(state);
     expect(result.panelTestId).toBe('advisor-panel');
     expect(result.choices![0].testid).toBe('advisor-choice-follow');
+  });
+
+  it('returns water_stress with descriptive labels', () => {
+    const state = makeState();
+    state.autoPauseQueue.push({ reason: 'water_stress', message: 'Crops need water' });
+    const result = getBlockingState(state);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toBe('water_stress');
+    expect(result.choices!.some(c => c.testid === 'autopause-action-primary' && c.label === 'Water Field')).toBe(true);
+    expect(result.choices!.some(c => c.testid === 'autopause-dismiss' && c.label === 'Continue without watering')).toBe(true);
   });
 
   it('returns gameover panel info for bankruptcy', () => {
