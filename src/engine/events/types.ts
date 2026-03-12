@@ -27,7 +27,9 @@ export type Condition =
   | { type: 'has_declining_perennial' }
   | { type: 'tech_level_below'; track: TechTrack; level: number }
   | { type: 'tech_level_at_least'; track: TechTrack; level: number }
-  | { type: 'random'; probability: number };
+  | { type: 'random'; probability: number }
+  | { type: 'avg_potassium_below'; level: number }
+  | { type: 'has_any_crop_in'; cropIds: string[] };
 
 // --- Effects (what happens when a choice is selected) ---
 
@@ -41,7 +43,10 @@ export type Effect =
   | { type: 'add_notification'; message: string; notificationType: NotificationType }
   | { type: 'restrict_watering'; durationDays: number }
   | { type: 'set_flag'; flag: string; value: boolean }
-  | { type: 'activate_frost_protection'; durationDays: number };
+  | { type: 'activate_frost_protection'; durationDays: number }
+  | { type: 'modify_potassium_all'; amount: number }
+  | { type: 'damage_crops'; target: string; percentage: number }
+  | { type: 'insurance_payout'; amount: number };
 
 // --- Choices (player options within an event) ---
 
@@ -52,6 +57,8 @@ export interface Choice {
   cost?: number;
   effects: Effect[];
   requiresCash?: number;
+  followUpText?: string;
+  requiresFlag?: string;
 }
 
 // --- Foreshadowing (advance warnings) ---
@@ -67,7 +74,7 @@ export interface Foreshadowing {
 
 export interface Storylet {
   id: string;
-  type: 'climate' | 'market' | 'advisor' | 'regulatory';
+  type: 'climate' | 'market' | 'advisor' | 'regulatory' | 'community';
   title: string;
   description: string;
   preconditions: Condition[];

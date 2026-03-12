@@ -75,6 +75,7 @@ export function logSessionStart(state: GameState): void {
   emit('session_start', state, {
     playerId: state.playerId,
     scenarioId: state.scenarioId,
+    curatedSeed: state.curatedSeed,
   });
 }
 

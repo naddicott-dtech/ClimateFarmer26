@@ -16,7 +16,7 @@ import {
   STARTING_POTASSIUM, K_MAX, K_MINERALIZATION_RATE, K_PRICE_FLOOR, K_SYMPTOM_THRESHOLD,
   AUTO_IRRIGATION_COST_MULTIPLIERS, REGIME_WATER_REDUCTION, REGIME_MARKET_CRASH_FACTOR,
   MONOCULTURE_PENALTY_PER_YEAR, MONOCULTURE_PENALTY_FLOOR,
-  COVER_CROP_OM_PROTECTION,
+  COVER_CROP_OM_PROTECTION, INSURANCE_ANNUAL_PREMIUM,
   createEmptyTrackingState, createEmptyExpenseBreakdown,
 } from './types.ts';
 import { getTechLevel } from './tech-levels.ts';
@@ -64,10 +64,10 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     updateExtremeEvents(warmup, w, scenario, d, rng);
   }
 
-  // Initialize event RNG (separate stream, seeded from mainSeed + offset).
-  // No warmup needed: event evaluation starts at STARTING_DAY, and the event
-  // RNG is never consumed before then (unlike weather RNG which generates
-  // Jan-Feb weather during warmup).
+  // Initialize event RNG for per-tick condition-only advisor evaluation.
+  // Seasonal draws use stable hashing (deriveEventSeed in selector.ts) and
+  // do NOT consume this RNG — only condition-only advisors advance it.
+  // No warmup needed: event evaluation starts at STARTING_DAY.
   const eventRng = new SeededRNG(scenario.seed + EVENT_RNG_SEED_OFFSET);
 
   return {
@@ -111,6 +111,7 @@ export function createInitialState(playerId: string, scenario: ClimateScenario):
     // Slice 4b.5: Seasonal event draw
     seasonalEventQueue: [],  // No draw in Spring Year 1 (onboarding)
     yearStressLevel: computeYearStressLevel(scenario, 1),
+    curatedSeed: scenario.seed,
   };
 }
 
@@ -609,6 +610,11 @@ function processRespondEvent(state: GameState, eventId: string, choiceId: string
     return { success: false, reason: `Not enough cash. Requires $${choice.requiresCash}.` };
   }
 
+  // Check if player has the required flag (e.g., insurance for claim choices)
+  if (choice.requiresFlag && !state.flags[choice.requiresFlag]) {
+    return { success: false, reason: 'Missing required capability.' };
+  }
+
   const cashBefore = state.economy.cash;
 
   // Apply frost protection interaction (may modify effects for late-frost-warning)
@@ -963,16 +969,16 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     // Seasonal event draw (skip Year 1 Spring for onboarding)
     const skipDraw = state.calendar.year === 1 && state.calendar.season === 'spring';
     if (!skipDraw) {
-      const eventRng = new SeededRNG(state.eventRngState);
+      const baseEventSeed = scenario.seed + EVENT_RNG_SEED_OFFSET;
       const seasonStart = newTotalDay;
       const seasonEnd = seasonStart + 89;
       state.seasonalEventQueue = drawSeasonalEvents(
-        state, STORYLETS, eventRng, state.yearStressLevel, seasonStart, seasonEnd,
+        state, STORYLETS, baseEventSeed, state.yearStressLevel, seasonStart, seasonEnd,
       );
-      state.eventRngState = eventRng.getState();
     } else {
       state.seasonalEventQueue = [];
     }
+
   }
 
   // Expire active effects (remove where totalDay >= expiresDay)
@@ -1204,6 +1210,13 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     state.economy.cash -= ANNUAL_OVERHEAD;
     state.economy.yearlyExpenses += ANNUAL_OVERHEAD;
     state.tracking.currentExpenses.annualOverhead += ANNUAL_OVERHEAD;
+
+    // Crop insurance premium (6c)
+    if (state.flags['has_crop_insurance']) {
+      state.economy.cash -= INSURANCE_ANNUAL_PREMIUM;
+      state.economy.yearlyExpenses += INSURANCE_ANNUAL_PREMIUM;
+      state.tracking.currentExpenses.insurance += INSURANCE_ANNUAL_PREMIUM;
+    }
 
     // Year-end snapshot (Slice 4a): capture tracking data BEFORE resetting
     const yearSnapshot = createYearSnapshot(state);
@@ -1676,16 +1689,29 @@ export function harvestCell(state: GameState, cell: Cell, silent?: boolean): num
   // Slice 5a: K depletion at harvest
   cell.soil.potassium = Math.max(0, cell.soil.potassium - cropDef.potassiumUptake);
 
-  // Slice 5a: K symptom cues — always notify when quality is affected, but
-  // reveal "potassium" only if player has soil testing. Non-testers get symptom language.
-  if (!silent && kFactor < K_SYMPTOM_THRESHOLD) {
-    if (state.flags['tech_soil_testing']) {
-      const pctLoss = Math.round((1 - kFactor) * 100);
-      addNotification(state, 'info',
-        `${cropDef.name}: low potassium reduced crop quality. Price reduced by ${pctLoss}%.`);
+  // Slice 5a/6a: K symptom cues — notify when quality is affected.
+  // Severe (kFactor < 0.85): strong warning. Mild (0.85–0.99): gentler note.
+  // Reveal "potassium" only if player has soil testing. Non-testers get symptom language.
+  if (!silent && kFactor < 1.0) {
+    const pctLoss = Math.round((1 - kFactor) * 100);
+    if (kFactor < K_SYMPTOM_THRESHOLD) {
+      // Severe: existing warning (unchanged)
+      if (state.flags['tech_soil_testing']) {
+        addNotification(state, 'info',
+          `${cropDef.name}: low potassium reduced crop quality. Sale price reduced by ${pctLoss}%.`);
+      } else {
+        addNotification(state, 'info',
+          `${cropDef.name}: crop quality is declining — nutrient deficiency suspected. Sale price reduced by ${pctLoss}%.`);
+      }
     } else {
-      addNotification(state, 'info',
-        `${cropDef.name}: crop quality is declining — nutrient deficiency suspected.`);
+      // Mild (0.85–0.99): gentler note
+      if (state.flags['tech_soil_testing']) {
+        addNotification(state, 'info',
+          `${cropDef.name}: slight potassium depletion affecting crop quality. Sale price reduced by ${pctLoss}%.`);
+      } else {
+        addNotification(state, 'info',
+          `${cropDef.name}: slight nutrient impact on crop quality. Sale price reduced by ${pctLoss}%.`);
+      }
     }
   }
 
@@ -1709,6 +1735,17 @@ export function harvestCell(state: GameState, cell: Cell, silent?: boolean): num
     }
     cell.lastCropId = crop.cropId;
     cell.crop = null;
+
+    // Empty field guidance (#86): one-time hint when harvest leaves nothing plantable.
+    // Triggers at the moment of confusion (mid-season harvest), not at season change.
+    if (!silent && !state.flags['empty_field_guidance_shown']) {
+      const available = getAvailableCrops(state);
+      if (available.length === 0) {
+        addNotification(state, 'info',
+          'No crops are plantable right now. Some crops plant in spring (corn, tomatoes, sorghum), others in fall (winter wheat). Cover crops plant in fall too.');
+        state.flags['empty_field_guidance_shown'] = true;
+      }
+    }
   }
 
   assertFinite(state.economy.cash, 'economy.cash after harvest');
@@ -1935,6 +1972,7 @@ const FLAG_LABELS: Record<string, string> = {
   regime_water_reduced: 'SGMA Water Restriction',
   regime_market_crash: 'Market Crash',
   regime_heat_threshold: 'Heat Threshold Crossed',
+  has_crop_insurance: 'Crop Insurance',
 };
 
 export interface ReflectionData {

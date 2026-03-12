@@ -384,6 +384,7 @@ export const STORYLETS: readonly Storylet[] = [
           { type: 'modify_nitrogen_all', amount: 60 },
           { type: 'add_notification', message: 'Dr. Santos helped you apply nitrogen fertilizer. Soil fertility improved.', notificationType: 'event_result' },
         ],
+        followUpText: "Nitrogen is the engine of plant growth — it's the main ingredient in chlorophyll, which powers photosynthesis. When N runs low, leaves turn pale, growth slows, and yields drop. Commercial fertilizer gives you an immediate boost, but it's a band-aid: your soil's organic matter is the long-term nitrogen bank. As organic matter breaks down, microbes release nitrogen slowly over the season. That's why farms with healthy soil need less purchased fertilizer. Every crop you harvest takes nitrogen with it — heavy feeders like corn and tomatoes pull 150-200 lbs/acre.",
       },
       {
         id: 'acknowledge',
@@ -392,6 +393,7 @@ export const STORYLETS: readonly Storylet[] = [
         effects: [
           { type: 'add_notification', message: 'Dr. Santos recommends planting winter wheat in the fall to restore nitrogen naturally. Cover crops also help rebuild soil fertility.', notificationType: 'event_result' },
         ],
+        followUpText: "Here's how the nitrogen cycle works on your farm: plants pull N from the soil, harvest removes it, and then you need to put it back. There are two paths. The fast path is buying fertilizer — effective but expensive and it doesn't build soil health. The slow path is biological: legume cover crops host bacteria that pull nitrogen from the air and fix it into the soil. Winter wheat isn't a legume, but its deep roots improve soil structure and prevent N from washing away. The ideal rotation alternates heavy feeders (corn, tomatoes) with lighter feeders (wheat) and cover crops in between.",
       },
     ],
     tags: ['advisor', 'soil'],
@@ -417,6 +419,7 @@ export const STORYLETS: readonly Storylet[] = [
         effects: [
           { type: 'add_notification', message: "Dr. Santos: \"Don't put all your eggs in one basket. Mix crop types and planting times to spread risk.\"", notificationType: 'event_result' },
         ],
+        followUpText: "Diversification isn't just an abstract principle — it's how real California farmers survive. A heatwave that destroys your tomatoes won't touch your winter wheat. A market crash in almonds doesn't affect corn prices. By mixing annuals (which give you flexibility to change each year) with perennials (which provide steady long-term income), you create a portfolio that can absorb shocks. The same logic applies to planting timing: spring-planted crops and fall-planted crops face different weather risks. Even having 3-4 different crops dramatically reduces your chance of a catastrophic year.",
       },
       {
         id: 'water-advice',
@@ -452,6 +455,7 @@ export const STORYLETS: readonly Storylet[] = [
           { type: 'set_flag', flag: 'chillHoursRevealed', value: true },
           { type: 'add_notification', message: 'Dr. Santos shared chill hour data for your region. You can now see chill hour tracking for your perennial crops.', notificationType: 'event_result' },
         ],
+        followUpText: "Chill hours are the number of hours below 45\u00B0F that trees accumulate during winter dormancy. They're essential for triggering proper bud break in spring — without enough cold, trees bloom irregularly, set less fruit, and yields plummet. Almonds need about 400 chill hours, pistachios around 800-1000. The problem is that winters in the San Joaquin Valley are warming: we're losing about 5-10 chill hours per decade. You can now see the chill hour tracker on your orchard plots. If accumulated hours fall short of what your trees need, expect proportional yield losses. Pistachios actually need MORE chill hours but are more flexible about warm interruptions during dormancy.",
       },
       {
         id: 'plan-adaptation',
@@ -487,6 +491,7 @@ export const STORYLETS: readonly Storylet[] = [
         effects: [
           { type: 'add_notification', message: "Dr. Santos: \"Focus on fewer, higher-value crops. It's better to farm 4 rows well than 8 rows poorly.\"", notificationType: 'event_result' },
         ],
+        followUpText: "Let's look at the ROI math. Processing tomatoes bring $80/ton at 45 tons/acre — that's $3,600 gross per plot, but seed costs $150 and labor runs $200. Net: about $3,250 per plot. Corn is $50/ton at 35 tons — $1,750 gross, $250 in costs, net $1,500. Winter wheat: $7/bushel at 80 bushels — $560 gross, just $100 in costs. When cash is tight, every dollar of seed money needs to earn its keep. Plant your highest-margin crop first, leave low-margin plots fallow if you can't afford to water them all. An unplanted field costs nothing; a poorly-watered field costs seed money AND yields nothing.",
       },
       {
         id: 'low-cost-crops',
@@ -523,6 +528,7 @@ export const STORYLETS: readonly Storylet[] = [
         effects: [
           { type: 'add_notification', message: "Dr. Santos: \"Almonds and pistachios cost $900-960 to plant and need 3-4 years to establish. But once producing, they generate strong annual income for 20+ years.\"", notificationType: 'event_result' },
         ],
+        followUpText: "Think of perennial tree crops like buying a rental property. High upfront cost, years before it pays for itself, but then decades of steady income. Almonds cost about $960 to plant and need 3 years to establish — that's 3 years of maintenance costs with zero harvest. But once producing, a mature almond orchard generates strong annual revenue for 15-20 years. Pistachios are similar: $900 to plant, 4 years to establish, but they're more drought-tolerant and need fewer chill hours than almonds. The catch? You can't rotate a tree. If the market shifts or the climate changes, you're committed. That's why most successful farms mix annuals (flexibility) with perennials (stability).",
       },
       {
         id: 'not-now',
@@ -836,8 +842,8 @@ export const STORYLETS: readonly Storylet[] = [
     title: 'Permanent Heat Threshold Crossed',
     description: "Dr. Santos arrives with a stack of climate data and a grave expression. \"I've been tracking the temperature trends, and we've crossed a threshold. Average summer highs are now consistently above what most of our traditional crops can handle. This isn't a heatwave — this is the new baseline.\"\n\nShe shows yield projections: tomatoes down 25%, corn down 15%, almonds down 20%. Only sorghum, pistachios, and agave are unaffected.\n\n\"But there's an opportunity,\" she continues. \"UC Riverside has developed a heat-tolerant avocado variety specifically for inland valleys. It thrives in these temperatures and could become a high-value replacement for struggling crops.\"\n\nChen reviews the investment: \"$800 for the research license and starter rootstock. The avocados need 4 years to establish, but the long-term value is significant.\"\n\nThe Forum has been watching the thermometer too. \"My grandfather never saw summers like this. The valley is changing — we either change with it or we're done.\"",
     preconditions: [
-      { type: 'min_year', year: 20 },
-      { type: 'max_year', year: 25 },
+      { type: 'min_year', year: 15 },
+      { type: 'max_year', year: 20 },
       { type: 'not_has_flag', flag: 'regime_heat_threshold' },
       { type: 'has_crop' },
     ],
@@ -870,5 +876,750 @@ export const STORYLETS: readonly Storylet[] = [
       },
     ],
     tags: ['regime-shift', 'advisor', 'heat', 'tech-unlock'],
+  },
+
+  // --- Slice 6a: K fertilizer advisor ---
+
+  {
+    id: 'advisor-potassium-management',
+    type: 'advisor',
+    title: 'Soil Nutrient Alert: Potassium',
+    description: "I've been analyzing the soil health across your fields, and potassium levels are getting low. Potassium is critical for crop quality — it affects fruit size, sugar content, and disease resistance. When K drops, your harvest sells for less even if yields look normal.",
+    preconditions: [
+      { type: 'min_year', year: 5 },
+      { type: 'avg_potassium_below', level: 100 },
+    ],
+    priority: 95,
+    cooldownDays: 730,
+    maxOccurrences: 2,
+    advisorId: 'extension-agent',
+    choices: [
+      {
+        id: 'apply-potash',
+        label: 'Apply Potash Fertilizer',
+        description: 'Purchase and apply potassium fertilizer across all fields. Quick restoration but costs money.',
+        cost: 500,
+        requiresCash: 500,
+        effects: [
+          { type: 'modify_cash', amount: -500 },
+          { type: 'modify_potassium_all', amount: 80 },
+          { type: 'add_notification', message: 'Potash fertilizer applied across all fields. Soil potassium levels restored.', notificationType: 'event_result' },
+        ],
+        followUpText: "Potassium is one of the three primary nutrients plants need, along with nitrogen and phosphorus. Unlike nitrogen, which you can restore with cover crops and rotation, potassium is mainly replenished through mineral fertilizers or very slow rock weathering. Every harvest removes K from your soil — heavy feeders like tomatoes and corn deplete it fastest. The good news: this application should last several seasons. Keep an eye on crop quality at harvest for early warning signs.",
+      },
+      {
+        id: 'note-symptoms',
+        label: 'What Should I Watch For?',
+        description: 'Learn to recognize potassium deficiency symptoms and manage it through crop rotation.',
+        effects: [
+          { type: 'add_notification', message: 'Dr. Santos pointed out potassium deficiency signs to watch for in your crops.', notificationType: 'event_result' },
+        ],
+        followUpText: "Watch for yellowing leaf edges, especially on older leaves — that's the classic K deficiency sign. At harvest, you'll notice lower sale prices because fruit quality suffers: smaller size, less sugar, thinner skins. The practical lever you have is crop rotation. Different crops pull K at very different rates — tomatoes are the heaviest feeders at 250 lbs/acre, while wheat takes only 50. Alternating heavy and light feeders gives the soil time to recover. Perennial orchards are the hardest to manage since you can't rotate them.",
+      },
+    ],
+    tags: ['advisor', 'soil', 'nutrients'],
+  },
+
+  // ==========================================================================
+  // Slice 6b: Valley Growers Forum community storylets
+  // All require met_forum flag, type: 'community' (own seasonal cap slot)
+  // ==========================================================================
+
+  {
+    id: 'forum-rotation-tip',
+    type: 'community',
+    title: 'Forum Post: Rotation Advice',
+    description: "CornDawg_82 posted in the Valley Growers Forum:\n\n\"OK so my extension agent keeps telling me to rotate my crops and I finally listened. Went corn → wheat → tomatoes → corn and honestly? My corn came back way better the second round. Used to get these thin sad ears after year 3 and thought it was just bad luck. Turns out planting the same thing over and over wears out the soil or something. Anyway just sharing in case anyone else is stubborn like me 😅\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 3 },
+      { type: 'max_year', year: 6 },
+      { type: 'random', probability: 0.40 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'ask-details',
+        label: 'Ask for Details',
+        description: 'You want to understand the science behind rotation.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum discussed crop rotation strategies — several members shared their own experiences.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread turned into a lively discussion. A few key points emerged: planting the same annual crop repeatedly depletes specific nutrients and lets crop-specific pests build up in the soil. Each crop family pulls different nutrients at different rates and attracts different insects. By switching crops each season, you break pest cycles and let the soil recover. Several members confirmed yield drops after 2-3 consecutive seasons of the same crop — and rebounds when they finally rotated.",
+      },
+      {
+        id: 'thanks-noted',
+        label: 'Thanks, Noted',
+        description: 'Good to keep in mind.',
+        effects: [
+          { type: 'add_notification', message: 'CornDawg_82\'s rotation tip filed away for reference.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'rotation'],
+  },
+
+  {
+    id: 'forum-neighbor-corn-died',
+    type: 'community',
+    title: 'Forum Post: Neighbor\'s Corn Failed',
+    description: "ValleyVet_Jake posted in the Valley Growers Forum:\n\n\"Bad news from down the road. My neighbor Dave planted corn for 6 straight years — same fields, same hybrid, never rotated. This summer his whole section went brown practically overnight. Extension says it was corn rootworm — the larvae had been building up in the soil for years. By the time he saw the damage it was too late. Lost about 40% of his crop. Just a heads up for anyone running corn heavy.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 5 },
+      { type: 'max_year', year: 8 },
+      { type: 'has_crop', cropId: 'silage-corn' },
+      { type: 'random', probability: 0.35 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'thats-concerning',
+        label: 'That\'s Concerning',
+        description: 'You want to understand the pest threat better.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum discussed rootworm risk and monoculture vulnerability.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread got serious fast. Several members chimed in with similar stories — persistent corn planting creates perfect conditions for corn rootworm populations to explode. The larvae feed on corn roots specifically, and each generation gets bigger when there\'s a guaranteed food source every year. Chemical treatments work but they\'re expensive and temporary. The best defense is breaking the cycle: rotate to a non-host crop for even one season and the rootworm population crashes because the larvae starve.",
+      },
+      {
+        id: 'wont-happen',
+        label: 'Won\'t Happen to Me',
+        description: 'Your operation is different.',
+        effects: [
+          { type: 'add_notification', message: 'You noted Jake\'s warning but figure your situation is different.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'pest', 'foreshadow'],
+  },
+
+  {
+    id: 'forum-water-board-gossip',
+    type: 'community',
+    title: 'Forum Post: Water Board Rumors',
+    description: "Drip_Queen_Linda posted in the Valley Growers Forum:\n\n\"Hey all — my brother-in-law works for the county and he says the water board has been having closed-door meetings about pumping restrictions. Something about the aquifer levels dropping faster than their models predicted. Nothing official yet but when has the government ever given us a heads up before cutting our water? Just saying — might want to think about efficiency upgrades sooner rather than later.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 7 },
+      { type: 'max_year', year: 9 },
+      { type: 'random', probability: 0.50 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'what-did-you-hear',
+        label: 'What Did You Hear?',
+        description: 'Dig deeper into the rumors.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum debated the likelihood and impact of water restrictions.', notificationType: 'event_result' },
+        ],
+        followUpText: "The discussion got heated. Linda shared more details: the San Joaquin Valley\'s groundwater has been declining for decades, and the Sustainable Groundwater Management Act (SGMA) is forcing local agencies to develop plans that actually reduce pumping. Several members confirmed hearing similar rumors. OldTimerPete pointed out that his well depth has dropped 30 feet in 10 years. The consensus: restrictions aren't a matter of if, but when. Farms with efficient irrigation systems will have a major advantage when allocations get cut.",
+      },
+      {
+        id: 'probably-rumors',
+        label: 'Probably Just Rumors',
+        description: 'People always talk about water restrictions.',
+        effects: [
+          { type: 'add_notification', message: 'You\'ve heard water restriction rumors before — most don\'t pan out.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'water', 'foreshadow'],
+  },
+
+  {
+    id: 'forum-market-whisper',
+    type: 'community',
+    title: 'Forum Post: Import Competition Fears',
+    description: "AlmondBaron_Ray posted in the Valley Growers Forum:\n\n\"Anyone else watching the Australian almond numbers? Their new orchards are coming online fast and their harvest season is opposite ours, meaning they fill the gaps we used to own. Add in cheap pistachios from Iran and Turkey... I'm not saying the sky is falling but I moved 20% of my acreage to diversified annuals last year. The premium prices we've been getting won't last forever. Just my two cents.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 12 },
+      { type: 'max_year', year: 14 },
+      { type: 'random', probability: 0.45 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'tell-me-more',
+        label: 'Tell Me More',
+        description: 'You want to understand the market dynamics.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum discussed global competition in tree crop markets.', notificationType: 'event_result' },
+        ],
+        followUpText: "Ray knows his numbers. California produces 80% of the world\'s almonds, but that dominance is eroding as Australia, Spain, and Morocco expand production. Global supply increasing means prices drop — basic economics. The same pattern is starting with pistachios. Several members pointed out that annual crops are more adaptable to market shifts because you can switch what you plant each season, while orchard crops lock you in for 20+ years. Diversification isn\'t just about soil health — it\'s about market risk management.",
+      },
+      {
+        id: 'markets-recover',
+        label: 'Markets Always Recover',
+        description: 'California quality commands premium prices.',
+        effects: [
+          { type: 'add_notification', message: 'You\'re confident California\'s quality advantage will hold. Ray seems less sure.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'market', 'foreshadow'],
+  },
+
+  {
+    id: 'forum-heat-worry',
+    type: 'community',
+    title: 'Forum Post: Summers Getting Worse',
+    description: "OldTimerPete posted in the Valley Growers Forum:\n\n\"Been farming this valley 45 years. When I started, 100°F was a hot day. Now it's a normal Tuesday in July. My dad kept weather logs — I dug them out. Average summer highs are up almost 4 degrees since the 80s. My almonds are struggling, my tomatoes sunburn every August, and the irrigation bills keep climbing. I don't care what anyone says about politics — the thermometer doesn't lie. Something is changing and it ain't going back.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 14 },
+      { type: 'max_year', year: 17 },
+      { type: 'random', probability: 0.40 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'what-are-you-seeing',
+        label: 'What Are You Seeing?',
+        description: 'Pete\'s observations match what you\'ve noticed.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum shared observations about long-term temperature trends.', notificationType: 'event_result' },
+        ],
+        followUpText: "Pete\'s weather logs started a wave of similar stories. Several members pulled out their own records. The data is consistent: summer highs in the Central Valley have risen steadily, extreme heat events are more frequent, and growing seasons are shifting. The practical impact is real — heat stress reduces yields for many traditional crops, increases water demand, and shortens the window for heat-sensitive operations like pollination. Members who\'ve started planting heat-adapted varieties say they\'re seeing better results. The consensus: plan for hotter, not hope for cooler.",
+      },
+      {
+        id: 'just-weather',
+        label: 'It\'s Just Weather',
+        description: 'Hot summers are nothing new in the Valley.',
+        effects: [
+          { type: 'add_notification', message: 'You figure the Valley has always been hot. Pete just isn\'t used to it anymore.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'heat', 'foreshadow'],
+  },
+
+  {
+    id: 'forum-insurance-debate',
+    type: 'community',
+    title: 'Forum Post: Crop Insurance — Worth It?',
+    description: "CropInsGuy_Mike posted in the Valley Growers Forum:\n\n\"PSA: crop insurance saved my operation last year. Lost 30% of my almonds to that late frost and the payout covered my loan payments. $500/year is nothing compared to one bad season.\"\n\nFreedomFarmer_Dave replied: \"$500/year for 30 years is $15,000 you'll never see again if nothing goes wrong. I'd rather keep the cash and self-insure. Government programs just make you dependent.\"\n\nMike: \"Dave your corn died in the drought of '18 and you almost lost the farm.\"\nDave: \"...that was different.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 6 },
+      { type: 'max_year', year: 10 },
+      { type: 'random', probability: 0.35 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'insurance-smart',
+        label: 'Insurance Sounds Smart',
+        description: 'Mike makes a good case for risk management.',
+        effects: [
+          { type: 'add_notification', message: 'The insurance debate gave you a lot to think about.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread went on for pages. The core argument: farming is inherently risky — weather, pests, markets can all wipe out a season. Insurance is a tool for managing that risk, not eliminating it. The annual premium is a known, predictable cost. A catastrophic loss without insurance is unpredictable and potentially fatal to the operation. Most successful large farms carry some form of crop insurance. The key is understanding what's covered and what isn't — and it doesn't help if you can't afford the deductible.",
+      },
+      {
+        id: 'take-chances',
+        label: 'I\'ll Take My Chances',
+        description: 'Dave\'s self-reliance approach appeals to you.',
+        effects: [
+          { type: 'add_notification', message: 'You figure you can handle whatever comes without paying insurance premiums.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'insurance', 'foreshadow'],
+  },
+
+  {
+    id: 'forum-organic-buzz',
+    type: 'community',
+    title: 'Forum Post: Organic Premium Worth It?',
+    description: "GreenThumb_Sara posted in the Valley Growers Forum:\n\n\"So I've been looking into organic certification. The premium prices are real — 20% or more above conventional for the same crops. But it's a 3-year transition where you can't use any synthetic fertilizers or pesticides AND you don't get the premium yet. That's rough. Anyone here gone through it? Is the payoff real or just marketing hype?\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 5 },
+      { type: 'max_year', year: 9 },
+      { type: 'random', probability: 0.30 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'whats-involved',
+        label: 'What\'s Involved?',
+        description: 'The premium pricing is interesting.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum shared experiences about organic certification.', notificationType: 'event_result' },
+        ],
+        followUpText: "A few members had gone through organic transition. The process: you commit to no synthetic chemicals for 3 years while applying for USDA organic certification. During transition, you pay certification fees but don\'t get premium prices — it\'s a real investment. After certification, you get roughly 20% higher prices on everything you sell. The catch: you can\'t use synthetic fertilizers (including conventional potash) or chemical pesticides. One bad pest outbreak and your only options are expensive organic treatments or accepting losses. It rewards patient, diversified farming but punishes monoculture and reactive management.",
+      },
+      {
+        id: 'too-much-hassle',
+        label: 'Too Much Hassle',
+        description: 'Three years of restrictions isn\'t for you.',
+        effects: [
+          { type: 'add_notification', message: 'Organic certification sounds like more trouble than it\'s worth for now.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'organic', 'foreshadow'],
+  },
+
+  {
+    id: 'forum-bad-advice',
+    type: 'community',
+    title: 'Forum Post: Expert Farming Advice™',
+    description: "MyUncleKnows_Tommy posted in the Valley Growers Forum:\n\n\"Look I know the extension agents push all this rotation and diversification stuff but my uncle farmed 500 acres of nothing but corn for 20 years and made bank. Sorghum is worthless — terrible prices, nobody buys it. Corn is king. The big operations plant corn because it WORKS. All this cover crop, rotation, soil health stuff is just what they teach at universities to justify their salaries. Plant corn. Water it. Cash the checks. Simple.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 4 },
+      { type: 'max_year', year: 8 },
+      { type: 'random', probability: 0.30 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'diversification-helps',
+        label: 'Actually, Diversification Helps...',
+        description: 'You push back on Tommy\'s oversimplified advice.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum had a spirited debate about monoculture vs. diversification.', notificationType: 'event_result' },
+        ],
+        followUpText: "Your pushback triggered a real discussion. Several experienced farmers pointed out the flaws in Tommy\'s logic: his uncle farmed during a period of stable climate and cheap water — conditions that no longer exist. Corn monoculture depletes soil nutrients, builds up pest pressure, and leaves you completely exposed to a single bad market year. Sorghum is actually drought-resistant and heat-tolerant — it\'s not glamorous but it survives conditions that kill corn. The scientific evidence overwhelmingly supports diversification for long-term farm viability. Anecdotal success stories from one generation don\'t predict the next.",
+      },
+      {
+        id: 'good-to-know',
+        label: 'Good to Know',
+        description: 'Tommy seems confident.',
+        effects: [
+          { type: 'add_notification', message: 'Tommy\'s advice sounds simple and straightforward. Uncle knows best, right?', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'bad-advice'],
+  },
+
+  // ============================================================================
+  // Slice 6c: Catastrophe + Risk Management
+  // ============================================================================
+
+  // --- Chen Insurance Offer (condition-only advisor) ---
+
+  {
+    id: 'chen-insurance-offer',
+    type: 'advisor' as const,
+    title: 'Crop Insurance Opportunity',
+    description: 'Chen from Farm Credit calls with an offer. "I\'ve been looking at your operation, and I think it\'s time we talked about crop insurance. It\'s $500 a year — not cheap, I know — but if something catastrophic happens, you\'ll be glad you had it. Rootworm outbreak, disease, water emergency... insurance covers a portion of your losses with a small deductible. Without it, you\'re absorbing the full hit."',
+    preconditions: [
+      { type: 'min_year', year: 8 },
+      { type: 'not_has_flag', flag: 'has_crop_insurance' },
+      { type: 'not_has_flag', flag: 'chen_insurance_declined' },
+      { type: 'cash_above', amount: 5000 },
+    ],
+    priority: 100,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'farm-credit',
+    choices: [
+      {
+        id: 'enroll-insurance',
+        label: 'Enroll in Crop Insurance ($500/year)',
+        description: 'Sign up for Chen\'s crop insurance program.',
+        effects: [
+          { type: 'set_flag', flag: 'has_crop_insurance', value: true },
+          { type: 'add_notification', message: 'You enrolled in crop insurance. $500 will be deducted annually at year-end.', notificationType: 'event_result' },
+        ],
+        followUpText: 'Chen files the paperwork on the spot. "Smart move. The premium — $500 a year — comes out at year-end with your other expenses. If you ever face a catastrophe — rootworm, disease, water emergency — you\'ll have the option to file a claim. There\'s a $200 deductible, but the payout covers a significant portion of your losses. Think of it as buying peace of mind for the back half of your farming career."',
+      },
+      {
+        id: 'decline-insurance',
+        label: 'Decline — I\'ll Self-Insure',
+        description: 'Save the premium and hope for the best.',
+        effects: [
+          { type: 'set_flag', flag: 'chen_insurance_declined', value: true },
+          { type: 'add_notification', message: 'You declined crop insurance. Chen won\'t offer again.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'insurance'],
+  },
+
+  // --- Catastrophe: Corn Rootworm (foreshadowed by forum-neighbor-corn-died) ---
+
+  {
+    id: 'catastrophe-rootworm',
+    type: 'climate' as const,
+    title: 'Rootworm Outbreak',
+    description: 'Western corn rootworm has been detected in your fields. The larvae are feeding on corn roots, and without intervention, you\'ll lose a significant portion of your crop. The longer you wait, the worse the damage.',
+    preconditions: [
+      { type: 'min_year', year: 8 },
+      { type: 'max_year', year: 15 },
+      { type: 'has_crop', cropId: 'silage-corn' },
+      { type: 'season', season: 'summer' },
+      { type: 'random', probability: 0.25 },
+    ],
+    priority: 60,
+    cooldownDays: 1095,
+    maxOccurrences: 2,
+    foreshadowing: {
+      signal: 'County ag inspectors found rootworm egg masses in fields near yours. Treatment decisions may be needed soon.',
+      daysBeforeEvent: 10,
+      reliability: 0.85,
+    },
+    choices: [
+      {
+        id: 'emergency-treatment',
+        label: 'Emergency Treatment ($800)',
+        description: 'Apply targeted pesticide to limit damage. Expensive but effective.',
+        cost: 800,
+        requiresCash: 800,
+        effects: [
+          { type: 'modify_cash', amount: -800 },
+          { type: 'damage_crops', target: 'silage-corn', percentage: 0.20 },
+          { type: 'add_notification', message: 'Emergency rootworm treatment applied. You lost 20% of your corn but saved the rest.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'file-rootworm-claim',
+        label: 'File Insurance Claim ($200 deductible)',
+        description: 'Your crop insurance covers rootworm damage with a $200 deductible.',
+        cost: 200,
+        requiresCash: 200,
+        requiresFlag: 'has_crop_insurance',
+        effects: [
+          { type: 'modify_cash', amount: -200 },
+          { type: 'damage_crops', target: 'silage-corn', percentage: 0.15 },
+          { type: 'insurance_payout', amount: 1500 },
+          { type: 'add_notification', message: 'Insurance claim filed. $1,500 payout received after $200 deductible. Lost 15% of corn.', notificationType: 'event_result' },
+        ],
+        followUpText: 'The insurance adjuster arrives within days. "Clear case of rootworm damage," she confirms. The $1,500 payout helps offset your losses, and the professional treatment they arrange limits crop damage to 15%. Chen calls to check in: "This is exactly why I recommended the policy. One claim already covers three years of premiums."',
+      },
+      {
+        id: 'accept-rootworm-losses',
+        label: 'Accept the Losses',
+        description: 'Let nature take its course. The damage will be severe.',
+        effects: [
+          { type: 'damage_crops', target: 'silage-corn', percentage: 0.40 },
+          { type: 'add_notification', message: 'Rootworm devastated your corn. 40% of your crop is gone.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['climate', 'catastrophe', 'corn'],
+  },
+
+  // --- Catastrophe: Pollination Failure ---
+
+  {
+    id: 'catastrophe-pollination-failure',
+    type: 'climate' as const,
+    title: 'Pollination Crisis',
+    description: 'Managed honeybee colonies across the Valley have collapsed this spring. Commercial pollination services are scrambling, and your tree crops are at risk of severely reduced fruit set. Without adequate pollination, yields will plummet.',
+    preconditions: [
+      { type: 'min_year', year: 12 },
+      { type: 'max_year', year: 22 },
+      { type: 'has_any_crop_in', cropIds: ['almonds', 'pistachios', 'citrus', 'heat-avocado'] },
+      { type: 'season', season: 'spring' },
+      { type: 'random', probability: 0.20 },
+    ],
+    priority: 60,
+    cooldownDays: 1460,
+    maxOccurrences: 1,
+    foreshadowing: {
+      signal: 'Beekeepers are reporting unusual colony losses this winter. Spring pollination contracts may be affected.',
+      daysBeforeEvent: 14,
+      reliability: 0.80,
+    },
+    choices: [
+      {
+        id: 'hire-premium-bees',
+        label: 'Hire Premium Pollinators ($1,200)',
+        description: 'Pay a premium for the few remaining healthy colonies.',
+        cost: 1200,
+        requiresCash: 1200,
+        effects: [
+          { type: 'modify_cash', amount: -1200 },
+          { type: 'modify_yield_modifier', cropId: 'almonds', multiplier: 0.85, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'pistachios', multiplier: 0.85, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'citrus', multiplier: 0.85, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'heat-avocado', multiplier: 0.85, durationDays: 90 },
+          { type: 'add_notification', message: 'Premium pollinators secured. Tree crop yields reduced by 15% this season.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'file-pollination-claim',
+        label: 'File Insurance Claim ($200 deductible)',
+        description: 'Your insurance covers pollination failure losses.',
+        cost: 200,
+        requiresCash: 200,
+        requiresFlag: 'has_crop_insurance',
+        effects: [
+          { type: 'modify_cash', amount: -200 },
+          { type: 'modify_yield_modifier', cropId: 'almonds', multiplier: 0.80, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'pistachios', multiplier: 0.80, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'citrus', multiplier: 0.80, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'heat-avocado', multiplier: 0.80, durationDays: 90 },
+          { type: 'insurance_payout', amount: 1000 },
+          { type: 'add_notification', message: 'Insurance claim filed. $1,000 payout received. Tree crop yields reduced by 20%.', notificationType: 'event_result' },
+        ],
+        followUpText: 'The adjuster documents the pollination failure across your orchard. "Colony collapse is getting worse every year," she says. The $1,000 payout helps, though yields still take a hit without adequate pollination.',
+      },
+      {
+        id: 'accept-pollination-loss',
+        label: 'Accept Reduced Harvest',
+        description: 'Without pollinators, fruit set will be dramatically reduced.',
+        effects: [
+          { type: 'modify_yield_modifier', cropId: 'almonds', multiplier: 0.55, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'pistachios', multiplier: 0.55, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'citrus', multiplier: 0.55, durationDays: 90 },
+          { type: 'modify_yield_modifier', cropId: 'heat-avocado', multiplier: 0.55, durationDays: 90 },
+          { type: 'add_notification', message: 'Pollination failure devastated your tree crops. Yields cut by 45%.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['climate', 'catastrophe', 'perennial'],
+  },
+
+  // --- Catastrophe: Orchard Disease ---
+
+  {
+    id: 'catastrophe-orchard-disease',
+    type: 'climate' as const,
+    title: 'Orchard Disease Outbreak',
+    description: 'A bacterial pathogen has been confirmed in orchards near yours. Several of your trees are showing symptoms — leaf scorch, branch dieback, and fruit drop. Without aggressive management, you could lose entire blocks of trees.',
+    preconditions: [
+      { type: 'min_year', year: 15 },
+      { type: 'max_year', year: 25 },
+      { type: 'has_any_crop_in', cropIds: ['almonds', 'pistachios', 'citrus', 'heat-avocado'] },
+      { type: 'season', season: 'fall' },
+      { type: 'random', probability: 0.20 },
+    ],
+    priority: 60,
+    cooldownDays: 1825,
+    maxOccurrences: 1,
+    foreshadowing: {
+      signal: 'State agricultural inspectors have been spotted in nearby orchards. Something may be spreading.',
+      daysBeforeEvent: 14,
+      reliability: 0.75,
+    },
+    choices: [
+      {
+        id: 'aggressive-management',
+        label: 'Aggressive Treatment ($1,000)',
+        description: 'Remove infected trees immediately and treat surrounding blocks.',
+        cost: 1000,
+        requiresCash: 1000,
+        effects: [
+          { type: 'modify_cash', amount: -1000 },
+          { type: 'damage_crops', target: 'almonds', percentage: 0.10 },
+          { type: 'damage_crops', target: 'pistachios', percentage: 0.10 },
+          { type: 'damage_crops', target: 'citrus', percentage: 0.10 },
+          { type: 'damage_crops', target: 'heat-avocado', percentage: 0.10 },
+          { type: 'modify_yield_modifier', cropId: 'almonds', multiplier: 0.90, durationDays: 180 },
+          { type: 'modify_yield_modifier', cropId: 'pistachios', multiplier: 0.90, durationDays: 180 },
+          { type: 'modify_yield_modifier', cropId: 'citrus', multiplier: 0.90, durationDays: 180 },
+          { type: 'modify_yield_modifier', cropId: 'heat-avocado', multiplier: 0.90, durationDays: 180 },
+          { type: 'add_notification', message: 'Aggressive disease management saved most of your orchard. Lost 10% of trees; survivors yield 90%.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'file-disease-claim',
+        label: 'File Insurance Claim ($200 deductible)',
+        description: 'Insurance covers disease damage with professional remediation.',
+        cost: 200,
+        requiresCash: 200,
+        requiresFlag: 'has_crop_insurance',
+        effects: [
+          { type: 'modify_cash', amount: -200 },
+          { type: 'damage_crops', target: 'almonds', percentage: 0.15 },
+          { type: 'damage_crops', target: 'pistachios', percentage: 0.15 },
+          { type: 'damage_crops', target: 'citrus', percentage: 0.15 },
+          { type: 'damage_crops', target: 'heat-avocado', percentage: 0.15 },
+          { type: 'insurance_payout', amount: 1200 },
+          { type: 'add_notification', message: 'Insurance claim filed. $1,200 payout received. Lost 15% of trees.', notificationType: 'event_result' },
+        ],
+        followUpText: 'The insurance company sends their own arborist. "We see this more and more," she says, marking infected trees for removal. The $1,200 payout partially covers your losses, though watching healthy-looking trees get cut down is hard. "Better to lose 15% now than 50% next year," the arborist explains.',
+      },
+      {
+        id: 'accept-disease-loss',
+        label: 'Hope It Doesn\'t Spread',
+        description: 'Avoid the cost and hope the disease burns itself out.',
+        effects: [
+          { type: 'damage_crops', target: 'almonds', percentage: 0.25 },
+          { type: 'damage_crops', target: 'pistachios', percentage: 0.25 },
+          { type: 'damage_crops', target: 'citrus', percentage: 0.25 },
+          { type: 'damage_crops', target: 'heat-avocado', percentage: 0.25 },
+          { type: 'modify_yield_modifier', cropId: 'almonds', multiplier: 0.80, durationDays: 180 },
+          { type: 'modify_yield_modifier', cropId: 'pistachios', multiplier: 0.80, durationDays: 180 },
+          { type: 'modify_yield_modifier', cropId: 'citrus', multiplier: 0.80, durationDays: 180 },
+          { type: 'modify_yield_modifier', cropId: 'heat-avocado', multiplier: 0.80, durationDays: 180 },
+          { type: 'add_notification', message: 'Disease spread unchecked. You lost 25% of your trees and surviving yields dropped 20%.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['climate', 'catastrophe', 'perennial'],
+  },
+
+  // --- Catastrophe: Water Emergency (foreshadowed by forum-water-board-gossip) ---
+
+  {
+    id: 'catastrophe-water-emergency',
+    type: 'regulatory' as const,
+    title: 'Emergency Water Curtailment',
+    description: 'The State Water Resources Control Board has declared a water emergency for the San Joaquin Valley. Groundwater levels have dropped to critical thresholds. All agricultural users face mandatory curtailment — the question is how severe.',
+    preconditions: [
+      { type: 'min_year', year: 10 },
+      { type: 'max_year', year: 20 },
+      { type: 'has_crop' },
+      { type: 'season', season: 'summer' },
+      { type: 'random', probability: 0.20 },
+    ],
+    priority: 65,
+    cooldownDays: 1460,
+    maxOccurrences: 1,
+    foreshadowing: {
+      signal: 'County water board is scheduling emergency meetings. Mandatory curtailment may be coming.',
+      daysBeforeEvent: 10,
+      reliability: 0.90,
+    },
+    choices: [
+      {
+        id: 'buy-emergency-water',
+        label: 'Buy Priority Water Access ($1,500)',
+        description: 'Pay for priority allocation. Shortest restriction period.',
+        cost: 1500,
+        requiresCash: 1500,
+        effects: [
+          { type: 'modify_cash', amount: -1500 },
+          { type: 'restrict_watering', durationDays: 15 },
+          { type: 'add_notification', message: 'You bought priority water access. Watering restricted for 15 days.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'file-water-claim',
+        label: 'File Insurance Claim ($200 deductible)',
+        description: 'Insurance covers some of the financial impact of water curtailment.',
+        cost: 200,
+        requiresCash: 200,
+        requiresFlag: 'has_crop_insurance',
+        effects: [
+          { type: 'modify_cash', amount: -200 },
+          { type: 'restrict_watering', durationDays: 30 },
+          { type: 'insurance_payout', amount: 1000 },
+          { type: 'add_notification', message: 'Insurance claim filed. $1,000 payout received. Watering restricted for 30 days.', notificationType: 'event_result' },
+        ],
+        followUpText: 'The insurance payout arrives quickly — water emergencies are well-documented claims. The $1,000 helps offset lost revenue during the 30-day restriction. Chen calls: "The curtailment is tough, but imagine eating the full 60-day restriction without any financial cushion."',
+      },
+      {
+        id: 'accept-water-restriction',
+        label: 'Accept Full Curtailment',
+        description: 'Comply with the full mandatory restriction. No cost, but longest ban.',
+        effects: [
+          { type: 'restrict_watering', durationDays: 60 },
+          { type: 'add_notification', message: 'Full water curtailment in effect. No irrigation for 60 days. Crops will suffer.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['regulatory', 'catastrophe', 'water'],
+  },
+
+  // --- False Alarm: Pest Scare ---
+
+  {
+    id: 'forum-pest-scare',
+    type: 'community' as const,
+    title: 'Growers Forum: "HUGE HORNWORMS EVERYWHERE"',
+    description: 'PanicPete is at it again: "Just found tomato hornworms the size of my THUMB on my plants!!! They\'re destroying everything!!! Has anyone else seen these??? I think there\'s an INFESTATION spreading through the Valley!!!" Several farmers respond telling Pete to calm down — hornworms are normal and mostly affect home garden tomatoes, not commercial crops.',
+    preconditions: [
+      { type: 'min_year', year: 6 },
+      { type: 'max_year', year: 12 },
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'season_not', season: 'winter' },
+      { type: 'random', probability: 0.25 },
+    ],
+    priority: 30,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'reassure-pete',
+        label: '"Pete, those are normal..."',
+        description: 'Gently explain that hornworms aren\'t a Valley-wide crisis.',
+        effects: [
+          { type: 'add_notification', message: 'PanicPete thanked you but seemed unconvinced. The hornworm "epidemic" was just his backyard.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'ignore-pete',
+        label: 'Scroll Past',
+        description: 'Pete\'s posts are always dramatic. Best to just keep scrolling.',
+        effects: [
+          { type: 'add_notification', message: 'You scrolled past PanicPete\'s latest emergency. Some things never change.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'false-alarm'],
+  },
+
+  // --- False Alarm: Frost Panic ---
+
+  {
+    id: 'forum-frost-panic',
+    type: 'community' as const,
+    title: 'Growers Forum: "Woolly Caterpillars Say HARD FREEZE Coming"',
+    description: 'OldTimer_Earl is back with his annual prediction: "Found a woolly bear caterpillar with an ALL BLACK coat this morning. My grandfather always said that means a brutal winter. Mark my words — we\'re in for the worst freeze in 30 years. I\'m covering everything I own." Several farmers point out that woolly caterpillar coloring has been scientifically debunked as a weather predictor. Earl is undeterred.',
+    preconditions: [
+      { type: 'min_year', year: 9 },
+      { type: 'max_year', year: 18 },
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'season', season: 'fall' },
+      { type: 'random', probability: 0.25 },
+    ],
+    priority: 30,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'trust-science',
+        label: '"Earl, that\'s been debunked..."',
+        description: 'Point Earl to the actual weather forecast.',
+        effects: [
+          { type: 'add_notification', message: 'Earl grumbled about "so-called experts" but the winter turned out perfectly normal.', notificationType: 'event_result' },
+        ],
+      },
+      {
+        id: 'let-earl-be-earl',
+        label: 'Let Earl Be Earl',
+        description: 'Some traditions die hard. No harm in letting him predict.',
+        effects: [
+          { type: 'add_notification', message: 'Earl\'s frost prediction was wrong again. The caterpillars remain unreliable meteorologists.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'false-alarm'],
   },
 ] as const;

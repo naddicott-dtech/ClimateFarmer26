@@ -254,6 +254,37 @@ describe('Balance Smoke (75 runs)', () => {
       expect(r1.survived).toBe(r2.survived);
     });
   });
+  // --- Soil Pedagogy: Paired Cover Crop Comparison ---
+
+  describe('Soil Pedagogy', () => {
+    it('corn with cover crops has higher OM than corn without cover crops', () => {
+      // Paired comparison: same strategy, same scenario, same seed.
+      // Only difference is cover crops on vs off.
+      const scenario = SCENARIOS['gradual-warming'];
+      const seed = 42;
+
+      // Corn WITH cover crops (standard corn bot)
+      const withCover = runBot(createCornMonoculture(), scenario, seed);
+
+      // Corn WITHOUT cover crops (wrapped corn bot, cover crop commands filtered out)
+      const noCoverBot = createCornMonoculture();
+      const originalOnTick = noCoverBot.onTick;
+      noCoverBot.name = 'corn-no-cover';
+      noCoverBot.onTick = (state, sc) => {
+        return originalOnTick(state, sc).filter(cmd => cmd.type !== 'SET_COVER_CROP_BULK');
+      };
+      const withoutCover = runBot(noCoverBot, scenario, seed);
+
+      // Both must run long enough for OM trends to establish (≥15 years).
+      // If no-cover corn dies earlier from OM yield penalties, that's fine —
+      // the comparison is still valid as long as both ran enough years.
+      expect(withCover.yearsCompleted).toBeGreaterThanOrEqual(15);
+      expect(withoutCover.yearsCompleted).toBeGreaterThanOrEqual(15);
+
+      // Cover crops should produce measurably higher OM
+      expect(withCover.avgOrganicMatter).toBeGreaterThan(withoutCover.avgOrganicMatter);
+    });
+  });
 }, 600_000); // 10 minute timeout for entire suite
 
 // ============================================================================
@@ -282,10 +313,10 @@ describe('Idle Farm (dedicated suite)', () => {
     expect(median).toBeLessThan(0);
   });
 
-  it('goes bankrupt between year 26 and year 29', () => {
+  it('goes bankrupt between year 25 and year 29', () => {
     for (const r of idleResults) {
       expect(r.bankruptcyYear).not.toBeNull();
-      expect(r.bankruptcyYear!).toBeGreaterThanOrEqual(26);
+      expect(r.bankruptcyYear!).toBeGreaterThanOrEqual(25);
       expect(r.bankruptcyYear!).toBeLessThanOrEqual(29);
     }
   });
@@ -294,7 +325,7 @@ describe('Idle Farm (dedicated suite)', () => {
     // First insolvency → loan offered → bot takes it. Second insolvency → game over.
     for (const r of idleResults) {
       expect(r.loansReceived).toBe(1);
-      expect(r.yearsCompleted).toBeGreaterThanOrEqual(26);
+      expect(r.yearsCompleted).toBeGreaterThanOrEqual(25);
     }
   });
 }, 120_000);

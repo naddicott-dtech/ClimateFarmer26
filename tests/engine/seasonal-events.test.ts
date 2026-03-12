@@ -27,7 +27,7 @@ describe('hasRandomCondition', () => {
     expect(hasRandomCondition(storylet)).toBe(false);
   });
 
-  it('identifies all 8 seasonal-draw events', () => {
+  it('identifies all 22 seasonal-draw events', () => {
     const seasonalIds = STORYLETS.filter(s => hasRandomCondition(s)).map(s => s.id);
     expect(seasonalIds).toEqual([
       'heatwave-advisory',
@@ -38,10 +38,24 @@ describe('hasRandomCondition', () => {
       'weather-heat-forecast',
       'weather-frost-alert',
       'weather-drought-outlook',
+      'forum-rotation-tip',
+      'forum-neighbor-corn-died',
+      'forum-water-board-gossip',
+      'forum-market-whisper',
+      'forum-heat-worry',
+      'forum-insurance-debate',
+      'forum-organic-buzz',
+      'forum-bad-advice',
+      'catastrophe-rootworm',
+      'catastrophe-pollination-failure',
+      'catastrophe-orchard-disease',
+      'catastrophe-water-emergency',
+      'forum-pest-scare',
+      'forum-frost-panic',
     ]);
   });
 
-  it('identifies all 14 per-tick events', () => {
+  it('identifies all 16 per-tick events', () => {
     const perTickIds = STORYLETS.filter(s => !hasRandomCondition(s)).map(s => s.id);
     expect(perTickIds).toEqual([
       'advisor-orchard-decline',
@@ -58,6 +72,8 @@ describe('hasRandomCondition', () => {
       'regime-water-restriction',
       'regime-market-crash',
       'regime-heat-threshold',
+      'advisor-potassium-management',
+      'chen-insurance-offer',
     ]);
   });
 });
@@ -138,8 +154,7 @@ describe('drawSeasonalEvents', () => {
   });
 
   it('draws only storylets with random preconditions', () => {
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 0.5, 516, 605);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 0.5, 516, 605);
     for (const event of queue) {
       const storylet = STORYLETS.find(s => s.id === event.storyletId);
       expect(storylet).toBeDefined();
@@ -149,8 +164,7 @@ describe('drawSeasonalEvents', () => {
 
   it('respects cooldown', () => {
     state.eventLog.push({ storyletId: 'heatwave-advisory', day: 400, choiceId: 'wait-it-out' });
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, 516, 605);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 1.0, 516, 605);
     // heatwave has 180-day cooldown; day 516 - 400 = 116 < 180
     expect(queue.find(e => e.storyletId === 'heatwave-advisory')).toBeUndefined();
   });
@@ -164,19 +178,15 @@ describe('drawSeasonalEvents', () => {
     );
     // Move to spring so frost alert's season precondition passes
     state.calendar = { day: 60, month: 3, season: 'spring', year: 2, totalDay: 424 };
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, 424, 513);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 1.0, 424, 513);
     expect(queue.find(e => e.storyletId === 'weather-frost-alert')).toBeUndefined();
   });
 
   it('family cap: max 1 climate per season', () => {
-    // Use high stress to maximize probability
-    const rng = new SeededRNG(42);
     // Run many seeds to find at least one where both climate events would be eligible
     let multiClimateSeen = false;
     for (let seed = 1; seed <= 100; seed++) {
-      const testRng = new SeededRNG(seed);
-      const queue = drawSeasonalEvents(state, STORYLETS, testRng, 1.0, 516, 605);
+      const queue = drawSeasonalEvents(state, STORYLETS, seed, 1.0, 516, 605);
       const climateEvents = queue.filter(e => {
         const s = STORYLETS.find(st => st.id === e.storyletId);
         return s?.type === 'climate';
@@ -189,8 +199,7 @@ describe('drawSeasonalEvents', () => {
     // Advance to year 5+ summer so both regulatory events are eligible
     state.calendar = { day: 152, month: 6, season: 'summer', year: 5, totalDay: 1611 };
     for (let seed = 1; seed <= 100; seed++) {
-      const rng = new SeededRNG(seed);
-      const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, 1611, 1700);
+      const queue = drawSeasonalEvents(state, STORYLETS, seed, 1.0, 1611, 1700);
       const regEvents = queue.filter(e => {
         const s = STORYLETS.find(st => st.id === e.storyletId);
         return s?.type === 'regulatory';
@@ -201,8 +210,7 @@ describe('drawSeasonalEvents', () => {
 
   it('family cap: max 1 advisor per season in seasonal draw', () => {
     for (let seed = 1; seed <= 100; seed++) {
-      const rng = new SeededRNG(seed);
-      const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, 516, 605);
+      const queue = drawSeasonalEvents(state, STORYLETS, seed, 1.0, 516, 605);
       const advisorEvents = queue.filter(e => {
         const s = STORYLETS.find(st => st.id === e.storyletId);
         return s?.type === 'advisor';
@@ -212,10 +220,9 @@ describe('drawSeasonalEvents', () => {
   });
 
   it('scheduling: fireDay within season bounds', () => {
-    const rng = new SeededRNG(42);
     const seasonStart = 516;
     const seasonEnd = 605;
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, seasonStart, seasonEnd);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 1.0, seasonStart, seasonEnd);
     for (const event of queue) {
       expect(event.firesOnDay).toBeGreaterThanOrEqual(seasonStart);
       expect(event.firesOnDay).toBeLessThanOrEqual(seasonEnd);
@@ -223,24 +230,22 @@ describe('drawSeasonalEvents', () => {
   });
 
   it('scheduling: foreshadow appearsOnDay before firesOnDay', () => {
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 0.5, 516, 605);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 0.5, 516, 605);
     for (const event of queue) {
       expect(event.appearsOnDay).toBeLessThanOrEqual(event.firesOnDay);
     }
   });
 
   it('determinism: same seed = same schedule', () => {
-    const q1 = drawSeasonalEvents(state, STORYLETS, new SeededRNG(42), 0.5, 516, 605);
-    const q2 = drawSeasonalEvents(state, STORYLETS, new SeededRNG(42), 0.5, 516, 605);
+    const q1 = drawSeasonalEvents(state, STORYLETS, 42, 0.5, 516, 605);
+    const q2 = drawSeasonalEvents(state, STORYLETS, 42, 0.5, 516, 605);
     expect(q1).toEqual(q2);
   });
 
   it('empty draw when no events eligible (wrong season/year)', () => {
     // Winter Year 1: heatwave needs summer+year2, frost needs spring, etc.
     state.calendar = { day: 335, month: 12, season: 'winter', year: 1, totalDay: 334 };
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 0.5, 334, 423);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 0.5, 334, 423);
     expect(queue.length).toBe(0);
   });
 
@@ -248,8 +253,8 @@ describe('drawSeasonalEvents', () => {
     let highStressTotal = 0;
     let lowStressTotal = 0;
     for (let seed = 1; seed <= 200; seed++) {
-      const highQ = drawSeasonalEvents(state, STORYLETS, new SeededRNG(seed), 0.9, 516, 605);
-      const lowQ = drawSeasonalEvents(state, STORYLETS, new SeededRNG(seed), 0.1, 516, 605);
+      const highQ = drawSeasonalEvents(state, STORYLETS, seed, 0.9, 516, 605);
+      const lowQ = drawSeasonalEvents(state, STORYLETS, seed, 0.1, 516, 605);
       highStressTotal += highQ.length;
       lowStressTotal += lowQ.length;
     }
@@ -257,16 +262,14 @@ describe('drawSeasonalEvents', () => {
   });
 
   it('sorted by appearsOnDay', () => {
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, 516, 605);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 1.0, 516, 605);
     for (let i = 1; i < queue.length; i++) {
       expect(queue[i].appearsOnDay).toBeGreaterThanOrEqual(queue[i - 1].appearsOnDay);
     }
   });
 
   it('all events start unconsumed', () => {
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 1.0, 516, 605);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 1.0, 516, 605);
     for (const event of queue) {
       expect(event.consumed).toBe(false);
     }
@@ -512,8 +515,7 @@ describe('Seasonal draw observability', () => {
       }
     }
 
-    const rng = new SeededRNG(42);
-    const queue = drawSeasonalEvents(state, STORYLETS, rng, 0.5, 516, 605);
+    const queue = drawSeasonalEvents(state, STORYLETS, 42, 0.5, 516, 605);
 
     // Each event in queue has all required fields
     for (const event of queue) {
@@ -531,8 +533,13 @@ describe('Seasonal draw observability', () => {
 // ============================================================================
 
 describe('Event frequency integration', () => {
-  it('heatwave fires 2-15 times in 30 years (not 18+)', () => {
-    const state = makeState();
+  /**
+   * Run a full 30-year game with a given seed and count how many times
+   * a specific storylet fires. Returns the count.
+   */
+  function runGameAndCount(seed: number, targetStoryletId: string): number {
+    const scenario = { ...SLICE_1_SCENARIO, seed };
+    const state = createInitialState('freq-test', scenario);
     state.speed = 1;
 
     // Plant perennial almonds — they persist across years (has_crop always true)
@@ -555,32 +562,61 @@ describe('Event frequency integration', () => {
       }
     }
 
-    let heatwaveCount = 0;
+    let count = 0;
     for (let tick = 0; tick < 11000; tick++) {
       while (state.autoPauseQueue.length > 0) {
         if (state.activeEvent) {
-          if (state.activeEvent.storyletId === 'heatwave-advisory') {
-            heatwaveCount++;
+          if (state.activeEvent.storyletId === targetStoryletId) {
+            count++;
           }
           processCommand(state, {
             type: 'RESPOND_EVENT',
             eventId: state.activeEvent.storyletId,
             choiceId: state.activeEvent.choices[0].id,
-          }, SLICE_1_SCENARIO);
+          }, scenario);
         }
         state.autoPauseQueue = [];
         if (state.gameOver) break;
         state.speed = 1;
       }
       if (state.gameOver) break;
-      simulateTick(state, SLICE_1_SCENARIO);
+      simulateTick(state, scenario);
     }
 
-    // With seasonal draws and ~30% base probability modulated by stress,
-    // expect some fires over 18 eligible summers (Year 2+, summer only)
-    // but NOT every year. Allow wide range for stochastic test.
-    expect(heatwaveCount).toBeGreaterThanOrEqual(1);
-    expect(heatwaveCount).toBeLessThanOrEqual(15);
+    return count;
+  }
+
+  it('heatwave fires at a reasonable frequency across varied seeds', () => {
+    // Run 30 different seeds and check statistical properties.
+    // This avoids brittleness of single-seed tests — adding seasonal events
+    // shifts RNG consumption, which can drive one seed's count to zero.
+    const SEED_COUNT = 30;
+    const counts: number[] = [];
+
+    for (let seed = 1; seed <= SEED_COUNT; seed++) {
+      counts.push(runGameAndCount(seed * 1000, 'heatwave-advisory'));
+    }
+
+    const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+    const runsWithHeatwave = counts.filter(c => c > 0).length;
+
+    // Mean heatwave count across seeds. With 30% base probability, stress
+    // modulation, 180-day cooldown, and 1-per-climate-family seasonal cap
+    // (competes with 7+ other climate events after 6c catastrophes), observed mean is ~0.3-3.
+    expect(mean).toBeGreaterThanOrEqual(0.2);
+    expect(mean).toBeLessThanOrEqual(8);
+
+    // At least 25% of seeds produce at least one heatwave.
+    // NOTE: with 6c catastrophes adding 3 more climate-type events, heatwave
+    // competes with more siblings for the 1-per-climate-family seasonal cap.
+    // The curated seed pool (sub-slice 6b.1) will ensure all classroom runs
+    // have meaningful events.
+    expect(runsWithHeatwave).toBeGreaterThanOrEqual(Math.floor(SEED_COUNT * 0.25));
+
+    // No single run should have heatwave spam (the original bug)
+    for (const count of counts) {
+      expect(count).toBeLessThanOrEqual(15);
+    }
   });
 
   it('same seed produces identical eventLog', () => {

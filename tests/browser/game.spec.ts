@@ -1227,11 +1227,43 @@ test.describe('Advisor Panel', () => {
 
     await expect(page.getByTestId('advisor-panel')).toBeVisible();
 
-    // Click the first choice
+    // Click the first choice (has followUpText — shows follow-up beat first)
     await page.getByTestId('advisor-choice-diversify-advice').click();
 
-    // Panel should close
+    // Follow-up panel appears with educational content
+    await expect(page.getByTestId('follow-up-panel')).toBeVisible();
+    await expect(page.getByTestId('follow-up-text')).toBeVisible();
+
+    // Dismiss follow-up
+    await page.getByTestId('follow-up-dismiss').click();
+
+    // Now panel should close
     await expect(page.getByTestId('advisor-panel')).not.toBeVisible();
+    await expect(page.getByTestId('follow-up-panel')).not.toBeVisible();
+  });
+
+  test('follow-up panel shows and dismisses correctly with OK button', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Trigger advisor and pick choice with followUpText
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('advisor-crop-failure');
+    });
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await page.getByTestId('advisor-choice-diversify-advice').click();
+
+    // Follow-up panel should appear with educational content
+    await expect(page.getByTestId('follow-up-panel')).toBeVisible();
+    const followUpText = await page.getByTestId('follow-up-text').textContent();
+    expect(followUpText).toContain('Diversification');
+
+    // Advisor info should still be visible
+    await expect(page.getByTestId('advisor-name')).toContainText('Dr. Maria Santos');
+
+    // Dismiss the follow-up
+    await page.getByTestId('follow-up-dismiss').click();
+    await expect(page.getByTestId('follow-up-panel')).not.toBeVisible();
   });
 
   test('Chen advisor renders correct portrait, name, role, and subtitle', async ({ page }) => {

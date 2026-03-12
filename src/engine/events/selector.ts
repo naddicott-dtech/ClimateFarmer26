@@ -102,6 +102,24 @@ export function evaluateCondition(
       }
       return false;
     }
+    case 'avg_potassium_below': {
+      let totalK = 0;
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          totalK += state.grid[r][c].soil.potassium;
+        }
+      }
+      return (totalK / (GRID_ROWS * GRID_COLS)) < condition.level;
+    }
+    case 'has_any_crop_in': {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const crop = state.grid[r][c].crop;
+          if (crop && condition.cropIds.includes(crop.cropId)) return true;
+        }
+      }
+      return false;
+    }
     case 'random':
       return rng.next() < condition.probability;
     default: {
@@ -355,25 +373,67 @@ export function computeYearStressLevel(scenario: ClimateScenario, year: number):
   return Math.max(0, Math.min(1, raw));
 }
 
+// ============================================================================
+// Stable-hash helpers for seasonal draw (6c)
+// Each event roll is derived from a hash of (baseSeed, year, season, storyletId)
+// so adding/removing events does not perturb unrelated rolls.
+// ============================================================================
+
+const SEASON_IDX: Record<string, number> = { spring: 0, summer: 1, fall: 2, winter: 3 };
+
+/** Derive a deterministic seed from stable inputs. Exported for testing. */
+export function deriveEventSeed(
+  baseSeed: number, year: number, seasonIdx: number,
+  storyletId: string, purpose: string,
+): number {
+  let h = baseSeed;
+  h = (h * 31 + year) | 0;
+  h = (h * 31 + seasonIdx) | 0;
+  for (let i = 0; i < storyletId.length; i++) {
+    h = (h * 31 + storyletId.charCodeAt(i)) | 0;
+  }
+  for (let i = 0; i < purpose.length; i++) {
+    h = (h * 31 + purpose.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+}
+
+function stableRoll(
+  baseSeed: number, year: number, season: string,
+  storyletId: string, purpose: string,
+): number {
+  const seed = deriveEventSeed(baseSeed, year, SEASON_IDX[season], storyletId, purpose);
+  return new SeededRNG(seed).next();
+}
+
 /**
  * Draw which random-gated events fire this season.
  * Called once at each season boundary (starting Summer Year 1).
  *
+ * Uses stable-hash RNG: each storylet's probability roll is derived from
+ * hash(baseEventSeed, year, season, storyletId) — adding/removing events
+ * does not shift unrelated rolls.
+ *
  * Algorithm:
  * 1. Filter to storylets with `random` precondition
- * 2. Evaluate non-random conditions; roll adjusted probability
+ * 2. Evaluate non-random conditions; roll adjusted probability (stable hash)
  * 3. Apply per-family caps (max 1 per type per season)
- * 4. Schedule fire days within the season
+ * 4. Schedule fire days within the season (stable hash)
  * 5. Sort by appearsOnDay
  */
 export function drawSeasonalEvents(
   state: GameState,
   allStorylets: readonly Storylet[],
-  rng: SeededRNG,
+  baseEventSeed: number,
   stressLevel: number,
   seasonStartDay: number,
   seasonEndDay: number,
 ): ScheduledEvent[] {
+  const { year, season } = state.calendar;
+
+  // Dummy RNG for evaluateCondition on non-random conditions (no RNG consumed)
+  const dummyRng = new SeededRNG(0);
+
   // Step 1: Filter to random-gated storylets
   const randomStorylets = allStorylets.filter(hasRandomCondition);
 
@@ -393,20 +453,20 @@ export function drawSeasonalEvents(
     const nonRandom = storylet.preconditions.filter(c => c.type !== 'random');
     let nonRandomPass = true;
     for (const cond of nonRandom) {
-      if (!evaluateCondition(cond, state, rng)) {
+      if (!evaluateCondition(cond, state, dummyRng)) {
         nonRandomPass = false;
         break;
       }
     }
     if (!nonRandomPass) continue;
 
-    // Roll against adjusted probability
+    // Roll against adjusted probability using stable hash
     const randomCond = storylet.preconditions.find(c => c.type === 'random');
     if (!randomCond || randomCond.type !== 'random') continue;
     const baseProbability = randomCond.probability;
     const adjustedProbability = Math.min(0.95, baseProbability * (0.5 + stressLevel));
 
-    const roll = rng.next();
+    const roll = stableRoll(baseEventSeed, year, season, storylet.id, 'prob');
     if (roll >= adjustedProbability) continue;
 
     candidates.push({ storylet, family: storylet.type });
@@ -431,13 +491,13 @@ export function drawSeasonalEvents(
     }
   }
 
-  // Step 4: Schedule fire days
+  // Step 4: Schedule fire days using stable hashes
   const scheduled: ScheduledEvent[] = [];
   for (const storylet of accepted) {
     // fireDay: seasonStart + 5 to seasonEnd - 15 (leave margin at edges)
     const minDay = seasonStartDay + 5;
     const maxDay = Math.max(minDay, seasonEndDay - 15);
-    const fireDayRoll = rng.next();
+    const fireDayRoll = stableRoll(baseEventSeed, year, season, storylet.id, 'day');
     const firesOnDay = Math.floor(minDay + fireDayRoll * (maxDay - minDay + 1));
 
     let appearsOnDay = firesOnDay;
@@ -448,7 +508,7 @@ export function drawSeasonalEvents(
       // Clamp: don't foreshadow before season starts + 2
       appearsOnDay = Math.max(seasonStartDay + 2, appearsOnDay);
       // Reliability roll
-      const reliabilityRoll = rng.next();
+      const reliabilityRoll = stableRoll(baseEventSeed, year, season, storylet.id, 'foreshadow');
       isFalseAlarm = reliabilityRoll >= storylet.foreshadowing.reliability;
     }
 

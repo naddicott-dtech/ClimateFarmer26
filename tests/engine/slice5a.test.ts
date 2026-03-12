@@ -697,7 +697,7 @@ describe('Slice 5a: Event clustering cap (separate pools)', () => {
       }),
     ];
 
-    const scheduled = drawSeasonalEvents(state, techStorylets, rng, 1.0, 100, 189);
+    const scheduled = drawSeasonalEvents(state, techStorylets, 42, 1.0, 100, 189);
 
     // Without tech-pool cap, both would pass (different families).
     // With tech-pool cap = 1, only 1 tech event should be scheduled.
@@ -722,7 +722,7 @@ describe('Slice 5a: Event clustering cap (separate pools)', () => {
       }),
     ];
 
-    const scheduled = drawSeasonalEvents(state, climateStorylets, rng, 1.0, 100, 189);
+    const scheduled = drawSeasonalEvents(state, climateStorylets, 42, 1.0, 100, 189);
     const climateEvents = scheduled.filter(s =>
       climateStorylets.find(t => t.id === s.storyletId),
     );
@@ -749,7 +749,7 @@ describe('Slice 5a: Event clustering cap (separate pools)', () => {
       }),
     ];
 
-    const scheduled = drawSeasonalEvents(state, mixedStorylets, rng, 1.0, 100, 189);
+    const scheduled = drawSeasonalEvents(state, mixedStorylets, 42, 1.0, 100, 189);
 
     // Both should fire: tech-offer goes through tech pool, climate-event-1 through non-tech pool.
     // Under OLD logic (family cap only), these share family 'climate' → only 1 would fire.
@@ -893,8 +893,8 @@ describe('Slice 5a: Save migration V7 → V8', () => {
     vi.stubGlobal('localStorage', storage);
   });
 
-  it('SAVE_VERSION is 8.0.0', () => {
-    expect(SAVE_VERSION).toBe('8.0.0');
+  it('SAVE_VERSION is 9.0.0', () => {
+    expect(SAVE_VERSION).toBe('9.0.0');
   });
 
   it('migrates V7 save by adding potassium: 150 to all cells', () => {

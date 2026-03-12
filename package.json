@@ -12,7 +12,8 @@
     "test:browser": "playwright test",
     "test:balance": "vitest run tests/engine/balance/balance-smoke.test.ts --reporter=verbose",
     "test:balance-full": "vitest run tests/engine/balance/balance-full.test.ts --reporter=verbose",
-    "test:all": "vitest run --exclude tests/engine/balance/balance-smoke.test.ts --exclude tests/engine/balance/balance-full.test.ts && playwright test"
+    "test:all": "vitest run --exclude tests/engine/balance/balance-smoke.test.ts --exclude tests/engine/balance/balance-full.test.ts && playwright test",
+    "generate-seeds": "npx tsx scripts/generate-curated-seeds.ts"
   },
   "dependencies": {
     "preact": "^10.27.2",

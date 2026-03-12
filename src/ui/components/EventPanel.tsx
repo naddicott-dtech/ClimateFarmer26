@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks';
-import { gameState, dispatch, handleDismissAutoPause } from '../../adapter/signals.ts';
+import { gameState, dispatch, handleDismissAutoPause, pendingFollowUp } from '../../adapter/signals.ts';
 import { STORYLETS } from '../../data/events.ts';
 import type { ActiveEvent, Choice } from '../../engine/events/types.ts';
 import styles from '../styles/Overlay.module.css';
@@ -37,18 +37,34 @@ const ADVISOR_CHARACTERS: Record<string, { portrait: string; name: string; role:
  *
  * Flow: player sees title + description + choices → picks one → RESPOND_EVENT
  * dispatched → activeEvent cleared → auto-pause dismissed.
+ *
+ * Follow-up beat (6a): If the chosen option has followUpText, a second panel
+ * shows the educational explanation before dismissing. This keeps teaching
+ * content center-screen instead of burying it in a notification toast.
+ * Follow-up state lives in the pendingFollowUp signal (adapter layer) so it
+ * survives the activeEvent clearing that happens during processRespondEvent.
  */
-export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor: boolean }) {
+export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; isAdvisor: boolean }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const state = gameState.value;
   const cash = state?.economy.cash ?? 0;
+  const flags = state?.flags ?? {};
+  const followUp = pendingFollowUp.value;
 
   useEffect(() => {
     const first = panelRef.current?.querySelector('button') as HTMLElement;
     first?.focus();
-  }, [event.storyletId]);
+  }, [event?.storyletId, followUp]);
 
   function handleChoice(choice: Choice) {
+    if (!event) return;
+
+    // Capture advisor info BEFORE dispatch — processRespondEvent clears activeEvent
+    const storyletDef = STORYLETS.find(s => s.id === event.storyletId);
+    const advId = storyletDef?.advisorId ?? 'extension-agent';
+    const eventTitle = event.title;
+    const followUpText = choice.followUpText;
+
     const result = dispatch({
       type: 'RESPOND_EVENT',
       eventId: event.storyletId,
@@ -56,18 +72,74 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
     });
 
     if (result.success) {
-      handleDismissAutoPause();
+      if (followUpText) {
+        // Show follow-up beat instead of immediately dismissing
+        pendingFollowUp.value = { advisorId: advId, title: eventTitle, text: followUpText };
+      } else {
+        handleDismissAutoPause();
+      }
     }
     // If not successful (e.g. can't afford), stay on panel — the button
-    // should already be disabled via requiresCash check below
+    // should already be disabled via requiresCash/requiresFlag checks below
   }
 
-  // Look up advisor character from storylet definition
-  const storylet = STORYLETS.find(s => s.id === event.storyletId);
-  const advisorId = storylet?.advisorId ?? 'extension-agent';
+  function handleFollowUpDismiss() {
+    pendingFollowUp.value = null;
+    handleDismissAutoPause();
+  }
+
+  // Determine which advisor to display
+  const advisorId = followUp
+    ? followUp.advisorId
+    : (STORYLETS.find(s => s.id === event?.storyletId)?.advisorId ?? 'extension-agent');
   const advisor = ADVISOR_CHARACTERS[advisorId] ?? ADVISOR_CHARACTERS['extension-agent'];
 
   const panelTestId = isAdvisor ? 'advisor-panel' : 'event-panel';
+
+  // Follow-up beat: educational explanation after choice
+  if (followUp) {
+    return (
+      <div class={styles.overlay} data-testid="follow-up-panel" role="alertdialog" aria-label={followUp.title}>
+        <div class={styles.panel} ref={panelRef}>
+          <div class={styles.advisorHeader}>
+            <img
+              class={styles.advisorPortrait}
+              data-testid="advisor-portrait"
+              src={advisor.portrait}
+              alt={advisor.name}
+              width="64"
+              height="64"
+            />
+            <div>
+              <div class={styles.advisorName} data-testid="advisor-name">{advisor.name}</div>
+              <div class={styles.advisorRole} data-testid="advisor-role">{advisor.role}</div>
+            </div>
+          </div>
+
+          <h2 class={styles.title} data-testid="event-title">{followUp.title}</h2>
+          <div class={styles.message} data-testid="follow-up-text">{followUp.text}</div>
+
+          <div class={styles.choiceList}>
+            <button
+              data-testid="follow-up-dismiss"
+              class={styles.choiceBtn}
+              onClick={handleFollowUpDismiss}
+            >
+              <div class={styles.choiceLabel}>OK</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No event data and no follow-up — shouldn't happen but safe
+  if (!event) return null;
+
+  // Filter choices: hide those requiring a flag the player doesn't have
+  const visibleChoices = event.choices.filter(
+    c => !c.requiresFlag || flags[c.requiresFlag]
+  );
 
   return (
     <div class={styles.overlay} data-testid={panelTestId} role="alertdialog" aria-label={event.title}>
@@ -96,7 +168,7 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent; isAdvisor
         <div class={styles.message} data-testid="event-description">{event.description}</div>
 
         <div class={styles.choiceList}>
-          {event.choices.map(choice => {
+          {visibleChoices.map(choice => {
             const canAfford = choice.requiresCash === undefined || cash >= choice.requiresCash;
 
             return (

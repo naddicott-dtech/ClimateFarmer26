@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import {
   autoPauseQueue, handleDismissAutoPause, declineLoan,
   harvestBulk, waterBulk, returnToTitle,
-  gameState, dispatch,
+  gameState, dispatch, pendingFollowUp,
 } from '../../adapter/signals.ts';
 import type { AutoPauseEvent } from '../../engine/types.ts';
 import { STARTING_CASH } from '../../engine/types.ts';
@@ -18,10 +18,11 @@ export function AutoPausePanel() {
   const event = queue[0];
 
   // Event/advisor auto-pause: render the EventPanel with choices
+  // Also stay on EventPanel during follow-up beat (activeEvent is cleared but follow-up is pending)
   if (event.reason === 'event' || event.reason === 'advisor') {
     const state = gameState.value;
-    if (state?.activeEvent) {
-      return <EventPanel event={state.activeEvent} isAdvisor={event.reason === 'advisor'} />;
+    if (state?.activeEvent || pendingFollowUp.value) {
+      return <EventPanel event={state?.activeEvent ?? null} isAdvisor={event.reason === 'advisor'} />;
     }
     // Fallback: activeEvent already cleared (shouldn't happen, but safe)
     return <AutoPauseOverlay event={event} />;
@@ -163,6 +164,7 @@ interface YearEndData {
   cash: number;
   breakdown?: ExpenseLineItem[];
   hasLoans?: boolean;
+  insurancePayouts?: number;
 }
 
 function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types.ts').GameState | null): EventConfig {
@@ -192,6 +194,8 @@ function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types
         { key: 'maintenance', label: 'Maintenance', testId: 'expense-line-maintenance' },
         { key: 'coverCrops', label: 'Cover crops', testId: 'expense-line-coverCrops' },
         { key: 'annualOverhead', label: 'Annual overhead', testId: 'expense-line-annualOverhead' },
+        { key: 'insurance', label: 'Crop insurance', testId: 'expense-line-insurance' },
+        { key: 'organicCertification', label: 'Organic certification', testId: 'expense-line-organic' },
         { key: 'loanRepayment', label: 'Loan repayment', testId: 'expense-line-loanRepayment' },
         { key: 'eventCosts', label: 'Event costs', testId: 'expense-line-eventCosts' },
         { key: 'removal', label: 'Crop removal', testId: 'expense-line-removal' },
@@ -212,6 +216,7 @@ function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types
           cash: data.cash as number,
           breakdown: breakdownLines,
           hasLoans: (state?.economy.totalLoansReceived ?? 0) > 0,
+          insurancePayouts: breakdown?.insurancePayouts as number | undefined,
         } : undefined,
       };
     }
@@ -333,6 +338,12 @@ function YearEndTable({ data }: { data: YearEndData }) {
           <td>Revenue</td>
           <td class={styles.positive}>${Math.floor(data.revenue).toLocaleString()}</td>
         </tr>
+        {(data.insurancePayouts ?? 0) > 0 && (
+          <tr data-testid="income-line-insurance-payouts">
+            <td>Insurance payouts</td>
+            <td class={styles.positive}>+${Math.floor(data.insurancePayouts!).toLocaleString()}</td>
+          </tr>
+        )}
         <tr class={styles.expenseHeader}>
           <td>Expenses</td>
           <td class={styles.negative}>-${Math.floor(data.expenses).toLocaleString()}</td>

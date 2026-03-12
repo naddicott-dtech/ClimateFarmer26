@@ -420,7 +420,7 @@ describe('Slice 5c: regime-heat-threshold', () => {
 
   beforeEach(() => {
     state = makeState();
-    setYear(state, 20);
+    setYear(state, 15);
     plantCrop(state);
   });
 
@@ -430,17 +430,17 @@ describe('Slice 5c: regime-heat-threshold', () => {
     expect(storylet.maxOccurrences).toBe(1);
   });
 
-  it('fires when year 20-25, regime_heat_threshold NOT set, has_crop', () => {
+  it('fires when year 15-20, regime_heat_threshold NOT set, has_crop', () => {
     expect(evaluateNonRandomConditions(getStorylet('regime-heat-threshold'), state)).toBe(true);
   });
 
-  it('does NOT fire before year 20', () => {
-    setYear(state, 19);
+  it('does NOT fire before year 15', () => {
+    setYear(state, 14);
     expect(evaluateNonRandomConditions(getStorylet('regime-heat-threshold'), state)).toBe(false);
   });
 
-  it('does NOT fire after year 25', () => {
-    setYear(state, 26);
+  it('does NOT fire after year 20', () => {
+    setYear(state, 21);
     expect(evaluateNonRandomConditions(getStorylet('regime-heat-threshold'), state)).toBe(false);
   });
 
@@ -899,10 +899,10 @@ describe('Slice 5c: data integrity', () => {
     }
   });
 
-  it('count of condition-only events increased by 5 from 5b baseline (was 9, now 14)', () => {
+  it('count of condition-only events increased by 7 from 5b baseline (was 9, now 16)', () => {
     const conditionOnlyCount = STORYLETS.filter(
       s => !s.preconditions.some(c => c.type === 'random'),
     ).length;
-    expect(conditionOnlyCount).toBe(14);
+    expect(conditionOnlyCount).toBe(16);
   });
 });

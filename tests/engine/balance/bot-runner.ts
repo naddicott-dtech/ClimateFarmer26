@@ -43,6 +43,7 @@ export interface RunResult {
   peakCash: number;
   totalRevenue: number;
   totalExpenses: number;
+  totalInsurancePayouts: number;
   avgOrganicMatter: number;
   avgNitrogen: number;
   yearSnapshots: YearSnapshot[];
@@ -227,8 +228,10 @@ function extractRunResult(
     totalExpenses: snapshots.reduce((sum, s) => {
       const e = s.expenses;
       return sum + e.planting + e.watering + e.harvestLabor + e.maintenance +
-        e.loanRepayment + e.removal + e.coverCrops + e.eventCosts + e.annualOverhead;
+        e.loanRepayment + e.removal + e.coverCrops + e.eventCosts + e.annualOverhead +
+        e.insurance + e.organicCertification;
     }, 0),
+    totalInsurancePayouts: snapshots.reduce((sum, s) => sum + s.expenses.insurancePayouts, 0),
     avgOrganicMatter: cellCount > 0 ? totalOM / cellCount : 0,
     avgNitrogen: cellCount > 0 ? totalN / cellCount : 0,
     yearSnapshots: snapshots,

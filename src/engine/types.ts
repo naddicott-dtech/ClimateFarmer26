@@ -206,6 +206,9 @@ export interface ExpenseBreakdown {
   coverCrops: number;
   eventCosts: number;
   annualOverhead: number;
+  insurance: number;
+  insurancePayouts: number;
+  organicCertification: number;  // reserved for 6d, migrated now to avoid V10
 }
 
 export interface YearSnapshot {
@@ -322,7 +325,7 @@ export interface GameState {
   flags: Record<string, boolean>;
   wateringRestricted: boolean;
   wateringRestrictionEndsDay: number;
-  eventRngState: number;      // separate RNG for events (seeded from mainSeed + 10000)
+  eventRngState: number;      // RNG for per-tick condition-only advisors (seasonal draws use stable hashing)
   // Slice 3c: Weather advisor frost protection
   frostProtectionEndsDay: number; // 0 = inactive; active when totalDay < this value
   // Slice 4a: Tracking, event clustering, UX
@@ -337,6 +340,8 @@ export interface GameState {
   // Slice 5c: Message variety rotation indices
   waterStressMsgIdx?: number;
   seasonChangeMsgIdx?: number;
+  // Slice 6b.1: Curated seed for debugging/reproducibility
+  curatedSeed?: number;
 }
 
 // --- Save/Load ---
@@ -369,7 +374,8 @@ export const NITROGEN_MODERATE_THRESHOLD = 40;
 export const IRRIGATION_COST_PER_CELL = 8; // $ per cell per watering (4c: raised from 5; reduced from 24 after overhead)
 export const WATER_DOSE_INCHES = 3.0; // inches per watering action (~14 days worth at typical ET)
 export const STARTING_DAY = 59; // March 1 (0-indexed totalDay) — Spring start per SPEC
-export const SAVE_VERSION = '8.0.0';
+export const SAVE_VERSION = '9.0.0';
+export const INSURANCE_ANNUAL_PREMIUM = 500;
 
 // Slice 5a: K-lite constants
 export const STARTING_POTASSIUM = 150;      // lbs/acre — initial K for all cells
@@ -391,7 +397,7 @@ export const REGIME_MARKET_CRASH_FACTOR = 0.70; // 30% price reduction
 
 
 export function createEmptyExpenseBreakdown(): ExpenseBreakdown {
-  return { planting: 0, watering: 0, harvestLabor: 0, maintenance: 0, loanRepayment: 0, removal: 0, coverCrops: 0, eventCosts: 0, annualOverhead: 0 };
+  return { planting: 0, watering: 0, harvestLabor: 0, maintenance: 0, loanRepayment: 0, removal: 0, coverCrops: 0, eventCosts: 0, annualOverhead: 0, insurance: 0, insurancePayouts: 0, organicCertification: 0 };
 }
 
 export function createEmptyTrackingState(): TrackingState {

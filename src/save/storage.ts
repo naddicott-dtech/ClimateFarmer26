@@ -62,42 +62,52 @@ function readSave(key: string): GameState | null {
 
     const parsed = JSON.parse(raw) as SaveGame;
     if (!validateSave(parsed)) {
-      // Helper: apply V7→V8 to a V7 state
+      // Helper: apply V8→V9
+      const finishV8 = (v8State: GameState | null): GameState | null => {
+        if (!v8State) return null;
+        const v8Save = { version: '8.0.0', state: v8State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
+        return migrateV8ToV9(v8Save);
+      };
+      // Helper: apply V7→V8→V9
       const finishV7 = (v7State: GameState | null): GameState | null => {
         if (!v7State) return null;
         const v7Save = { version: '7.0.0', state: v7State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
-        return migrateV7ToV8(v7Save);
+        return finishV8(migrateV7ToV8(v7Save));
       };
-      // Helper: apply V6→V7→V8 chain
+      // Helper: apply V6→V7→V8→V9 chain
       const finishV6 = (v6State: GameState | null): GameState | null => {
         if (!v6State) return null;
         const v6Save = { version: '6.0.0', state: v6State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
         return finishV7(migrateV6ToV7(v6Save));
       };
-      // Helper: apply V5→V6→V7→V8 chain
+      // Helper: apply V5→V6→V7→V8→V9 chain
       const finishV5 = (v5State: GameState | null): GameState | null => {
         if (!v5State) return null;
         const v5Save = { version: '5.0.0', state: v5State, timestamp: (parsed as SaveGame).timestamp ?? Date.now() } as unknown as SaveGame;
         return finishV6(migrateV5ToV6(v5Save));
       };
 
-      // Try v7 → v8 migration
-      if (isV7Save(parsed)) {
-        return migrateV7ToV8(parsed);
+      // Try v8 → v9 migration
+      if (isV8Save(parsed)) {
+        return migrateV8ToV9(parsed);
       }
-      // Try v6 → v7 → v8 chain
+      // Try v7 → v8 → v9 migration
+      if (isV7Save(parsed)) {
+        return finishV7(migrateV7ToV8(parsed));
+      }
+      // Try v6 → v7 → v8 → v9 chain
       if (isV6Save(parsed)) {
         return finishV6(migrateV6ToV7(parsed));
       }
-      // Try v5 → v6 → v7 → v8 chain
+      // Try v5 → v6 → ... → v9 chain
       if (isV5Save(parsed)) {
         return finishV5(migrateV5ToV6(parsed));
       }
-      // Try v4 → v5 → ... → v8 chain
+      // Try v4 → v5 → ... → v9 chain
       if (isV4Save(parsed)) {
         return finishV5(migrateV4ToV5(parsed));
       }
-      // Try v3 → v4 → ... → v8 chain
+      // Try v3 → v4 → ... → v9 chain
       if (isV3Save(parsed)) {
         const v4State = migrateV3ToV4(parsed);
         if (v4State) {
@@ -105,7 +115,7 @@ function readSave(key: string): GameState | null {
           return finishV5(migrateV4ToV5(v4Save));
         }
       }
-      // Try v2 → v3 → ... → v8 chain
+      // Try v2 → v3 → ... → v9 chain
       if (isV2Save(parsed)) {
         const v3State = migrateV2ToV3(parsed);
         if (v3State) {
@@ -117,7 +127,7 @@ function readSave(key: string): GameState | null {
           }
         }
       }
-      // Try v1 → v2 → ... → v8 chain
+      // Try v1 → v2 → ... → v9 chain
       if (isV1Save(parsed)) {
         const v2State = migrateV1ToV2(parsed);
         if (v2State) {
@@ -182,22 +192,27 @@ export function listManualSaves(): SaveSlotInfo[] {
       const savedTimestamp = parsed.timestamp ?? Date.now();
 
       // Try current-version validation first, then migration chain for older saves.
-      // Uses the same finishV* helpers as readSave for DRY migration chains.
       let state: GameState | null = null;
 
-      // Helper: apply V7→V8
+      // Helper: apply V8→V9
+      const finishV8 = (v8State: GameState | null): GameState | null => {
+        if (!v8State) return null;
+        const v8Save = { version: '8.0.0', state: v8State, timestamp: savedTimestamp } as unknown as SaveGame;
+        return migrateV8ToV9(v8Save);
+      };
+      // Helper: apply V7→V8→V9
       const finishV7 = (v7State: GameState | null): GameState | null => {
         if (!v7State) return null;
         const v7Save = { version: '7.0.0', state: v7State, timestamp: savedTimestamp } as unknown as SaveGame;
-        return migrateV7ToV8(v7Save);
+        return finishV8(migrateV7ToV8(v7Save));
       };
-      // Helper: apply V6→V7→V8
+      // Helper: apply V6→V7→V8→V9
       const finishV6 = (v6State: GameState | null): GameState | null => {
         if (!v6State) return null;
         const v6Save = { version: '6.0.0', state: v6State, timestamp: savedTimestamp } as unknown as SaveGame;
         return finishV7(migrateV6ToV7(v6Save));
       };
-      // Helper: apply V5→V6→V7→V8
+      // Helper: apply V5→V6→V7→V8→V9
       const finishV5 = (v5State: GameState | null): GameState | null => {
         if (!v5State) return null;
         const v5Save = { version: '5.0.0', state: v5State, timestamp: savedTimestamp } as unknown as SaveGame;
@@ -206,8 +221,10 @@ export function listManualSaves(): SaveSlotInfo[] {
 
       if (validateSave(parsed)) {
         state = parsed.state;
+      } else if (isV8Save(parsed)) {
+        state = migrateV8ToV9(parsed);
       } else if (isV7Save(parsed)) {
-        state = migrateV7ToV8(parsed);
+        state = finishV7(migrateV7ToV8(parsed));
       } else if (isV6Save(parsed)) {
         state = finishV6(migrateV6ToV7(parsed));
       } else if (isV5Save(parsed)) {
@@ -580,6 +597,44 @@ function migrateV7ToV8(data: unknown): GameState | null {
           (cell.soil as unknown as Record<string, unknown>).potassium = STARTING_POTASSIUM;
         }
       }
+    }
+
+    return state as GameState;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// V8 → V9 Migration (adds insurance fields to ExpenseBreakdown)
+// ============================================================================
+
+function isV8Save(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const save = data as Record<string, unknown>;
+  return save.version === '8.0.0';
+}
+
+/**
+ * Migrate a v8 save to v9 by adding insurance/organicCertification to ExpenseBreakdown.
+ */
+function migrateV8ToV9(data: unknown): GameState | null {
+  try {
+    const save = data as SaveGame;
+    const state = save.state as GameState & Record<string, unknown>;
+
+    // Add new ExpenseBreakdown fields to currentExpenses
+    const expenses = state.tracking.currentExpenses as unknown as Record<string, unknown>;
+    if (expenses.insurance === undefined) expenses.insurance = 0;
+    if (expenses.insurancePayouts === undefined) expenses.insurancePayouts = 0;
+    if (expenses.organicCertification === undefined) expenses.organicCertification = 0;
+
+    // Add to all year snapshots
+    for (const snapshot of state.tracking.yearSnapshots) {
+      const snapExpenses = snapshot.expenses as unknown as Record<string, unknown>;
+      if (snapExpenses.insurance === undefined) snapExpenses.insurance = 0;
+      if (snapExpenses.insurancePayouts === undefined) snapExpenses.insurancePayouts = 0;
+      if (snapExpenses.organicCertification === undefined) snapExpenses.organicCertification = 0;
     }
 
     return state as GameState;

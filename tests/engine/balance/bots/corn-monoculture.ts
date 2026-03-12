@@ -21,6 +21,9 @@ import type { StrategyBot } from '../bot-runner.ts';
 const PREFERRED_CHOICES: Record<string, string> = {
   'tech-water-irrigation': 'install-irrigation',
   'regime-water-restriction': 'invest-water-recycling',
+  'chen-insurance-offer': 'decline-insurance',
+  'catastrophe-rootworm': 'accept-rootworm-losses',
+  'catastrophe-water-emergency': 'accept-water-restriction',
 };
 
 export function createCornMonoculture(): StrategyBot {

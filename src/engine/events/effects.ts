@@ -105,6 +105,40 @@ export function applyEffects(
         break;
       }
 
+      case 'modify_potassium_all':
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const soil = state.grid[r][c].soil;
+            soil.potassium = Math.max(0, Math.min(soil.potassium + effect.amount, 200));
+          }
+        }
+        break;
+
+      case 'damage_crops': {
+        const matching: { row: number; col: number }[] = [];
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const cell = state.grid[r][c];
+            if (cell.crop && (effect.target === '*' || cell.crop.cropId === effect.target)) {
+              matching.push({ row: r, col: c });
+            }
+          }
+        }
+        const destroyCount = Math.floor(matching.length * effect.percentage);
+        for (let i = 0; i < destroyCount; i++) {
+          state.grid[matching[i].row][matching[i].col].crop = null;
+          // Don't reset lastCropId or consecutiveSameCropCount — catastrophe ≠ rotation
+        }
+        break;
+      }
+
+      case 'insurance_payout': {
+        state.economy.cash += effect.amount;
+        // Tracked separately — NOT added to yearlyRevenue or yearlyExpenses
+        state.tracking.currentExpenses.insurancePayouts += effect.amount;
+        break;
+      }
+
       default: {
         const _exhaustive: never = effect;
         throw new Error(`Unhandled effect type: ${(_exhaustive as Effect).type}`);

@@ -22,6 +22,15 @@ import type {
 } from '../../../../src/engine/types.ts';
 import type { StrategyBot } from '../bot-runner.ts';
 
+/** Storylet-specific preferred choices — diversified bot buys insurance and files claims */
+const PREFERRED_CHOICES: Record<string, string> = {
+  'chen-insurance-offer': 'enroll-insurance',
+  'catastrophe-rootworm': 'file-rootworm-claim',
+  'catastrophe-pollination-failure': 'file-pollination-claim',
+  'catastrophe-orchard-disease': 'file-disease-claim',
+  'catastrophe-water-emergency': 'file-water-claim',
+};
+
 export function createDiversifiedAdaptive(): StrategyBot {
   let pistachiosPlanted = false;
   let citrusStarted = false;
@@ -40,8 +49,24 @@ export function createDiversifiedAdaptive(): StrategyBot {
         case 'event':
         case 'advisor':
           if (state.activeEvent && state.activeEvent.choices.length > 0) {
-            // Pick the protective option (usually the last choice, which costs more but protects)
             const choices = state.activeEvent.choices;
+            // Check for storylet-specific preferred choice
+            const preferred = PREFERRED_CHOICES[state.activeEvent.storyletId];
+            if (preferred) {
+              // Insurance claim choices require the flag — fall back to last choice if unavailable
+              const choice = choices.find(c => c.id === preferred);
+              if (choice) {
+                const req = (choice as { requiresFlag?: string }).requiresFlag;
+                if (!req || state.flags[req]) {
+                  return [{
+                    type: 'RESPOND_EVENT',
+                    eventId: state.activeEvent.storyletId,
+                    choiceId: choice.id,
+                  }];
+                }
+              }
+            }
+            // Default: pick the protective option (last choice)
             return [{
               type: 'RESPOND_EVENT',
               eventId: state.activeEvent.storyletId,

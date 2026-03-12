@@ -7,6 +7,7 @@ import { getCoverCropDefinition } from '../data/cover-crops.ts';
 import { logSessionStart } from '../engine/playtest-log.ts';
 import { getCropDefinition } from '../data/crops.ts';
 import { SCENARIOS, SCENARIO_IDS, resolveScenarioId } from '../data/scenarios.ts';
+import { CURATED_SEEDS } from '../data/curated-seeds.ts';
 import type { ClimateScenario } from '../engine/types.ts';
 import { autoSave, loadAutoSave, hasSaveData, hasManualSaves, saveGame, loadGame, listManualSaves, deleteSave, isTutorialDismissed, setTutorialDismissed } from '../save/storage.ts';
 import type { SaveSlotInfo } from '../save/storage.ts';
@@ -106,6 +107,14 @@ export const saveError = signal<string | null>(null);
 /** Show "Press Play to continue" prompt when paused after action */
 export const needsPlayPrompt = signal(false);
 
+/** Pending follow-up beat from an advisor choice with followUpText (Slice 6a).
+ *  Set by EventPanel after choice dispatch; cleared on "OK" dismiss. */
+export const pendingFollowUp = signal<{
+  advisorId: string;
+  title: string;
+  text: string;
+} | null>(null);
+
 // ============================================================================
 // State Publishing
 // ============================================================================
@@ -188,6 +197,13 @@ export function startNewGame(playerId: string, scenarioId?: string): void {
     _activeScenario = pickScenario();
   }
 
+  // Pick from curated seed pool for a validated event experience
+  const pool = CURATED_SEEDS[_activeScenario.id];
+  if (pool && pool.length > 0) {
+    const seed = pool[Math.floor(Math.random() * pool.length)];
+    _activeScenario = { ..._activeScenario, seed };
+  }
+
   _liveState = createInitialState(trimmed, _activeScenario);
   logSessionStart(_liveState);
   batch(() => {
@@ -199,6 +215,7 @@ export function startNewGame(playerId: string, scenarioId?: string): void {
     currentWeather.value = null;
     saveError.value = null;
     needsPlayPrompt.value = false;
+    pendingFollowUp.value = null;
     tutorialStep.value = isTutorialDismissed() ? -1 : 0;
   });
 }
@@ -218,6 +235,7 @@ export function resumeGame(): void {
     confirmDialog.value = null;
     saveError.value = null;
     needsPlayPrompt.value = false;
+    pendingFollowUp.value = null;
     tutorialStep.value = -1;
   });
 }
@@ -241,6 +259,7 @@ export function returnToTitle(): void {
     confirmDialog.value = null;
     currentWeather.value = null;
     needsPlayPrompt.value = false;
+    pendingFollowUp.value = null;
   });
 }
 
@@ -939,7 +958,7 @@ function gameLoop(now: number): void {
     };
     _liveState.speed = 0;
     _liveState.autoPauseQueue.push({
-      reason: storylet.type === 'advisor' ? 'advisor' : 'event',
+      reason: storylet.advisorId ? 'advisor' : 'event',
       message: storylet.title,
     });
     publishState();
