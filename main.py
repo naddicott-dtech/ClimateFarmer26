@@ -8,6 +8,7 @@ import time
 import json
 import os
 import logging
+import uuid
 from flask_cors import CORS 
 import gspread
 from google.oauth2 import id_token
@@ -20,7 +21,10 @@ allowed_origins = [
     "https://naddicott-dtech.github.io",
     "https://naddicott-dtech.github.io/AdaptiveQuizzer",
     "https://adaptive-quiz-nealaddicott.replit.app",
-    "https://3148987b-4847-48ff-ace5-3aa92c0ee281-00-3ixipcxti7yt6.picard.replit.dev"
+    "https://3148987b-4847-48ff-ace5-3aa92c0ee281-00-3ixipcxti7yt6.picard.replit.dev",
+    # ClimateFarmer26 local dev origins
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     # Add more authorized origins if needed
 ]
 CORS(app, resources={r"/*": {"origins": allowed_origins}})
@@ -34,6 +38,8 @@ os.makedirs("data", exist_ok=True)
 # Set up Google Sheets scope - will be used inside request contexts
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 SPREADSHEET_KEY = '1oKjU_qforobfX5lA1gMum6cLQGo0MzATmNBC6AWxB5g'  # Your Google Sheet ID
+CLIMATE_FARMER_SPREADSHEET_KEY = '11Jcmgbdf1FKF6UjPnPvMxX_qV-KVHMdqKNYIUV5u3I'
+CLIMATE_FARMER_SHEET_TITLE = 'Climate Farmer Submissions'
 
 # Initialize worksheet as None
 worksheet = None
@@ -115,6 +121,75 @@ def get_worksheet():
         import traceback
         logging.error(traceback.format_exc())
         return None
+
+def get_spreadsheet(spreadsheet_key):
+    try:
+        credentials = get_credentials()
+        if not credentials:
+            logging.error("Failed to get valid credentials")
+            return None
+
+        logging.info("Creating ServiceAccountCredentials...")
+        service_account = ServiceAccountCredentials.from_json_keyfile_dict(
+            credentials, scope)
+
+        logging.info("Authorizing gspread with credentials...")
+        gc = gspread.authorize(service_account)
+
+        logging.info(f"Opening spreadsheet with key: {spreadsheet_key}")
+        spreadsheet = gc.open_by_key(spreadsheet_key)
+        logging.info("Successfully connected to Google Sheets")
+        return spreadsheet
+    except Exception as e:
+        logging.error(f"Error opening spreadsheet: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return None
+
+def get_climate_farmer_worksheet():
+    try:
+        spreadsheet = get_spreadsheet(CLIMATE_FARMER_SPREADSHEET_KEY)
+        if not spreadsheet:
+            return None
+
+        worksheet = spreadsheet.sheet1
+        if worksheet.title != CLIMATE_FARMER_SHEET_TITLE:
+            logging.info(f"Climate Farmer submissions are using worksheet: {worksheet.title}")
+        return worksheet
+    except Exception as e:
+        logging.error(f"Error getting Climate Farmer worksheet: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return None
+
+def ensure_climate_farmer_header(worksheet):
+    try:
+        first_row = worksheet.row_values(1)
+        if first_row:
+            return
+
+        worksheet.append_row([
+            "Timestamp",
+            "Receipt ID",
+            "User Email",
+            "Player ID",
+            "Scenario ID",
+            "Score",
+            "Tier",
+            "Years Completed",
+            "Final Cash",
+            "Completion Code",
+            "Curated Seed",
+            "Financial Score",
+            "Soil Score",
+            "Diversity Score",
+            "Adaptation Score",
+            "Consistency Score",
+            "Raw Payload JSON"
+        ])
+    except Exception as e:
+        logging.error(f"Error ensuring Climate Farmer header row: {str(e)}")
+        raise
 
 @app.route('/')
 def index():
@@ -281,6 +356,81 @@ def submit_results():
         import traceback
         logging.error(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/submit_game_result', methods=['POST'])
+def submit_game_result():
+    try:
+        data = request.get_json() or {}
+        token = data.get('id_token')
+        if not token:
+            return jsonify({'success': False, 'error': 'Missing id_token'}), 400
+
+        client_id = os.environ['CLIENT_ID']
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
+        user_email = idinfo.get('email', 'unknown')
+
+        allowed_domain = os.environ.get('ALLOWED_EMAIL_DOMAIN')
+        if allowed_domain:
+            email_domain = user_email.split('@')[-1].lower() if '@' in user_email else ''
+            if email_domain != allowed_domain.lower():
+                logging.warning(f"Rejected submission from unauthorized domain: {user_email}")
+                return jsonify({'success': False, 'error': 'Unauthorized email domain'}), 403
+
+        worksheet = get_climate_farmer_worksheet()
+        sheet_updated = False
+        receipt_id = f"CF-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
+
+        if worksheet:
+            try:
+                ensure_climate_farmer_header(worksheet)
+
+                components = data.get('components', {}) or {}
+                row = [
+                    datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    receipt_id,
+                    user_email,
+                    data.get('player_id', ''),
+                    data.get('scenario_id', ''),
+                    data.get('score', ''),
+                    data.get('tier', ''),
+                    data.get('years_completed', ''),
+                    data.get('final_cash', ''),
+                    data.get('completion_code', ''),
+                    data.get('curated_seed', ''),
+                    components.get('financial', ''),
+                    components.get('soil', ''),
+                    components.get('diversity', ''),
+                    components.get('adaptation', ''),
+                    components.get('consistency', ''),
+                    json.dumps(data, separators=(',', ':'))
+                ]
+
+                worksheet.append_row(row)
+                logging.info(f"Added Climate Farmer submission for {user_email} ({receipt_id})")
+                sheet_updated = True
+            except Exception as e:
+                logging.error(f"Error appending Climate Farmer row: {str(e)}")
+                import traceback
+                logging.error(traceback.format_exc())
+                sheet_updated = False
+        else:
+            logging.warning("Climate Farmer worksheet not available, skipping spreadsheet update")
+
+        return jsonify({
+            'success': sheet_updated,
+            'sheet_updated': sheet_updated,
+            'receipt_id': receipt_id,
+            'email': user_email,
+        }), (200 if sheet_updated else 500)
+
+    except ValueError as e:
+        logging.error(f"Token verification failed for game submission: {str(e)}")
+        return jsonify({'success': False, 'error': 'Invalid token'}), 401
+    except Exception as e:
+        logging.error(f"Error processing game submission: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # For compatibility with older code
 @app.route('/api/save_results', methods=['POST'])
