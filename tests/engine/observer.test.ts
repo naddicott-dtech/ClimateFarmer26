@@ -152,6 +152,56 @@ describe('Observer — getBlockingState()', () => {
     expect(result.choices!.some(c => c.testid === 'autopause-action-primary')).toBe(true);
   });
 
+  it('returns organic-warning-panel when organic warning interstitial is showing', () => {
+    const state = makeState();
+    state.autoPauseQueue.push({ reason: 'event', message: 'Rootworm' });
+    state.activeEvent = {
+      storyletId: 'catastrophe-rootworm',
+      title: 'Rootworm Infestation',
+      description: 'Rootworm detected.',
+      choices: [
+        { id: 'emergency-treatment', label: 'Chemical treatment', description: 'Spray', effects: [] },
+        { id: 'monitor', label: 'Monitor', description: 'Wait', effects: [] },
+      ],
+      firedOnDay: 200,
+    };
+    // hasPendingOrganicWarning=true (third param)
+    const result = getBlockingState(state, false, true);
+    expect(result.blocked).toBe(true);
+    expect(result.panelTestId).toBe('organic-warning-panel');
+    expect(result.choices).toHaveLength(2);
+    expect(result.choices![0]).toEqual({ testid: 'organic-warning-proceed', label: 'Use anyway' });
+    expect(result.choices![1]).toEqual({ testid: 'organic-warning-cancel', label: 'Cancel' });
+  });
+
+  it('organic warning takes priority over normal event choices when both activeEvent and warning exist', () => {
+    const state = makeState();
+    state.autoPauseQueue.push({ reason: 'advisor', message: 'Nitrogen' });
+    state.activeEvent = {
+      storyletId: 'advisor-soil-nitrogen',
+      title: 'Nitrogen',
+      description: 'Low N.',
+      choices: [{ id: 'buy-fertilizer', label: 'Buy', description: 'Buy', effects: [] }],
+      firedOnDay: 100,
+    };
+    // Without organic warning → normal event choices
+    const normal = getBlockingState(state, false, false);
+    expect(normal.panelTestId).toBe('advisor-panel');
+    // With organic warning → warning panel
+    const warning = getBlockingState(state, false, true);
+    expect(warning.panelTestId).toBe('organic-warning-panel');
+  });
+
+  it('organic warning does not apply when no activeEvent (warning only on live event panels)', () => {
+    const state = makeState();
+    state.autoPauseQueue.push({ reason: 'event', message: 'Test' });
+    state.activeEvent = null;
+    // hasPendingOrganicWarning=true but no activeEvent → falls through
+    const result = getBlockingState(state, false, true);
+    // Should NOT be organic-warning-panel (no event to warn about)
+    expect(result.panelTestId).not.toBe('organic-warning-panel');
+  });
+
   it('returns year_end with dynamic year label', () => {
     const state = makeState();
     state.calendar.year = 3;

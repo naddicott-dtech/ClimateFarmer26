@@ -70,6 +70,13 @@ export function NewGameScreen() {
 
   return (
     <div class={styles.screen}>
+      <img
+        class={styles.heroImage}
+        src={`${import.meta.env.BASE_URL}assets/ui/title-hero_800x400.jpeg`}
+        alt="San Joaquin Valley farmland"
+        data-testid="title-hero"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
       <h1 class={styles.title}>Climate Farmer</h1>
       <p class={styles.subtitle}>
         Manage a San Joaquin Valley farm through 30 years of changing climate.

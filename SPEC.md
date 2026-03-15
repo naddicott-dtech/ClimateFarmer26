@@ -1,6 +1,6 @@
 # SPEC.md — Acceptance Tests & Requirements
 
-> **Status: Living document. Slices 1-5d implemented. Classroom-Ready Build deployed.**
+> **Status: Living document. Slices 1-6e implemented. Classroom-Ready Build deployed.**
 > Format: **When** [user action], **I should see** [expected result].
 > Negative cases use: **When** [action], **I should NOT see** [bad outcome] / **the system should** [prevent it].
 
@@ -44,7 +44,7 @@ For "Plant Row" and "Plant Column" (max 8 plots): all-or-nothing, since the cost
 For "Water Field" with insufficient cash: same pattern — round down to complete rows. "You can afford to water 5 rows (40 plots) for $200. Water 5 rows?"
 
 #### DD-2: Year 30 ending & bankruptcy
-**Year 30:** Game pauses with "You completed 30 years of farming! Final cash: $X." Simple message, no score or completion code (deferred to Slice 6).
+**Year 30:** Game pauses with endgame panel showing epilogue, food servings estimate, score breakdown (5 categories), per-category improvement hints (if applicable), advisor farewells, farm history reflection, completion code, and Google Sign-In submission option. *(Originally simple message in Slice 1; scoring added in 6d, full endgame presentation in 6e.)*
 
 **Bankruptcy:** Cash ≤ $0 is game over. The system shows a final report: what happened, what the student might try differently, and a "Start New Game" button. No emergency loans or further credit in Slice 1 (soft recovery with loans is Slice 2).
 
@@ -832,9 +832,9 @@ Five reference strategies define the difficulty curve. All targets are evaluated
 - **When** a student ignores soil health entirely (no cover crops, no fertilizer events), **they should see** OM drop below 1.5% by year 20, with visible yield drag.
 - **When** comparing two otherwise-identical strategies, one with cover crops and one without, **the cover crop strategy should** outperform by a measurable margin (≥10% higher median final cash over 30 years).
 
-### 31. Scoring & End-of-Game Evaluation — DEFERRED TO SLICE 6
+### 31. Scoring & End-of-Game Evaluation — IMPLEMENTED (Slice 6d/6e)
 
-> **Note:** Scoring formula, completion code, and Google Form integration are deferred to Slice 6. Slice 5 ships a Year-30 reflection panel using `yearSnapshots` data (narrative summary, not scored). For initial classroom use, assessment is via screenshots + bell ringer questions + classroom discussion. The spec below is retained as the design target for Slice 6.
+> **Note:** Scoring formula, completion code, and Google Sign-In submission implemented in Slice 6d. Endgame presentation (epilogue, hints, advisor farewells, food servings estimate) implemented in Slice 6e.
 
 #### 31.1 Scoring Formula
 
@@ -900,16 +900,22 @@ The end-of-game score rewards **resilient, sustainable farming** — not just ma
 
 ### Slice 4 data-testid Coverage
 
-#### Scoring & End Game — DEFERRED TO SLICE 6
-- `score-panel` — final score display container (Slice 6)
-- `score-total` — total composite score (Slice 6)
-- `score-financial` — financial stability sub-score (Slice 6)
-- `score-soil` — soil health sub-score (Slice 6)
-- `score-diversity` — crop diversity sub-score (Slice 6)
-- `score-adaptation` — climate adaptation sub-score (Slice 6)
-- `score-consistency` — consistency sub-score (Slice 6)
-- `completion-code` — completion code display (Slice 6)
-- `completion-copy` — copy code button (Slice 6)
+#### Scoring & End Game — IMPLEMENTED (Slice 6d/6e)
+- `score-panel` — final score display container
+- `score-total` — total composite score
+- `score-financial` — financial stability sub-score
+- `score-soil` — soil health sub-score
+- `score-diversity` — crop diversity sub-score
+- `score-adaptation` — climate adaptation sub-score
+- `score-consistency` — consistency sub-score
+- `completion-code` — completion code display
+- `completion-copy` — copy code button
+- `endgame-epilogue` — epilogue narrative section (6e)
+- `endgame-hints` — per-category improvement hints (6e)
+- `food-servings-callout` — human food servings estimate (6e)
+- `submit-signin-container` — Google Sign-In submission area (6d)
+- `title-hero` — title screen hero image (6e)
+- `event-illustration` — event panel illustration (6e)
 
 #### UX Improvements
 - `expense-breakdown` — year-end expense category breakdown
@@ -1073,4 +1079,4 @@ The end-of-game score rewards **resilient, sustainable farming** — not just ma
 - `sidebar-soil-k` — potassium display (when soil testing unlocked)
 - `sidebar-soil-k-hidden` — hidden K indicator ("???")
 
-*Slice 6 specs (scoring, completion code, Google Form) will be added after Slice 5 ships.*
+*Scoring, completion code, and Google Sign-In submission implemented in Slice 6d/6e. See §31 for scoring formula and acceptance tests.*

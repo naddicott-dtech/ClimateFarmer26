@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Technical Design Document (Draft)
 
-> **Status: Living document. Slices 1-5d complete. Classroom-Ready Build deployed.**
+> **Status: Living document. Slices 1-6e complete. Classroom-Ready Build deployed.**
 > Cross-references: `reference/SIMULATION_PATTERNS.md`, `reference/BackgroundDeepResearch.md`
 
 ## 1. Overview
@@ -21,7 +21,7 @@
 | Browser Tests | Playwright | Chromium-based, data-testid support |
 | CSS | CSS Modules | Scoped, zero runtime cost |
 | Hosting | GitHub Pages | Free static hosting |
-| Result Reporting | Completion code → Google Form *(Slice 6 target)* | Zero server dependency |
+| Result Reporting | Completion code + Google Sign-In submission *(Slice 6d)* | Authenticated via Google Identity Services |
 
 ## 3. Performance Budget
 
@@ -503,7 +503,7 @@ interface SaveGame {
 **Auto-save:** Every season transition (4x per year), overwriting the previous auto-save.
 **Manual save:** Player can save to named slots. Limit to 3 manual slots.
 **Resume:** On page load, detect existing save and offer to continue or start new game.
-**Completion code** *(Slice 6 target)*: Generated from final game state at year 30 (or bankruptcy). Contains player ID, score metrics, scenario ID, encoded + checksummed. Pre-fills a Google Form URL.
+**Completion code** *(Slice 6d — implemented)*: Human-readable code generated at year 30 or bankruptcy. Format: `PREFIX-SCORE-YYEARS-SCENARIO` (e.g., `NEAL-78-Y30-GW`). Screenshot-friendly backup. Authenticated submission via Google Identity Services for @dtechhs.org accounts.
 
 ## 6. Data Files Structure
 
@@ -679,9 +679,9 @@ return 1.0 - (1.0 - declineFloor) × ((yp - declineStartYear) / (endOfLifeYear -
 ### Principle: Minimize data collection. No PII required by the app.
 
 - **Player identity:** Students enter a "Player ID" — a teacher-assigned code (e.g., "Period3-14") or a self-chosen nickname. **Real names are never required.** The field label should say "Player ID" not "Name." However, **students may still enter identifiable information** (e.g., their actual name as a nickname). The app cannot prevent this, so teachers should instruct students to use assigned codes.
-- **localStorage:** All save data stays on the student's device. Nothing is transmitted anywhere unless the student voluntarily submits a completion code *(Slice 6 target)*.
-- **Completion code** *(Slice 6 target)*: Will contain the Player ID, score metrics, and scenario ID. The student will manually submit this via Google Form — it's their action to click the link.
-- **Google Form** *(Slice 6 target)*: The teacher controls the form and its data retention. The form may ask for real names separately (teacher's decision, outside our app). Our app never collects or stores real names.
+- **localStorage:** All save data stays on the student's device. Nothing is transmitted unless the student voluntarily signs in with Google and clicks "Submit Results."
+- **Completion code** *(Slice 6d — implemented)*: Contains Player ID, score, years survived, and scenario ID. Human-readable format for screenshots as backup.
+- **Google Sign-In submission** *(Slice 6d — implemented)*: Students authenticate via Google Identity Services (@dtechhs.org domain). Results POST to teacher's backend spreadsheet. The student initiates submission — it's their action to sign in and click submit. Our app never collects or stores real names.
 - **No analytics, no tracking, no cookies** beyond localStorage for save data.
 - **Regulatory note:** This app is *designed* to avoid collecting PII: it requires no accounts, stores data only on-device, and transmits nothing without explicit student action. However, **we do not assert legal compliance with COPPA, FERPA, or any other regulation.** Schools deploying this should review it under their own data governance policies. Neal should consult with his school's IT/privacy office before classroom use if required by district policy.
 
@@ -763,7 +763,7 @@ Automated headless tests that run full 30-year games with scripted strategies. T
 - "Speed set to 4x → calendar advances visibly → auto-pauses on event"
 - "Glossary link on 'Nitrogen' opens glossary panel; game is paused"
 - "Save game, reload page, resume → game state matches"
-- "Complete 30-year game → completion code generated → Google Form link works" *(Slice 6 target)*
+- "Complete 30-year game → completion code generated → Google Sign-In submission works"
 
 ### Layer 4: Performance Tests (Vitest + Playwright)
 - "Simulation tick completes in <4ms on reference hardware"
@@ -886,7 +886,17 @@ Strategic depth, competing advisors, tech branching, and climate escalation. Tra
 
 **Key systems:** Tech decisions via storylets (not separate UI). Tech level abstraction (water 0-3, soil 0-3, crop 0-2) for reconvergence. Pain-triggered offers. Hybrid reoffer policy. Persistent regime shifts via flags.
 
-**Deferred to Slice 6+:** Scoring formula + completion code + Google Form, insurance/credit systems, glossary, solar lease event chain, automation policies beyond irrigation, full tech tree UI.
+### Slice 6: Scoring & Endgame (Complete)
+Assessment, endgame presentation, and visual polish.
+
+- 6d: Scoring + submission ✅ — 5-category weighted composite scoring (financial 30%, soil 20%, diversity 20%, adaptation 20%, consistency 10%). 4 tiers (Thriving/Stable/Struggling/Failed). Human-readable completion code. Google Identity Services authentication for @dtechhs.org students. Authenticated result submission to backend spreadsheet.
+- 6e: Endgame payoff ✅ — `generateEpilogue()` (tier-dependent, scenario-flavored narrative conclusion), `generateCategoryHints()` (max 2 weakest categories below raw 60), `generateAdvisorFarewells()` (aligned/contrasting from score components), `estimateHumanFoodServings()` (derived from yearSnapshots, no new state). EndgamePanel extracted from AutoPausePanel. Title screen hero image. Event illustrations for 4 high-impact storylets (`illustrationId` on Storylet type). `humanServingsPerUnit` on CropDefinition. All art uses graceful `onError` fallback.
+
+**New engine exports (6d/6e):** `scoring.ts` — `computeScore()`, `generateEpilogue()`, `generateCategoryHints()`, `generateAdvisorFarewells()`, `estimateHumanFoodServings()`. Types: `ScoreResult`, `EpilogueData`, `CategoryHint`, `AdvisorFarewell`.
+
+**No save migration** — SAVE_VERSION remains `8.0.0`. All Slice 6 data derived on-demand from existing GameState fields.
+
+**Deferred to Slice 7+:** Insurance/credit systems, glossary, solar lease event chain, automation policies beyond irrigation, full tech tree UI.
 
 ## 14. Open Questions
 

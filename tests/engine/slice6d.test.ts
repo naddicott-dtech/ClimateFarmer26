@@ -954,39 +954,42 @@ describe('§13: Organic Price Premium', () => {
     return s;
   }
 
-  it('certified harvest yields 20% more revenue than non-certified', () => {
+  /** Extract the unit price from a harvest notification like "at $12.50/ton" */
+  function extractUnitPrice(state: GameState): number {
+    const note = state.notifications.find(n => n.message.includes('Harvested'));
+    expect(note).toBeDefined();
+    const match = note!.message.match(/at \$([0-9.]+)\//);
+    expect(match).not.toBeNull();
+    return parseFloat(match![1]);
+  }
+
+  it('certified harvest unit price is exactly ORGANIC_PRICE_PREMIUM × base', () => {
     const normalState = makeHarvestReady();
-    const cashBefore1 = normalState.economy.cash;
     harvestCell(normalState, normalState.grid[0][0]);
-    const normalRevenue = normalState.economy.cash - cashBefore1;
+    const normalPrice = extractUnitPrice(normalState);
 
     const certState = makeHarvestReady();
     certState.flags['organic_certified'] = true;
-    const cashBefore2 = certState.economy.cash;
     harvestCell(certState, certState.grid[0][0]);
-    const certRevenue = certState.economy.cash - cashBefore2;
+    const certPrice = extractUnitPrice(certState);
 
-    // Certified revenue should be ~20% higher
-    expect(normalRevenue).toBeGreaterThan(0);
-    expect(certRevenue).toBeGreaterThan(normalRevenue);
-    const ratio = certRevenue / normalRevenue;
-    expect(ratio).toBeCloseTo(ORGANIC_PRICE_PREMIUM, 1);
+    // Direct price comparison: certified price should be exactly 1.20× normal
+    expect(normalPrice).toBeGreaterThan(0);
+    expect(certPrice / normalPrice).toBeCloseTo(ORGANIC_PRICE_PREMIUM, 2);
   });
 
   it('no premium during transition (enrolled but not certified)', () => {
     const normalState = makeHarvestReady();
-    const cashBefore1 = normalState.economy.cash;
     harvestCell(normalState, normalState.grid[0][0]);
-    const normalRevenue = normalState.economy.cash - cashBefore1;
+    const normalPrice = extractUnitPrice(normalState);
 
     const transitionState = makeHarvestReady();
     transitionState.flags['organic_enrolled'] = true;
-    const cashBefore2 = transitionState.economy.cash;
     harvestCell(transitionState, transitionState.grid[0][0]);
-    const transitionRevenue = transitionState.economy.cash - cashBefore2;
+    const transitionPrice = extractUnitPrice(transitionState);
 
-    // No premium during transition — same revenue as non-organic
-    expect(transitionRevenue).toBeCloseTo(normalRevenue, 0);
+    // No premium during transition — same unit price as non-organic
+    expect(transitionPrice).toBeCloseTo(normalPrice, 2);
   });
 });
 

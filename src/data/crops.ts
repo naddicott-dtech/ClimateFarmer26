@@ -35,10 +35,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 250,  // lbs/acre — very heavy K feeder
 
     yieldPotential: 45,    // tons/acre
-    yieldUnit: 'tons',
+    yieldUnit: 'ton',
     basePrice: 80,         // $/ton
     seedCostPerAcre: 150,
     laborCostPerAcre: 200,
+    humanServingsPerUnit: 2000, // ~4 lbs per serving, canned tomatoes
 
     heatSensitivity: 0.75, // 25% yield loss under heat regime (fruit set damage)
 
@@ -69,10 +70,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 150,  // lbs/acre — moderate K feeder
 
     yieldPotential: 30,    // tons/acre
-    yieldUnit: 'tons',
+    yieldUnit: 'ton',
     basePrice: 55,         // $/ton
     seedCostPerAcre: 100,
     laborCostPerAcre: 80,
+    humanServingsPerUnit: 0, // livestock feed, not direct human food
 
     heatSensitivity: 0.85, // 15% yield loss under heat regime (pollination stress)
 
@@ -107,6 +109,7 @@ export const CROPS: Record<string, CropDefinition> = {
     basePrice: 7,          // $/bushel
     seedCostPerAcre: 50,
     laborCostPerAcre: 40,
+    humanServingsPerUnit: 42, // ~42 loaves per bushel
 
     heatSensitivity: 0.90, // 10% yield loss under heat regime (mild impact)
 
@@ -143,6 +146,7 @@ export const CROPS: Record<string, CropDefinition> = {
     basePrice: 6,          // $/bushel → $660/acre
     seedCostPerAcre: 35,
     laborCostPerAcre: 45,
+    humanServingsPerUnit: 10, // mostly livestock; some human use
 
     // No heatSensitivity — sorghum is heat-tolerant (C4 photosynthesis)
 
@@ -175,10 +179,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 100,  // lbs/acre — moderate K feeder
 
     yieldPotential: 2500,  // lbs/acre
-    yieldUnit: 'lbs',
+    yieldUnit: 'lb',
     basePrice: 2.50,       // $/lb
     seedCostPerAcre: 960,  // establishment cost (high)
     laborCostPerAcre: 300,
+    humanServingsPerUnit: 6, // ~23 almonds = 1 serving, ~6/lb
 
     yearsToEstablish: 3,
     removalCost: 500,
@@ -217,10 +222,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 90,   // lbs/acre — moderate K feeder
 
     yieldPotential: 2200,  // lbs/acre
-    yieldUnit: 'lbs',
+    yieldUnit: 'lb',
     basePrice: 2.80,       // $/lb
     seedCostPerAcre: 900,
     laborCostPerAcre: 280,
+    humanServingsPerUnit: 6, // similar to almonds
 
     yearsToEstablish: 4,
     removalCost: 450,
@@ -261,10 +267,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 120,  // lbs/acre — moderate-high K feeder (fruit quality)
 
     yieldPotential: 350,   // boxes/acre
-    yieldUnit: 'boxes',
+    yieldUnit: 'box',
     basePrice: 14,         // $/box → $4,900/acre
     seedCostPerAcre: 800,  // establishment cost
     laborCostPerAcre: 250,
+    humanServingsPerUnit: 100, // ~100 oranges per box
 
     yearsToEstablish: 3,
     removalCost: 400,
@@ -307,10 +314,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 30,   // lbs/acre — minimal K needs
 
     yieldPotential: 20,    // tons/acre (hearts/piñas)
-    yieldUnit: 'tons',
+    yieldUnit: 'ton',
     basePrice: 120,        // $/ton → $2,400/acre
     seedCostPerAcre: 600,  // establishment (pups/offsets)
     laborCostPerAcre: 350, // harvest labor-intensive
+    humanServingsPerUnit: 500, // syrup servings, approximate
 
     yearsToEstablish: 5,
     removalCost: 200,
@@ -352,10 +360,11 @@ export const CROPS: Record<string, CropDefinition> = {
     potassiumUptake: 70,
 
     yieldPotential: 8000,         // lbs/acre
-    yieldUnit: 'lbs',
+    yieldUnit: 'lb',
     basePrice: 1.20,              // $/lb → ~$9,600/acre potential
     seedCostPerAcre: 1200,        // high establishment
     laborCostPerAcre: 400,
+    humanServingsPerUnit: 2, // ~1/3 avocado per serving
 
     yearsToEstablish: 4,
     removalCost: 600,

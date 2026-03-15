@@ -1,19 +1,13 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import {
   autoPauseQueue, handleDismissAutoPause, declineLoan,
   harvestBulk, waterBulk, returnToTitle,
   gameState, dispatch, pendingFollowUp,
 } from '../../adapter/signals.ts';
-import type { AutoPauseEvent, GameState } from '../../engine/types.ts';
-import { STARTING_CASH } from '../../engine/types.ts';
-import { buildReflectionData } from '../../engine/game.ts';
-import { getCropDefinition } from '../../data/crops.ts';
+import type { AutoPauseEvent } from '../../engine/types.ts';
 import { EventPanel } from './EventPanel.tsx';
+import { EndgamePanel } from './EndgamePanel.tsx';
 import styles from '../styles/Overlay.module.css';
-import { computeScore } from '../../engine/scoring.ts';
-import type { ScoreResult } from '../../engine/scoring.ts';
-import { getSession, renderSignInButton, submitGameResult } from '../../auth.ts';
-import type { SubmissionPayload } from '../../auth.ts';
 
 export function AutoPausePanel() {
   const queue = autoPauseQueue.value;
@@ -93,7 +87,7 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
     handleDismissAutoPause();
   }
 
-  const config = getEventConfig(event, state);
+  const config = getEventConfig(event);
 
   // Conditional data-testids per SPEC §11 + §14
   const panelTestId =
@@ -110,23 +104,21 @@ function AutoPauseOverlay({ event }: { event: AutoPauseEvent }) {
     event.reason === 'loan_offer' ? 'loan-accept' :
     'autopause-action-primary';
 
+  const isEndgame = event.reason === 'bankruptcy' || event.reason === 'year_30';
+
   return (
     <div class={styles.overlay} data-testid={panelTestId} role="alertdialog" aria-label={config.title}>
       <div class={`${styles.panel} ${config.wide ? styles.panelWide : ''}`} ref={panelRef}>
-        <h2 class={styles.title}>{config.title}</h2>
-        <div class={styles.message}>{event.message}</div>
-
-        {config.summaryData && <YearEndTable data={config.summaryData} />}
-
-        {config.scoreResult && state && (
-          <ScorePanel scoreResult={config.scoreResult} state={state} />
-        )}
-
-        {config.report && (
-          <div data-testid="gameover-report" class={styles.report}>{config.report}</div>
-        )}
-        {config.suggestion && (
-          <div class={styles.suggestion}>{config.suggestion}</div>
+        {isEndgame && state ? (
+          // Endgame: delegate to EndgamePanel for full layout
+          <EndgamePanel state={state} />
+        ) : (
+          // Non-endgame: standard layout
+          <>
+            <h2 class={styles.title}>{config.title}</h2>
+            <div class={styles.message}>{event.message}</div>
+            {config.summaryData && <YearEndTable data={config.summaryData} />}
+          </>
         )}
 
         <div class={styles.buttonRow}>
@@ -158,9 +150,6 @@ interface EventConfig {
   secondaryLabel?: string;
   wide?: boolean;
   summaryData?: YearEndData;
-  report?: string;
-  suggestion?: string;
-  scoreResult?: ScoreResult;
 }
 
 interface ExpenseLineItem {
@@ -179,7 +168,9 @@ interface YearEndData {
   insurancePayouts?: number;
 }
 
-function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types.ts').GameState | null): EventConfig {
+function getEventConfig(event: AutoPauseEvent): EventConfig {
+  const state = gameState.value;
+
   switch (event.reason) {
     case 'harvest_ready':
       return {
@@ -233,27 +224,19 @@ function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types
       };
     }
 
-    case 'bankruptcy': {
-      const suggestion = getSuggestion(state);
+    case 'bankruptcy':
       return {
-        title: `Game Over \u2014 Your Farm Reached Year ${state?.calendar.year ?? '?'}`,
+        title: `Game Over`,
         primaryLabel: 'Start New Game',
         wide: true,
-        report: state ? buildReflectionSummary(state) : undefined,
-        suggestion,
-        scoreResult: state ? computeScore(state) : undefined,
       };
-    }
 
-    case 'year_30': {
+    case 'year_30':
       return {
         title: 'Congratulations!',
         primaryLabel: 'Start New Game',
         wide: true,
-        report: state ? buildReflectionSummary(state) : undefined,
-        scoreResult: state ? computeScore(state) : undefined,
       };
-    }
 
     case 'loan_offer': {
       const data = event.data as Record<string, number> | undefined;
@@ -287,65 +270,6 @@ function getEventConfig(event: AutoPauseEvent, state: import('../../engine/types
     default:
       return { title: 'Paused', primaryLabel: 'Continue' };
   }
-}
-
-function getSuggestion(state: import('../../engine/types.ts').GameState | null): string {
-  if (!state) return 'Try a different strategy next time.';
-
-  // Simple heuristic suggestions
-  const avgN = state.grid.flat().reduce((sum, c) => sum + c.soil.nitrogen, 0) / 64;
-  if (avgN < 30) {
-    return 'Tip: Your soil nitrogen was very low. Try rotating crops \u2014 plant winter wheat after tomatoes to give the soil a break.';
-  }
-
-  const avgMoisture = state.grid.flat().reduce((sum, c) => sum + c.soil.moisture, 0) / 64;
-  if (avgMoisture < 1) {
-    return 'Tip: Your crops were very thirsty. Try watering more often during hot summer months.';
-  }
-
-  return 'Tip: Consider diversifying your crops and watching your expenses carefully.';
-}
-
-function buildReflectionSummary(state: import('../../engine/types.ts').GameState): string {
-  const ref = buildReflectionData(state);
-  const lines: string[] = [];
-
-  // Financial
-  const startCash = STARTING_CASH;
-  const finalCash = Math.floor(state.economy.cash);
-  lines.push(`Starting cash: $${startCash.toLocaleString()}. Final cash: $${finalCash.toLocaleString()}.`);
-
-  if (ref.financialArc.length > 0) {
-    const totalRevenue = ref.financialArc.reduce((sum, y) => sum + y.revenue, 0);
-    lines.push(`Total revenue across all years: $${Math.floor(totalRevenue).toLocaleString()}.`);
-
-    const bestYear = ref.financialArc.reduce((best, y) => y.revenue > best.revenue ? y : best);
-    if (bestYear.revenue > 0) {
-      lines.push(`Best year: Year ${bestYear.year} ($${Math.floor(bestYear.revenue).toLocaleString()} revenue).`);
-    }
-  }
-
-  // Soil
-  const trendText = ref.soilTrend === 'improved' ? 'Soil health improved over the game.'
-    : ref.soilTrend === 'declined' ? 'Soil health declined over the game.'
-    : 'Soil health was maintained.';
-  lines.push(trendText);
-
-  // Decisions
-  if (ref.decisions.length > 0) {
-    const labels = ref.decisions.map(d => d.label);
-    lines.push(`Technologies and events: ${labels.join(', ')}.`);
-  }
-
-  // Crop diversity
-  if (ref.diversity.uniqueCount > 0) {
-    const names = ref.diversity.cropsGrown.map(id => {
-      try { return getCropDefinition(id).name; } catch { return id; }
-    });
-    lines.push(`Crops grown: ${names.join(', ')} (${ref.diversity.uniqueCount} varieties).`);
-  }
-
-  return lines.join('\n');
 }
 
 function YearEndTable({ data }: { data: YearEndData }) {
@@ -388,153 +312,5 @@ function YearEndTable({ data }: { data: YearEndData }) {
         </tr>
       </tbody>
     </table>
-  );
-}
-
-function ScorePanel({ scoreResult, state }: { scoreResult: ScoreResult; state: GameState }) {
-  const [subState, setSubState] = useState<'idle' | 'signed_in' | 'submitting' | 'success' | 'error'>(
-    () => getSession() ? 'signed_in' : 'idle',
-  );
-  const [receipt, setReceipt] = useState<{ receiptId: string; email: string } | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [gisError, setGisError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const signinRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (subState !== 'idle' || !signinRef.current || gisError) return;
-    renderSignInButton(
-      signinRef.current,
-      () => setSubState('signed_in'),
-      (msg) => setGisError(msg),
-    );
-  }, [subState, gisError]);
-
-  async function handleSubmit() {
-    const session = getSession();
-    if (!session) {
-      setSubState('idle');
-      return;
-    }
-    setSubState('submitting');
-    const payload: SubmissionPayload = {
-      id_token: session.idToken,
-      player_id: state.playerId,
-      scenario_id: state.scenarioId,
-      score: Math.round(scoreResult.total),
-      tier: scoreResult.tier.toLowerCase(),
-      years_completed: scoreResult.yearsSurvived,
-      final_cash: Math.round(state.economy.cash),
-      completion_code: scoreResult.completionCode,
-      curated_seed: state.curatedSeed ?? 0,
-      components: {
-        financial: scoreResult.components.find(c => c.id === 'financial')!.weighted,
-        soil: scoreResult.components.find(c => c.id === 'soil')!.weighted,
-        diversity: scoreResult.components.find(c => c.id === 'diversity')!.weighted,
-        adaptation: scoreResult.components.find(c => c.id === 'adaptation')!.weighted,
-        consistency: scoreResult.components.find(c => c.id === 'consistency')!.weighted,
-      },
-    };
-    const result = await submitGameResult(payload);
-    if (result.success) {
-      setReceipt({ receiptId: result.receipt_id!, email: result.email! });
-      setSubState('success');
-    } else {
-      setSubmitError(result.error ?? 'Unknown error');
-      setSubState('error');
-    }
-  }
-
-  function handleCopy() {
-    navigator.clipboard.writeText(scoreResult.completionCode).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  const tierClass = scoreResult.tier === 'Thriving' ? styles.tierThriving
-    : scoreResult.tier === 'Stable' ? styles.tierStable
-      : scoreResult.tier === 'Struggling' ? styles.tierStruggling
-        : styles.tierFailed;
-
-  return (
-    <div class={styles.scorePanel} data-testid="score-panel">
-      <div class={`${styles.tierBadge} ${tierClass}`}>
-        Farm Resilience: {scoreResult.tier}
-      </div>
-
-      <table class={styles.scoreTable}>
-        <tbody>
-          {scoreResult.components.map(c => (
-            <tr key={c.id}>
-              <td>
-                <div class={styles.scoreLabel}>{c.label}</div>
-                <div class={styles.scoreExplanation}>{c.explanation}</div>
-              </td>
-              <td class={styles.scoreValue} data-testid={`score-${c.id}`}>
-                {c.weighted}<span class={styles.scoreMax}>/{Math.round(c.weight * 100)}</span>
-              </td>
-            </tr>
-          ))}
-          <tr class={styles.scoreTotalRow}>
-            <td>Total Score</td>
-            <td class={styles.scoreValue} data-testid="score-total">
-              {scoreResult.total}<span class={styles.scoreMax}>/100</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class={styles.completionCodeBox}>
-        <span class={styles.completionCodeLabel}>Completion Code:</span>
-        <code class={styles.completionCode} data-testid="completion-code">
-          {scoreResult.completionCode}
-        </code>
-        <button class={styles.copyBtn} data-testid="completion-copy" onClick={handleCopy}>
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
-      </div>
-
-      <div class={styles.submissionArea} data-testid="submit-signin-container">
-        {subState === 'idle' && (
-          <>
-            <p class={styles.submissionPrompt}>
-              d.tech students: Sign in with your school Google account to submit results
-            </p>
-            <p class={styles.mutedNote}>Score submission is for d.tech HS students only</p>
-            {gisError ? (
-              <p class={styles.submissionError}>{gisError}</p>
-            ) : (
-              <div ref={signinRef} class={styles.signinContainer} />
-            )}
-          </>
-        )}
-        {subState === 'signed_in' && (
-          <>
-            <p class={styles.submissionPrompt}>Signed in as {getSession()?.email}</p>
-            <button class={styles.primaryBtn} data-testid="submit-button" onClick={handleSubmit}>
-              Submit Results
-            </button>
-          </>
-        )}
-        {subState === 'submitting' && (
-          <p class={styles.submissionPrompt}>Submitting results...</p>
-        )}
-        {subState === 'success' && receipt && (
-          <div data-testid="submit-receipt">
-            <p class={styles.submissionSuccess}>Results submitted! Receipt: {receipt.receiptId}</p>
-            <p class={styles.mutedNote}>Submitted as: {receipt.email}</p>
-          </div>
-        )}
-        {subState === 'error' && (
-          <div data-testid="submit-error">
-            <p class={styles.submissionError}>
-              Submission failed: {submitError}. Your completion code is saved above.
-            </p>
-            <button class={styles.secondaryBtn} onClick={handleSubmit}>Retry</button>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

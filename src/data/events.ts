@@ -17,6 +17,7 @@ export const STORYLETS: readonly Storylet[] = [
   {
     id: 'heatwave-advisory',
     type: 'climate',
+    illustrationId: 'event-heatwave',
     title: 'Heatwave Advisory',
     description: 'The National Weather Service has issued a heatwave advisory for the San Joaquin Valley. Temperatures are expected to exceed 110°F for the next several days. Your crops are at risk.',
     preconditions: [
@@ -172,6 +173,7 @@ export const STORYLETS: readonly Storylet[] = [
   {
     id: 'groundwater-pumping-ban',
     type: 'regulatory',
+    illustrationId: 'event-water-restriction',
     title: 'Groundwater Pumping Ban',
     description: 'The state has imposed an emergency ban on groundwater pumping in your district due to critically low aquifer levels. You must decide how to handle the next 30 days without well water.',
     preconditions: [
@@ -1324,6 +1326,7 @@ export const STORYLETS: readonly Storylet[] = [
   {
     id: 'catastrophe-rootworm',
     type: 'climate' as const,
+    illustrationId: 'event-rootworm',
     title: 'Rootworm Outbreak',
     description: 'Western corn rootworm has been detected in your fields. The larvae are feeding on corn roots, and without intervention, you\'ll lose a significant portion of your crop. The longer you wait, the worse the damage.',
     preconditions: [
@@ -1460,6 +1463,7 @@ export const STORYLETS: readonly Storylet[] = [
   {
     id: 'catastrophe-orchard-disease',
     type: 'climate' as const,
+    illustrationId: 'event-orchard-disease',
     title: 'Orchard Disease Outbreak',
     description: 'A bacterial pathogen has been confirmed in orchards near yours. Several of your trees are showing symptoms — leaf scorch, branch dieback, and fruit drop. Without aggressive management, you could lose entire blocks of trees.',
     preconditions: [

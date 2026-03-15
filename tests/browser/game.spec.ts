@@ -2440,3 +2440,334 @@ test.describe('Planting Window Auto-Pause', () => {
     await expect(page.getByTestId('setting-auto-pause-planting')).toBeChecked();
   });
 });
+
+// ==========================================================================
+// §21 — Organic Violation Warning Interstitial
+// ==========================================================================
+
+test.describe('Organic Violation Warning', () => {
+  test('warning appears for prohibited choice when organic-enrolled (transition text)', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Enroll in organic (not yet certified) and trigger nitrogen advisor
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setFlag('organic_enrolled', true);
+      d.setCash(5000);
+      d.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // The prohibited choice should show a danger badge
+    await expect(page.getByTestId('organic-violation-warning')).toBeVisible();
+
+    // Click the prohibited choice — warning interstitial should appear
+    await page.getByTestId('advisor-choice-buy-fertilizer').click();
+    await expect(page.getByTestId('organic-warning-panel')).toBeVisible();
+
+    // Should show transition text (enrolled, not certified)
+    await expect(page.getByTestId('organic-warning-title')).toContainText('Organic Transition at Risk');
+    await expect(page.getByTestId('organic-warning-text')).toContainText('reset your organic transition');
+  });
+
+  test('warning shows certified text when organic_certified', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Fully certified
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setFlag('organic_enrolled', true);
+      d.setFlag('organic_certified', true);
+      d.setCash(5000);
+      d.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+    await page.getByTestId('advisor-choice-buy-fertilizer').click();
+    await expect(page.getByTestId('organic-warning-panel')).toBeVisible();
+
+    // Should show certification text
+    await expect(page.getByTestId('organic-warning-title')).toContainText('Organic Certification at Risk');
+    await expect(page.getByTestId('organic-warning-text')).toContainText('revoke your organic certification');
+  });
+
+  test('Cancel returns to event panel without executing choice', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setFlag('organic_enrolled', true);
+      d.setCash(5000);
+      d.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // Capture cash before
+    const cashBefore = await page.getByTestId('topbar-cash').textContent();
+
+    // Click prohibited choice → warning → cancel
+    await page.getByTestId('advisor-choice-buy-fertilizer').click();
+    await expect(page.getByTestId('organic-warning-panel')).toBeVisible();
+    await page.getByTestId('organic-warning-cancel').click();
+
+    // Warning should disappear, original event panel should still be visible
+    await expect(page.getByTestId('organic-warning-panel')).not.toBeVisible();
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // Cash should be unchanged (choice was not executed)
+    const cashAfter = await page.getByTestId('topbar-cash').textContent();
+    expect(cashAfter).toBe(cashBefore);
+  });
+
+  test('Use anyway executes the choice and dismisses', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setFlag('organic_enrolled', true);
+      d.setCash(5000);
+      d.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // Click prohibited choice → warning → proceed
+    await page.getByTestId('advisor-choice-buy-fertilizer').click();
+    await expect(page.getByTestId('organic-warning-panel')).toBeVisible();
+    await page.getByTestId('organic-warning-proceed').click();
+
+    // Warning and event panel should both be gone (choice executed)
+    // buy-fertilizer has followUpText, so follow-up panel should appear
+    await expect(page.getByTestId('organic-warning-panel')).not.toBeVisible();
+    await expect(page.getByTestId('follow-up-panel')).toBeVisible();
+
+    // Dismiss follow-up
+    await page.getByTestId('follow-up-dismiss').click();
+    await expect(page.getByTestId('follow-up-panel')).not.toBeVisible();
+  });
+
+  test('observer reports organic-warning-panel when warning is showing', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setFlag('organic_enrolled', true);
+      d.setCash(5000);
+      d.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // Before clicking prohibited choice — observer should show advisor panel
+    const beforeWarning = await page.evaluate(() =>
+      (window as Record<string, any>).__gameDebug.getBlockingState()
+    );
+    expect(beforeWarning.panelTestId).toBe('advisor-panel');
+
+    // Click prohibited choice to trigger warning
+    await page.getByTestId('advisor-choice-buy-fertilizer').click();
+    await expect(page.getByTestId('organic-warning-panel')).toBeVisible();
+
+    // Observer should now report organic-warning-panel
+    // Poll because useEffect syncing pendingOrganicWarning fires asynchronously after render
+    const duringWarning = await page.waitForFunction(() => {
+      const bs = (window as Record<string, any>).__gameDebug.getBlockingState();
+      return bs.panelTestId === 'organic-warning-panel' ? bs : null;
+    }, null, { timeout: 3000 });
+    const duringWarningValue = await duringWarning.jsonValue() as Record<string, unknown>;
+    expect(duringWarningValue.panelTestId).toBe('organic-warning-panel');
+    expect(duringWarningValue.choices).toEqual([
+      { testid: 'organic-warning-proceed', label: 'Use anyway' },
+      { testid: 'organic-warning-cancel', label: 'Cancel' },
+    ]);
+
+    // Cancel and verify observer goes back to advisor panel
+    await page.getByTestId('organic-warning-cancel').click();
+    // Poll because useEffect cleanup fires asynchronously after render
+    const afterCancel = await page.waitForFunction(() => {
+      const bs = (window as Record<string, any>).__gameDebug.getBlockingState();
+      return bs.panelTestId === 'advisor-panel' ? bs : null;
+    }, null, { timeout: 3000 });
+    const afterCancelValue = await afterCancel.jsonValue() as Record<string, unknown>;
+    expect(afterCancelValue.panelTestId).toBe('advisor-panel');
+  });
+
+  test('no warning appears for non-organic player on same prohibited choice', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // No organic flags — just trigger the event
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setCash(5000);
+      d.triggerEvent('advisor-soil-nitrogen');
+    });
+
+    await expect(page.getByTestId('advisor-panel')).toBeVisible();
+
+    // No danger badge should be visible
+    await expect(page.getByTestId('organic-violation-warning')).not.toBeVisible();
+
+    // Click prohibited choice — should execute directly (no warning)
+    await page.getByTestId('advisor-choice-buy-fertilizer').click();
+
+    // Should go straight to follow-up (buy-fertilizer has followUpText)
+    await expect(page.getByTestId('organic-warning-panel')).not.toBeVisible();
+    await expect(page.getByTestId('follow-up-panel')).toBeVisible();
+  });
+});
+
+// ==========================================================================
+// §22 — Slice 6e: Endgame Panel
+// ==========================================================================
+
+test.describe('Endgame Panel', () => {
+  test('year-30 panel shows epilogue, food servings, score, and completion code', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Give enough cash to survive 30 years, then fast-forward
+    // fastForward stops on random events — loop, clear events, continue
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setCash(500000);
+      let result = 'done';
+      while (result !== 'gameover') {
+        result = d.fastForward(999999);
+        if (result === 'event') {
+          // Clear the event and its auto-pause so fastForward can continue
+          const state = d.getState();
+          if (state.activeEvent) {
+            state.activeEvent = null;
+          }
+          state.autoPauseQueue.length = 0;
+          state.speed = 4;
+        }
+      }
+    });
+
+    await expect(page.getByTestId('year30-panel')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('endgame-epilogue')).toBeVisible();
+    await expect(page.getByTestId('food-servings-callout')).toBeVisible();
+    await expect(page.getByTestId('score-panel')).toBeVisible();
+    await expect(page.getByTestId('score-total')).toBeVisible();
+    await expect(page.getByTestId('completion-code')).toBeVisible();
+    await expect(page.getByTestId('gameover-report')).toBeVisible();
+    await expect(page.getByTestId('year30-new-game')).toBeVisible();
+  });
+
+  test('bankruptcy panel shows epilogue, food servings, and score', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Force bankruptcy
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setCash(0);
+    });
+
+    await page.getByTestId('speed-play').click();
+    await expect(page.getByTestId('loan-panel')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('autopause-dismiss').click();
+
+    await expect(page.getByTestId('gameover-panel')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('endgame-epilogue')).toBeVisible();
+    await expect(page.getByTestId('food-servings-callout')).toBeVisible();
+    await expect(page.getByTestId('score-panel')).toBeVisible();
+    await expect(page.getByTestId('gameover-report')).toBeVisible();
+    await expect(page.getByTestId('gameover-new-game')).toBeVisible();
+  });
+
+  test('completion-code copy button works after extraction into EndgamePanel', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setCash(500000);
+      let result = 'done';
+      while (result !== 'gameover') {
+        result = d.fastForward(999999);
+        if (result === 'event') {
+          const state = d.getState();
+          if (state.activeEvent) state.activeEvent = null;
+          state.autoPauseQueue.length = 0;
+          state.speed = 4;
+        }
+      }
+    });
+
+    await expect(page.getByTestId('year30-panel')).toBeVisible({ timeout: 5000 });
+
+    // Code should be visible and non-empty
+    const code = await page.getByTestId('completion-code').textContent();
+    expect(code).toBeTruthy();
+    expect(code!.length).toBeGreaterThan(5);
+
+    // Copy button should exist and be clickable
+    const copyBtn = page.getByTestId('completion-copy');
+    await expect(copyBtn).toBeVisible();
+    await expect(copyBtn).toHaveText('Copy');
+
+    // Grant clipboard permissions and verify copy feedback
+    await page.context().grantPermissions(['clipboard-write', 'clipboard-read']);
+    await copyBtn.click();
+    await expect(copyBtn).toHaveText('Copied!', { timeout: 3000 });
+  });
+
+  test('short viewport: all endgame elements reachable by scrolling', async ({ page }) => {
+    // Simulate a short viewport (768px height, typical Chromebook)
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    await page.evaluate(() => {
+      const d = (window as Record<string, any>).__gameDebug;
+      d.setCash(500000);
+      let result = 'done';
+      while (result !== 'gameover') {
+        result = d.fastForward(999999);
+        if (result === 'event') {
+          const state = d.getState();
+          if (state.activeEvent) state.activeEvent = null;
+          state.autoPauseQueue.length = 0;
+          state.speed = 4;
+        }
+      }
+    });
+
+    await expect(page.getByTestId('year30-panel')).toBeVisible({ timeout: 5000 });
+
+    // Key elements must be reachable by scrolling within the panel
+    // scrollIntoViewIfNeeded makes them visible if they're in a scrollable container
+    for (const testId of ['completion-code', 'submit-signin-container', 'year30-new-game']) {
+      const el = page.getByTestId(testId);
+      await el.scrollIntoViewIfNeeded();
+      await expect(el).toBeVisible();
+    }
+  });
+
+  test('title screen renders hero image', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('title-hero')).toBeVisible();
+  });
+
+  test('illustrated storylet renders event illustration', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Trigger heatwave-advisory (has illustrationId: 'event-heatwave')
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.triggerEvent('heatwave-advisory');
+    });
+
+    await expect(page.getByTestId('event-panel')).toBeVisible();
+    await expect(page.getByTestId('event-illustration')).toBeVisible();
+  });
+});

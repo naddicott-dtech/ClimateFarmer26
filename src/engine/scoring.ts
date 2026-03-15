@@ -9,6 +9,8 @@
 
 import type { GameState } from './types.ts';
 import { GRID_ROWS, GRID_COLS } from './types.ts';
+import { STORYLETS } from '../data/events.ts';
+import { CROPS } from '../data/crops.ts';
 
 // ============================================================================
 // Types
@@ -332,4 +334,264 @@ export function encodeCompletionCode(
   const scenario = SCENARIO_ABBREV[scenarioId] ?? 'XX';
 
   return `${prefix}-${clampedScore}-Y${clampedYears}-${scenario}`;
+}
+
+// ============================================================================
+// Epilogue & Endgame Functions (Slice 6e)
+// ============================================================================
+
+export interface EpilogueData {
+  headline: string;
+  narrative: string;
+  bridge: string;
+}
+
+export interface CategoryHint {
+  categoryId: string;
+  label: string;
+  text: string;
+}
+
+export interface AdvisorFarewell {
+  advisorId: string;
+  name: string;
+  message: string;
+  alignment: 'aligned' | 'contrasting';
+}
+
+// --- Epilogue ---
+
+const TIER_HEADLINES: Record<ScoreResult['tier'], string> = {
+  Thriving: 'A Farm That Thrived',
+  Stable: 'A Farm That Endured',
+  Struggling: 'A Farm Under Strain',
+  Failed: 'A Hard Lesson',
+};
+
+const SCENARIO_FLAVOR: Record<string, string> = {
+  'gradual-warming': 'temperatures climbed year after year, and every season demanded a little more',
+  'early-drought': 'drought struck early and stayed long, testing every decision from the start',
+  'whiplash': 'the weather whipped between extremes — floods one year, drought the next',
+  'late-escalation': 'the first years felt gentle, but the climate shifted hard when it mattered most',
+  'mild-baseline': 'conditions were relatively forgiving, leaving room for the choices that shaped your farm',
+};
+
+const TIER_NARRATIVES: Record<ScoreResult['tier'], (years: number, scenarioFlavor: string) => string> = {
+  Thriving: (years, flavor) =>
+    `Over ${years} years, ${flavor}. But your farm adapted, diversified, and grew stronger. The land is healthier now than when you started.`,
+  Stable: (years, flavor) =>
+    `Over ${years} years, ${flavor}. Your farm bent but didn't break. There were hard seasons, but you found a way through each one.`,
+  Struggling: (years, flavor) =>
+    `Over ${years} years, ${flavor}. It wasn't easy, and your farm felt the strain. Some years were better than others, but the pressure never fully let up.`,
+  Failed: (years, flavor) =>
+    `Over ${years} years, ${flavor}. Farming is hard, and the climate made it harder. Not every farm survives — but every attempt teaches something.`,
+};
+
+const TIER_BRIDGES: Record<ScoreResult['tier'], string> = {
+  Thriving: 'Your score reflects a farm built to last — resilient, productive, and adapted to a changing climate.',
+  Stable: 'Your score reflects a farm that weathered real challenges. There\'s room to grow, but the foundation is solid.',
+  Struggling: 'Your score reflects the difficulty of farming through climate change. Small changes in strategy can make a big difference.',
+  Failed: 'Your score reflects how unforgiving farming can be when conditions shift. The question isn\'t whether you failed — it\'s what you\'d try next time.',
+};
+
+export function generateEpilogue(score: ScoreResult, state: GameState): EpilogueData {
+  const tier = score.tier;
+  const years = score.yearsSurvived;
+  const scenarioFlavor = SCENARIO_FLAVOR[state.scenarioId] ?? 'the climate brought challenges that tested every decision';
+
+  let narrative = TIER_NARRATIVES[tier](years, scenarioFlavor);
+
+  // Bankruptcy override — reflective, not punitive
+  if (state.gameOverReason === 'bankruptcy') {
+    narrative = `Your farm ran for ${years} years before the money ran out. ${scenarioFlavor.charAt(0).toUpperCase() + scenarioFlavor.slice(1)}. Not every farm makes it — but understanding why is the first step toward a different outcome.`;
+  }
+
+  return {
+    headline: TIER_HEADLINES[tier],
+    narrative,
+    bridge: TIER_BRIDGES[tier],
+  };
+}
+
+// --- Per-Category Hints ---
+
+const HINT_TEMPLATES: Record<string, (state: GameState) => string> = {
+  financial: (state) => {
+    const cash = state.economy.cash;
+    if (cash <= 0) {
+      return 'Your farm went bankrupt. Balancing expenses with revenue is critical — consider lower-cost crops or reducing irrigation costs with drought-tolerant varieties.';
+    }
+    return 'Revenue didn\'t keep pace with expenses. Diversifying income sources and managing costs — especially irrigation and seed — can stabilize a farm\'s finances.';
+  },
+  soil: (state) => {
+    let totalOM = 0;
+    let cellCount = 0;
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        totalOM += state.grid[r][c].soil.organicMatter;
+        cellCount++;
+      }
+    }
+    const avgOM = cellCount > 0 ? (totalOM / cellCount).toFixed(1) : '0.0';
+    return `Your soil organic matter averaged ${avgOM}% — healthy soil starts at 2.0%. Cover crops and crop rotation help rebuild what intensive farming takes away.`;
+  },
+  diversity: () =>
+    'Your farm relied on too few crops. When conditions change — drought, pests, market shifts — a diverse farm has fallback options that a monoculture doesn\'t.',
+  adaptation: () =>
+    'Your farm didn\'t adapt enough to changing conditions. Adopting drought-tolerant crops, cover crops, and new technologies helps a farm stay ahead of climate shifts.',
+  consistency: () =>
+    'Your income swung widely from year to year. Perennial crops, cover crops, and diversified planting can smooth out the boom-and-bust cycle.',
+};
+
+export function generateCategoryHints(score: ScoreResult, state: GameState): CategoryHint[] {
+  const weak = score.components
+    .filter(c => c.raw < 60)
+    .sort((a, b) => a.raw - b.raw);
+
+  return weak.slice(0, 2).map(c => ({
+    categoryId: c.id,
+    label: c.label,
+    text: HINT_TEMPLATES[c.id](state),
+  }));
+}
+
+// --- Advisor Farewells ---
+
+const ADVISOR_SCORE_MAP: Record<string, ScoreComponent['id']> = {
+  'extension-agent': 'soil',
+  'farm-credit': 'financial',
+  'weather-service': 'adaptation',
+  'growers-forum': 'consistency',
+};
+
+const ADVISOR_NAMES: Record<string, string> = {
+  'extension-agent': 'Santos',
+  'farm-credit': 'Chen',
+  'weather-service': 'NWS',
+  'growers-forum': 'Growers Forum',
+};
+
+type TierGroup = 'success' | 'failure';
+
+function tierGroup(tier: ScoreResult['tier']): TierGroup {
+  return tier === 'Thriving' || tier === 'Stable' ? 'success' : 'failure';
+}
+
+const FAREWELL_MESSAGES: Record<string, Record<'aligned' | 'contrasting', Record<TierGroup, string>>> = {
+  'extension-agent': {
+    aligned: {
+      success: 'You built something that will last. The soil on your farm is healthier than when you started — that\'s rare.',
+      failure: 'You tried to do right by the land. That matters, even when the numbers didn\'t work out.',
+    },
+    contrasting: {
+      success: 'I wish you\'d paid more attention to the soil. The results are good, but the land under your feet tells a different story.',
+      failure: 'I wish you\'d listened more about rotation and soil health. The land remembers how it\'s treated.',
+    },
+  },
+  'farm-credit': {
+    aligned: {
+      success: 'Smart financial management. You kept the books balanced while everyone else was scrambling.',
+      failure: 'You made sound financial decisions when you could. Sometimes the market and the weather just won\'t cooperate.',
+    },
+    contrasting: {
+      success: 'You left some money on the table, but I can\'t argue with the results. Your farm is worth more than its balance sheet.',
+      failure: 'The finances were always a struggle. A tighter focus on costs and revenue planning might have made the difference.',
+    },
+  },
+  'weather-service': {
+    aligned: {
+      success: 'You listened when the forecasts warned of change, and you adapted. That\'s exactly what resilient farming looks like.',
+      failure: 'You tried to stay ahead of the weather. Climate change doesn\'t make it easy — even good preparation can\'t stop every storm.',
+    },
+    contrasting: {
+      success: 'You didn\'t always follow the climate advisories, but you found your own way through. Lucky, maybe — or just stubborn enough.',
+      failure: 'The climate warnings were there. Adapting sooner — drought-tolerant crops, water-saving tech — might have changed the outcome.',
+    },
+  },
+  'growers-forum': {
+    aligned: {
+      success: 'Steady and reliable — that\'s what the other growers respect. Your farm didn\'t chase trends, and it paid off.',
+      failure: 'You aimed for consistency, and that\'s not nothing. Farming is a marathon, and not every runner finishes.',
+    },
+    contrasting: {
+      success: 'Your income was a rollercoaster, but you ended up in a good place. Not everyone can farm that way and survive.',
+      failure: 'The wild swings in your income year-to-year made everything harder. A steadier approach — perennials, rotation — can take the edge off.',
+    },
+  },
+};
+
+export function generateAdvisorFarewells(score: ScoreResult, state: GameState): AdvisorFarewell[] {
+  // Build storyletId → advisorId lookup
+  const storyletAdvisor = new Map<string, string>();
+  for (const s of STORYLETS) {
+    if (s.advisorId) storyletAdvisor.set(s.id, s.advisorId);
+  }
+
+  // Count interactions per advisor
+  const interactionCounts = new Map<string, number>();
+  for (const entry of state.eventLog) {
+    const advisorId = storyletAdvisor.get(entry.storyletId);
+    if (advisorId) {
+      interactionCounts.set(advisorId, (interactionCounts.get(advisorId) ?? 0) + 1);
+    }
+  }
+
+  // Total interactions — skip section if < 2
+  const totalInteractions = Array.from(interactionCounts.values()).reduce((a, b) => a + b, 0);
+  if (totalInteractions < 2) return [];
+
+  // Include all advisors the player actually met (>= 1 interaction)
+  const metAdvisors = Array.from(interactionCounts.keys());
+
+  if (metAdvisors.length === 0) return [];
+
+  // Compute alignment scores from score components
+  const componentMap = new Map(score.components.map(c => [c.id, c.raw]));
+  const advisorScores = metAdvisors.map(advisorId => ({
+    advisorId,
+    alignmentScore: componentMap.get(ADVISOR_SCORE_MAP[advisorId]) ?? 50,
+  }));
+
+  advisorScores.sort((a, b) => b.alignmentScore - a.alignmentScore);
+
+  const tg = tierGroup(score.tier);
+  const result: AdvisorFarewell[] = [];
+
+  // Most aligned (highest score)
+  const aligned = advisorScores[0];
+  result.push({
+    advisorId: aligned.advisorId,
+    name: ADVISOR_NAMES[aligned.advisorId] ?? aligned.advisorId,
+    message: FAREWELL_MESSAGES[aligned.advisorId]?.aligned?.[tg] ?? '',
+    alignment: 'aligned',
+  });
+
+  // Most contrasting (lowest score) — only if gap >= 20
+  if (advisorScores.length >= 2) {
+    const contrasting = advisorScores[advisorScores.length - 1];
+    if (aligned.alignmentScore - contrasting.alignmentScore >= 20) {
+      result.push({
+        advisorId: contrasting.advisorId,
+        name: ADVISOR_NAMES[contrasting.advisorId] ?? contrasting.advisorId,
+        message: FAREWELL_MESSAGES[contrasting.advisorId]?.contrasting?.[tg] ?? '',
+        alignment: 'contrasting',
+      });
+    }
+  }
+
+  return result;
+}
+
+// --- Human Food Servings Estimate ---
+
+export function estimateHumanFoodServings(state: GameState): number {
+  let total = 0;
+  for (const snapshot of state.tracking.yearSnapshots) {
+    for (const [cropId, cellCount] of Object.entries(snapshot.cropCounts)) {
+      const crop = CROPS[cropId];
+      if (!crop || !crop.humanServingsPerUnit) continue;
+      total += cellCount * crop.yieldPotential * crop.humanServingsPerUnit;
+    }
+  }
+  return Math.round(total);
 }

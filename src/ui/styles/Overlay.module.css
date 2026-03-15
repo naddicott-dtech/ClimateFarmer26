@@ -454,3 +454,132 @@
 .signinContainer {
   margin-top: 8px;
 }
+
+/* Endgame panel — epilogue, hints, farewells, food servings */
+
+.endgameArt {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto 16px;
+  border-radius: var(--border-radius);
+}
+
+.epilogueSection {
+  text-align: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-bg-dark);
+}
+
+.epilogueSection p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
+
+.epilogueHeadline {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+  margin: 0 0 8px;
+}
+
+.foodServingsCallout {
+  text-align: center;
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border-radius: var(--border-radius);
+  margin-bottom: 16px;
+}
+
+.foodServingsHeading {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.foodServingsBigNumber {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.foodServingsSubline {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hintsSection {
+  background: #fffde7;
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.hintsSection h4 {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 8px;
+}
+
+.hintsSection ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.hintsSection li {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.farewellSection {
+  margin-bottom: 16px;
+}
+
+.farewellCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.farewellCard + .farewellCard {
+  border-top: 1px solid var(--color-bg-dark);
+}
+
+.farewellPortrait {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.farewellName {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.farewellMessage {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* Event illustration (high-impact storylets) */
+.eventIllustration {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 12px;
+  border-radius: var(--border-radius);
+}

@@ -154,6 +154,9 @@ export interface CropDefinition {
                                        // undefined/absent = use dormantSeasons check (deciduous = 1.0, no dormancy = blocked)
                                        // 0 would mean blocked; >0 means allowed with scaled effects
 
+  // 6e: Food-production potential (display-only, not used by engine)
+  humanServingsPerUnit?: number;       // estimated human food servings per yield unit (0 for livestock feed)
+
   // Display
   shortDescription: string;
 }

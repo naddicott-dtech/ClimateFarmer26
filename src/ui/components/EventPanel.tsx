@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { gameState, dispatch, handleDismissAutoPause, pendingFollowUp } from '../../adapter/signals.ts';
+import { gameState, dispatch, handleDismissAutoPause, pendingFollowUp, pendingOrganicWarning } from '../../adapter/signals.ts';
 import { STORYLETS } from '../../data/events.ts';
 import type { ActiveEvent, Choice } from '../../engine/events/types.ts';
 import styles from '../styles/Overlay.module.css';
@@ -59,6 +59,12 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; is
 
   const isOrganic = !!(flags['organic_enrolled'] || flags['organic_certified']);
 
+  // Sync component-local warning state to adapter signal so observer can see it
+  useEffect(() => {
+    pendingOrganicWarning.value = organicWarningChoice !== null;
+    return () => { pendingOrganicWarning.value = false; };
+  }, [organicWarningChoice]);
+
   useEffect(() => {
     const first = panelRef.current?.querySelector('button') as HTMLElement;
     first?.focus();
@@ -68,7 +74,6 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; is
     if (!event) return;
 
     // Capture advisor info BEFORE dispatch — processRespondEvent clears activeEvent
-    const storyletDef = STORYLETS.find(s => s.id === event.storyletId);
     const advId = storyletDef?.advisorId ?? '';  // empty = no persona (system event)
     const eventTitle = event.title;
     const followUpText = choice.followUpText;
@@ -106,10 +111,13 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; is
     handleDismissAutoPause();
   }
 
+  // Look up full storylet definition for advisor info + illustration
+  const storyletDef = event ? STORYLETS.find(s => s.id === event.storyletId) : undefined;
+
   // Determine which advisor to display (empty string = system event, no persona)
   const advisorId = followUp
     ? followUp.advisorId
-    : (STORYLETS.find(s => s.id === event?.storyletId)?.advisorId ?? '');
+    : (storyletDef?.advisorId ?? '');
   const advisor = advisorId ? (ADVISOR_CHARACTERS[advisorId] ?? null) : null;
 
   const panelTestId = isAdvisor ? 'advisor-panel' : 'event-panel';
@@ -217,6 +225,16 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; is
               )}
             </div>
           </div>
+        )}
+
+        {storyletDef?.illustrationId && (
+          <img
+            class={styles.eventIllustration}
+            src={`${import.meta.env.BASE_URL}assets/events/${storyletDef.illustrationId}_480x240.jpeg`}
+            alt=""
+            data-testid="event-illustration"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
         )}
 
         <h2 class={styles.title} data-testid="event-title">{event.title}</h2>

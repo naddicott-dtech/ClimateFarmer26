@@ -138,6 +138,55 @@ Avocado is a perennial (no dormancy, evergreen like citrus). Wired in CROP_ART i
 | `farm-credit` | `public/assets/advisors/farm-credit_128x128.jpeg` | 128x128 | Art ready | Marcus Chen — Valley Farm Credit banker. Wire in 5b when advisorId added. |
 | `growers-forum` | `public/assets/advisors/growers-forum_128x128.jpeg` | 128x128 | Art ready | Valley Growers Forum representative. Wire in 5b when advisorId added. |
 
+## Endgame & UI Art
+
+Title screen hero and tier-specific endgame images. All use `onError` graceful fallback — functional without art files.
+
+| Asset ID | File Path | Dimensions | Used In | Status | Notes |
+|----------|-----------|------------|---------|--------|-------|
+| `title-hero` | `public/assets/ui/title-hero_800x400.jpeg` | 800x400 | NewGameScreen | Needed | San Joaquin Valley panorama, sunrise/morning light, irrigation canals, crop rows, distant mountains. Welcoming, optimistic. |
+| `endgame-thriving` | `public/assets/ui/endgame-thriving_600x300.jpeg` | 600x300 | EndgamePanel (Thriving tier) | Needed | Same farm vista concept. Lush green fields, full orchards, clear sky, prosperous feeling. |
+| `endgame-stable` | `public/assets/ui/endgame-stable_600x300.jpeg` | 600x300 | EndgamePanel (Stable tier) | Needed | Same farm vista. Healthy mixed crops, partly cloudy sky, steady and reliable. |
+| `endgame-struggling` | `public/assets/ui/endgame-struggling_600x300.jpeg` | 600x300 | EndgamePanel (Struggling tier) | Needed | Same farm vista. Sparse, stressed crops, some bare ground, hazy sky. |
+| `endgame-failed` | `public/assets/ui/endgame-failed_600x300.jpeg` | 600x300 | EndgamePanel (Failed tier) | Needed | Same farm vista. Mostly bare soil, dried crops, dusty sky. |
+
+All 4 tier images should be variations on a shared viewpoint (same farm vista concept, different conditions) for stylistic coherence.
+
+### Endgame Art Prompting Notes
+
+Follow the shared style guide above. These are wider-format landscape images, not icon art.
+
+ASSET-SPECIFIC for endgame tier images:
+Wide panoramic view of a San Joaquin Valley farm, looking across crop rows toward distant Sierras.
+{Tier-specific variation — see Notes column for condition description.}
+Warm natural daylight, painterly style, educational game context.
+Output as landscape art intended for 600x300.
+
+ASSET-SPECIFIC for title hero:
+Wide panoramic morning view of San Joaquin Valley farmland. Sunrise light catching irrigation channels, healthy crop rows, distant mountains.
+Feeling should be welcoming and optimistic — this is the first thing players see.
+Output as landscape art intended for 800x400.
+
+## Event Illustrations
+
+Illustrations for high-impact storylet events. Displayed above the event title in EventPanel. Mapped via `illustrationId` field on Storylet in `src/data/events.ts`.
+
+| Asset ID | File Path | Dimensions | Used In | Status | Notes |
+|----------|-----------|------------|---------|--------|-------|
+| `event-heatwave` | `public/assets/events/event-heatwave_480x240.jpeg` | 480x240 | EventPanel (`heatwave-advisory`) | Needed | Heat shimmer over scorched fields, blazing sun. Climate-relevant, dramatic. |
+| `event-water-restriction` | `public/assets/events/event-water-restriction_480x240.jpeg` | 480x240 | EventPanel (`groundwater-pumping-ban`) | Needed | Dry irrigation canal, reduced water flow, official notice feel. Pivotal regime moment. |
+| `event-rootworm` | `public/assets/events/event-rootworm_480x240.jpeg` | 480x240 | EventPanel (`catastrophe-rootworm`) | Needed | Close-up of damaged corn roots, beetles visible. Visceral, educational. |
+| `event-orchard-disease` | `public/assets/events/event-orchard-disease_480x240.jpeg` | 480x240 | EventPanel (`catastrophe-orchard-disease`) | Needed | Diseased tree with yellowing leaves, canker visible. Urgent, concerning. |
+
+### Event Illustration Prompting Notes
+
+Follow the shared style guide. These are wide-format scene illustrations, not portraits or icons.
+
+ASSET-SPECIFIC for event illustrations:
+{Scene description from Notes column.}
+Agricultural context, San Joaquin Valley. Painterly, readable at small size.
+Output as landscape art intended for 480x240.
+
 ## UI Icons (Future)
 
 | Asset ID | File Path | Dimensions | Used In | Status | Notes |

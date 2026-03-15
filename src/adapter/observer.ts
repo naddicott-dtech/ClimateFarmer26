@@ -87,8 +87,10 @@ function getSeasonName(month: number): string {
  * @param hasPendingFollowUp — true when an advisor/event follow-up panel is
  *   showing (pendingFollowUp signal is set). This lives in the adapter layer,
  *   not GameState, so it must be passed in from the callsite.
+ * @param hasPendingOrganicWarning — true when the organic-violation warning
+ *   interstitial is showing (pendingOrganicWarning signal is set).
  */
-export function getBlockingState(state: GameState, hasPendingFollowUp = false): BlockingState {
+export function getBlockingState(state: GameState, hasPendingFollowUp = false, hasPendingOrganicWarning = false): BlockingState {
   const base: BlockingState = {
     blocked: false,
     speed: state.speed,
@@ -124,6 +126,20 @@ export function getBlockingState(state: GameState, hasPendingFollowUp = false): 
       reason,
       panelTestId: 'follow-up-panel',
       choices: [{ testid: 'follow-up-dismiss', label: 'OK' }],
+    };
+  }
+
+  // Organic violation warning: interstitial over the event panel (activeEvent still exists)
+  if ((reason === 'event' || reason === 'advisor') && state.activeEvent && hasPendingOrganicWarning) {
+    return {
+      ...base,
+      blocked: true,
+      reason,
+      panelTestId: 'organic-warning-panel',
+      choices: [
+        { testid: 'organic-warning-proceed', label: 'Use anyway' },
+        { testid: 'organic-warning-cancel', label: 'Cancel' },
+      ],
     };
   }
 

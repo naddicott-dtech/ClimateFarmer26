@@ -1,6 +1,6 @@
 # Climate Farmer — Agent Navigation Guide
 Purpose: reliable UI navigation and state observation for AI/QA agents.
-Updated: 2026-03-10. Build: Slice 5d.2 complete.
+Updated: 2026-03-14. Build: Slice 6e complete.
 
 ---
 
@@ -46,7 +46,7 @@ Hidden div with reactive attributes. Read this ONE element to know the game's st
 ```
 data-blocked              "true" | "false"
 data-block-reason         "harvest_ready" | "water_stress" | "year_end" | "event" | "advisor" | "loan_offer" | "bankruptcy" | "year_30" | ""
-data-panel                "autopause-panel" | "event-panel" | "advisor-panel" | "loan-panel" | "gameover-panel" | "year30-panel" | ""
+data-panel                see §6 panel table for all possible values
 data-speed                "0" | "1" | "2" | "4"
 data-notification-count   number as string
 data-year                 current game year
@@ -55,39 +55,60 @@ data-day                  total simulation day
 ```
 
 ### `window.__gameDebug.getBlockingState()`
-Structured version of the same data, plus actionable choice info:
+Structured version of the same data, plus actionable choice info.
+
+**Important:** `getBlockingState()` can return panels beyond standard autopauses. There are three categories of blockers:
+
+1. **Engine autopauses** — harvest, water stress, year-end, loan offer, bankruptcy, year 30
+2. **Event/advisor panels** — storylet choice panels with variable options
+3. **UI-layer interstitials** — follow-up panels and organic warning panels (adapter-level, not engine-level)
+
+Event/advisor example:
 ```js
 {
-  blocked: true,
-  reason: "event",
-  panelTestId: "event-panel",
-  eventId: "heatwave-advisory",
+  blocked: true, reason: "event",
+  panelTestId: "event-panel", eventId: "heatwave-advisory",
   choices: [
     { testid: "event-choice-accept-risk", label: "Accept the Risk" },
     { testid: "event-choice-pre-irrigate", label: "Pre-irrigate ($200)" }
   ],
-  speed: 0,
-  notificationCount: 3,
-  year: 4,
-  season: "summer",
-  day: 1275
+  speed: 0, year: 4, season: "summer", day: 1275
 }
 ```
 
-Standard autopause example (labels match actual button text):
+Follow-up panel (after choosing "tell me more" on an advisor):
 ```js
 {
-  blocked: true,
-  reason: "water_stress",
+  blocked: true, reason: "advisor",
+  panelTestId: "follow-up-panel",
+  choices: [{ testid: "follow-up-dismiss", label: "OK" }],
+  speed: 0, year: 3, season: "spring", day: 800
+}
+```
+
+Organic warning interstitial (choosing a non-organic input while organic cert is active):
+```js
+{
+  blocked: true, reason: "event",
+  panelTestId: "organic-warning-panel",
+  choices: [
+    { testid: "organic-warning-proceed", label: "Use anyway" },
+    { testid: "organic-warning-cancel", label: "Cancel" }
+  ],
+  speed: 0, year: 8, season: "summer", day: 2900
+}
+```
+
+Standard autopause example:
+```js
+{
+  blocked: true, reason: "water_stress",
   panelTestId: "autopause-panel",
   choices: [
     { testid: "autopause-action-primary", label: "Water Field" },
     { testid: "autopause-dismiss", label: "Continue without watering" }
   ],
-  speed: 0,
-  year: 3,
-  season: "summer",
-  day: 890
+  speed: 0, year: 3, season: "summer", day: 890
 }
 ```
 
@@ -103,7 +124,7 @@ Runs simulation ticks until ANY autopause fires. Unlike `fastForward()`, does **
 { stopped: false, ticksRun: 5000 }  // all ticks completed, no block
 ```
 
-Use this instead of `fastForward()` for playtesting — it preserves every autopause for the agent to observe and respond to.
+**Note:** This only detects engine-level autopauses. UI-layer interstitials (follow-up, organic warning) appear after an event choice is made, not during tick processing.
 
 ### `window.__gameDebug.getNotifications()`
 Returns the full notification queue (the DOM only shows the newest):
@@ -130,7 +151,53 @@ speed-fastest  4×
 
 ---
 
-## 5. Grid & Actions
+## 5. Settings
+
+```
+settings-gear                  ← opens/closes settings dropdown in TopBar
+setting-auto-pause-planting    ← checkbox: auto-pause at planting window boundaries
+```
+
+The planting-window setting changes what autopauses are expected during play. When enabled, the game pauses at each season boundary where planting options change. Agents should note this setting's state when reporting observations — it affects pacing.
+
+---
+
+## 6. Dialog Handling
+
+### All blocking panels
+Check `getBlockingState()` first. Then click the appropriate testid:
+
+| Block reason | Panel testid | Primary testid | Secondary testid |
+|-------------|-------------|---------------|-----------------|
+| harvest_ready | autopause-panel | autopause-action-primary | autopause-dismiss |
+| water_stress | autopause-panel | autopause-action-primary | autopause-dismiss |
+| year_end | autopause-panel | autopause-action-primary | autopause-dismiss |
+| event | event-panel | event-choice-{id} | (choices vary) |
+| advisor | advisor-panel | advisor-choice-{id} | (choices vary) |
+| loan_offer | loan-panel | loan-accept | autopause-dismiss |
+| bankruptcy | gameover-panel | gameover-new-game | — |
+| year_30 | year30-panel | year30-new-game | — |
+| **follow-up** | **follow-up-panel** | **follow-up-dismiss** | — |
+| **organic warning** | **organic-warning-panel** | **organic-warning-proceed** | **organic-warning-cancel** |
+
+**Follow-up panels** appear after choosing "tell me more" on an advisor event. They show explanatory text in a centered dialog. Dismiss with `follow-up-dismiss`.
+
+**Organic warning panels** appear when a player selects a non-organic choice while holding organic certification. It's a confirm-style interstitial: proceed loses organic cert, cancel returns to the choice panel.
+
+### Confirm dialogs
+Bulk plant/water and perennial planting show confirm dialogs:
+```
+confirm-dialog      ← container
+confirm-accept      ← "Confirm" button
+confirm-cancel      ← "Cancel" button
+```
+
+### Event/advisor panels
+Choices have testids: `event-choice-{choiceId}` or `advisor-choice-{choiceId}`. Use `getBlockingState().choices` to get exact testids.
+
+---
+
+## 7. Grid & Actions
 
 8×8 grid, 64 cells. Cells: `data-testid="farm-cell-{row}-{col}"` (0-indexed).
 
@@ -164,57 +231,34 @@ action-water-row-<row> / action-water-col-<col>
 
 ---
 
-## 6. Dialog Handling
-
-### Autopause panels
-Check `getBlockingState()` first. Then click the appropriate testid:
-
-| Block reason | Panel testid | Primary testid | Secondary testid |
-|-------------|-------------|---------------|-----------------|
-| harvest_ready | autopause-panel | autopause-action-primary | autopause-dismiss |
-| water_stress | autopause-panel | autopause-action-primary | autopause-dismiss |
-| year_end | autopause-panel | autopause-action-primary | autopause-dismiss |
-| event | event-panel | event-choice-{id} | (choices vary) |
-| advisor | advisor-panel | advisor-choice-{id} | (choices vary) |
-| loan_offer | loan-panel | loan-accept | autopause-dismiss |
-| bankruptcy | gameover-panel | gameover-new-game | — |
-| year_30 | year30-panel | year30-new-game | — |
-
-### Confirm dialogs
-Bulk plant/water and perennial planting show confirm dialogs:
-```
-confirm-dialog      ← container
-confirm-accept      ← "Confirm" button
-confirm-cancel      ← "Cancel" button
-```
-
-### Event/advisor panels
-Choices have testids: `event-choice-{choiceId}` or `advisor-choice-{choiceId}`. Use `getBlockingState().choices` to get exact testids.
-
----
-
-## 7. Key Testids Reference
+## 8. Key Testids Reference
 
 ```
 newgame-player-id / newgame-start / tutorial-skip
 farm-cell-{r}-{c}
 speed-pause / speed-play / speed-fast / speed-fastest
+settings-gear / setting-auto-pause-planting
 game-observer                    ← machine-readable state (§3)
 action-plant / menu-crop-{id}
 action-plant-all-{id} / action-harvest-all / action-water-all
 confirm-dialog / confirm-accept / confirm-cancel
 autopause-panel / autopause-action-primary / autopause-dismiss
 event-panel / advisor-panel / loan-panel / gameover-panel / year30-panel
+follow-up-panel / follow-up-dismiss
+organic-warning-panel / organic-warning-proceed / organic-warning-cancel
 topbar-cash / topbar-date / topbar-debt / topbar-year-net
 notify-bar                       ← newest notification
 sidebar-cell-detail              ← selected cell info
 sidebar-soil-n / sidebar-soil-om / sidebar-soil-k (K requires tech_soil_testing)
 save-new-game                    ← return to title (shows confirm dialog)
+endgame-epilogue / endgame-hints / food-servings-callout
+score-panel / score-total / completion-code / completion-copy
+title-hero / event-illustration
 ```
 
 ---
 
-## 8. Cheats & Debug Shortcuts
+## 9. Cheats & Debug Shortcuts
 
 **Only use if explicitly allowed by your test plan.** These bypass normal game flow and produce observations that don't reflect student experience.
 

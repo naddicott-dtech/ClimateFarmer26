@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ClimateFarmer26 is a browser-based educational simulation game where students role-play as California farmers across 30 years, making season-by-season decisions as climate impacts challenge their operations. 100% client-side, hosted on GitHub Pages, targeting Chromebooks.
 
-**Status: Slice 5d.2 complete ("Corn Dominance Fix").** Slices 1-5d complete. 5d.2: monoculture streak penalty (escalating yield loss for consecutive same-crop annual), cover crop OM protection reduction (50% vs 100%), diversified bot rewrite (proper rotation). Balance: diversified ($301K) > corn ($193K) > citrus ($86K), all 100% survival. `SAVE_VERSION = '8.0.0'`.
+**Status: Slice 6e complete ("Endgame Payoff & Presentation Polish").** Slices 1-6e complete. 6e: epilogue generation, per-category hints, advisor farewells, human food servings estimate, EndgamePanel extraction, title screen hero image, event illustrations. Scoring system (6d): 5-category weighted composite, 4 tiers, completion code, Google Sign-In submission. `SAVE_VERSION = '8.0.0'`.
 
 ## Workflow Rules
 
@@ -56,16 +56,17 @@ rm -rf docs && cp -r dist docs
    - `calendar.ts` — Day↔calendar. `STARTING_DAY=59` (March 1)
    - `weather.ts` — Deterministic daily weather from scenario + seeded RNG
    - `rng.ts` — Mulberry32 seeded PRNG
-   - `events/` — Storylet system: `types.ts` (19 condition types, 10 effect types), `selector.ts` (seasonal draw + per-tick evaluation), `effects.ts`
+   - `scoring.ts` — `computeScore()`, `generateEpilogue()`, `generateCategoryHints()`, `generateAdvisorFarewells()`, `estimateHumanFoodServings()`
+   - `events/` — Storylet system: `types.ts` (19 condition types, 10 effect types, optional `illustrationId`), `selector.ts` (seasonal draw + per-tick evaluation), `effects.ts`
 
 2. **Adapter** (`src/adapter/signals.ts`) — Bridges engine↔UI with Preact Signals.
    - `_liveState` (mutable) → `publishState()` via `structuredClone` → reactive `gameState` signal
    - `requestAnimationFrame` game loop, 12 ticks/sec × speed
    - Debug hooks: `window.__gameDebug` (`setCash`, `setDay`, `setFlag`, `triggerEvent`, `getState`, etc.)
 
-3. **UI** (`src/ui/`) — Preact components + CSS Modules. Components: App, GameScreen, NewGameScreen, TopBar, FarmGrid, FarmCell, SidePanel, CropMenu, AutoPausePanel, NotificationBar, ConfirmDialog, Tutorial, EventPanel
+3. **UI** (`src/ui/`) — Preact components + CSS Modules. Components: App, GameScreen, NewGameScreen, TopBar, FarmGrid, FarmCell, SidePanel, CropMenu, AutoPausePanel, EndgamePanel, NotificationBar, ConfirmDialog, Tutorial, EventPanel
 
-**Data files** (`src/data/`): `crops.ts` (9 crops with yield curves, K uptake, heat sensitivity, `requiredFlag` gating), `cover-crops.ts`, `scenarios.ts` (5 climate scenarios with `marketCrashTargetCropId`), `events.ts` (22 storylets: 8 seasonal draw + 14 condition-only)
+**Data files** (`src/data/`): `crops.ts` (9 crops with yield curves, K uptake, heat sensitivity, `requiredFlag` gating, `humanServingsPerUnit`), `cover-crops.ts`, `scenarios.ts` (5 climate scenarios with `marketCrashTargetCropId`), `events.ts` (22 storylets: 8 seasonal draw + 14 condition-only, 4 with `illustrationId`)
 
 **Save system** (`src/save/storage.ts`): localStorage with corruption detection + V1→V8 migration chain. Auto-save on season change. Manual saves keyed by "Year N Season".
 
@@ -114,4 +115,4 @@ Note: jcodemunch can't extract symbols from some files (data arrays, JSX, tests)
 - No storing sensitive student data
 - No new dependencies without discussion
 - Target hardware: Chromebooks (~$400 education models, 4-8GB RAM)
-- Do not implement Slice 6+ features (completion code, Google Form, scoring formula, insurance/credit, solar lease) without explicit approval
+- Do not implement Slice 7+ features (insurance/credit, solar lease, glossary, automation policies) without explicit approval

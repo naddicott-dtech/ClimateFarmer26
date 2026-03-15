@@ -85,6 +85,7 @@ export interface Storylet {
   choices: Choice[];
   tags: string[];
   advisorId?: 'extension-agent' | 'weather-service' | 'farm-credit' | 'growers-forum'; // routes advisor character display
+  illustrationId?: string; // maps to public/assets/events/{id}_480x240.jpeg
 }
 
 // --- Runtime state types ---

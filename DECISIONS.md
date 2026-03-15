@@ -410,4 +410,32 @@ Format: **Date — Decision — Rationale**
 
 ### Content Pacing
 
-2026-03-10 — Avocado unlock timing and Forum content gaps are pacing problems, not mechanic bugs — Avocado arrives too late (~Y20) for its 4-year establishment to matter. Forum has one storylet and then vanishes. Both need Slice 6 content work. See KNOWN_ISSUES #94, #95.
+2026-03-10 — Avocado unlock timing and Forum content gaps are pacing problems, not mechanic bugs — Avocado arrives too late (~Y20) for its 4-year establishment to matter. Forum has one storylet and then vanishes. Both need Slice 7 content work. See KNOWN_ISSUES #94, #95.
+
+## Slice 6 Design Decisions
+
+### Scoring System (6d)
+
+2026-03-13 — 5-category weighted composite scoring — Financial stability (30%), soil health (20%), crop diversity (20%), climate adaptation (20%), consistency (10%). Raw scores normalized to 0-100, weighted sum produces total 0-100. Tier thresholds: Thriving ≥80, Stable ≥60, Struggling ≥40, Failed <40. Categories designed to reward resilient sustainable farming, not just maximum cash.
+
+2026-03-13 — Completion code is human-readable, not encoded — Format: `PREFIX-SCORE-YYEARS-SCENARIO` (e.g., `NEAL-78-Y30-GW`). Screenshot-friendly backup artifact. Not a security mechanism — Google Sign-In authentication makes tamper-detection redundant. Originally planned as encoded/decodeable Google Form workflow, simplified after auth implementation.
+
+2026-03-13 — Google Identity Services for result submission — @dtechhs.org students authenticate via Google Sign-In. Results POST to backend spreadsheet. Only school domain accounts accepted. Completion code serves as human-readable backup for students without Google access.
+
+### Endgame Payoff (6e)
+
+2026-03-14 — Derived metrics over tracked state — `estimateHumanFoodServings()` computes from existing `yearSnapshots.cropCounts` at display time. No new state fields, no save migration, works for all existing saves including in-progress classroom runs. Uses `cellCount × yieldPotential × humanServingsPerUnit` as a rough proxy — explicitly labeled as "estimated" throughout. The corn-vs-diversified contrast is dramatic regardless of precision.
+
+2026-03-14 — Epilogue tone: warm, reflective, literary — King of Dragon Pass epilogue feel, shorter and anchored to simulation outcome. Not melodramatic, not jokey, not teacher-lecture. "This farm has a history now" → "here's what that history means." Four tiers × five scenarios × bankruptcy override = distinct narrative text. Lesson implicit in narrative; report card carries the explicit educational layer.
+
+2026-03-14 — Advisor farewell alignment is deterministic from score components — Each advisor maps to exactly one score component: Santos→soil.raw, Chen→financial.raw, NWS→adaptation.raw, Forum→consistency.raw. Most aligned = met advisor with highest mapped score. Most contrasting = lowest (gap ≥20 required). Max 2 farewells. Skip section entirely when total advisor interactions < 2. Farewell text is static authored strings (16 variants: 4 advisors × 2 roles × 2 tiers), not generated prose.
+
+2026-03-14 — Human food servings as secondary impact metric, not scored — Positioned after epilogue, before score table. Not part of the formal resilience score. Connects to "Food for All" unit theme. Three-way display: positive servings (celebratory), grew feed crops (silage corn contextual message), zero production (reflective). Never guilt-trippy or preachy.
+
+2026-03-14 — EndgamePanel extracted from AutoPausePanel — Receives `{ state: GameState }` and derives everything internally (score, epilogue, hints, farewells, food servings). All existing `data-testid` values preserved for backward compatibility. AutoPausePanel delegates to `<EndgamePanel>` for bankruptcy/year_30 cases.
+
+2026-03-14 — Graceful art fallback via onError — All image references (title hero, endgame art, event illustrations) use `onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}`. Entire slice functional without art files. Art is additive, not blocking.
+
+2026-03-14 — Event illustrations on high-impact storylets only — Optional `illustrationId` field on Storylet type. Only 4 storylets get illustrations (heatwave, water restriction, rootworm, orchard disease) — pivotal moments that benefit from visual impact. EventPanel renders illustration above event title when present.
+
+2026-03-14 — Per-category hints limited to max 2 weakest — Only categories where `raw < 60` are eligible. Returns the 2 weakest (by raw score), not just any 2 under 60. Each hint is one sentence: metric + implication + one lever. Uses actual player numbers where helpful (e.g., "Your soil OM averaged 1.2%"). Empty array if all categories ≥ 60 (strong player gets no unsolicited advice).

@@ -115,6 +115,11 @@ export const pendingFollowUp = signal<{
   text: string;
 } | null>(null);
 
+/** True while the organic-violation warning interstitial is showing (Slice 6d.2).
+ *  Set by EventPanel when a prohibited choice is intercepted; cleared on cancel
+ *  or proceed. Exposed to the observer so AI agents can detect & dismiss it. */
+export const pendingOrganicWarning = signal(false);
+
 // ============================================================================
 // Player Preferences (localStorage-backed, not game state)
 // ============================================================================
@@ -1086,7 +1091,7 @@ function gameLoop(now: number): void {
    */
   getBlockingState() {
     if (!_liveState) return { blocked: false, speed: 0, notificationCount: 0, year: 0, season: 'spring', day: 0 };
-    return getBlockingState(_liveState, !!pendingFollowUp.value);
+    return getBlockingState(_liveState, !!pendingFollowUp.value, !!pendingOrganicWarning.value);
   },
   /**
    * Run ticks until ANY autopause fires or game ends. Unlike fastForward(),
