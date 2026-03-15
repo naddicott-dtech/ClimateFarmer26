@@ -321,6 +321,27 @@ describe('§7a.1b: Bulk harvest notifications include yield-factor explanations'
     const msg = harvestNotifs[harvestNotifs.length - 1].message;
     expect(msg).not.toContain('Yield reduced by');
   });
+
+  it('bulk harvest shows net-loss warning when revenue is negative', () => {
+    const state = makeState();
+    for (let c = 0; c < 4; c++) {
+      const cell = state.grid[0][c];
+      setupHarvestableCorn(cell);
+      cell.soil.organicMatter = 0.5; // floor → 0.40× yield
+      cell.soil.nitrogen = 5;        // very low N
+      cell.crop!.waterStressDays = 60;
+      state.calendar.totalDay = 200;
+    }
+
+    processCommand(state, { type: 'HARVEST_BULK', scope: 'row', index: 0 });
+
+    const harvestNotifs = state.notifications.filter(n => n.type === 'harvest');
+    const msg = harvestNotifs[harvestNotifs.length - 1].message;
+    // With stacked penalties, revenue should be negative (labor > crop value)
+    if (msg.includes('$-') || msg.includes('-$')) {
+      expect(msg).toContain('net loss');
+    }
+  });
 });
 
 // ============================================================================

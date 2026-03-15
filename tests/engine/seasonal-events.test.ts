@@ -27,7 +27,7 @@ describe('hasRandomCondition', () => {
     expect(hasRandomCondition(storylet)).toBe(false);
   });
 
-  it('identifies all 22 seasonal-draw events', () => {
+  it('identifies all 32 seasonal-draw events', () => {
     const seasonalIds = STORYLETS.filter(s => hasRandomCondition(s)).map(s => s.id);
     expect(seasonalIds).toEqual([
       'heatwave-advisory',
@@ -52,10 +52,21 @@ describe('hasRandomCondition', () => {
       'catastrophe-water-emergency',
       'forum-pest-scare',
       'forum-frost-panic',
+      // Slice 7b Forum storylets
+      'forum-soil-health-thread',
+      'forum-aquifer-discussion',
+      'forum-biodiversity-observation',
+      'forum-cover-crop-success',
+      'forum-insurance-anxiety',
+      'forum-neighbor-bankruptcy',
+      'forum-food-system',
+      'forum-climate-skeptic-response',
+      'forum-regenerative-buzz',
+      'forum-late-game-reflection',
     ]);
   });
 
-  it('identifies all 17 per-tick events', () => {
+  it('identifies all 19 per-tick events', () => {
     const perTickIds = STORYLETS.filter(s => !hasRandomCondition(s)).map(s => s.id);
     expect(perTickIds).toEqual([
       'advisor-orchard-decline',
@@ -75,6 +86,9 @@ describe('hasRandomCondition', () => {
       'advisor-potassium-management',
       'santos-organic-offer',
       'chen-insurance-offer',
+      // Slice 7b Santos advisors
+      'advisor-soil-trajectory',
+      'advisor-cover-crop-education',
     ]);
   });
 });

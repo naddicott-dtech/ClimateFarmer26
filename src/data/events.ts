@@ -1685,4 +1685,473 @@ export const STORYLETS: readonly Storylet[] = [
     ],
     tags: ['community', 'forum', 'false-alarm'],
   },
+
+  // ============================================================================
+  // Slice 7b: "No Two Games Alike" — Forum Content + Santos Advisors
+  // ============================================================================
+
+  // --- New Forum Storylets (10) — filling the Y15-29 gap ---
+
+  {
+    id: 'forum-soil-health-thread',
+    type: 'community',
+    illustrationId: 'event-soil-exhaustion',
+    title: 'Forum Post: "My Yields Are Shrinking"',
+    description: "ValleyDirt_Dan posted in the Valley Growers Forum:\n\n\"OK so I need to vent. My corn used to come in at 95% of potential easy. Same fields, same seed, same water schedule — this year I'm barely hitting 70%. I finally got a soil test done and my organic matter is down to 1.2%. Extension agent looked at me like I'd confessed to a crime. Apparently I've been 'mining my soil' for a decade. Anyone else seeing this or is it just me?\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 12 },
+      { type: 'max_year', year: 18 },
+      { type: 'avg_organic_matter_below', level: 1.5 },
+      { type: 'random', probability: 0.40 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'learn-more-soil',
+        label: 'What Changed?',
+        description: 'Dan\'s numbers sound a lot like yours.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum had a long discussion about declining soil organic matter and its effect on yields.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread took off. Turns out Dan isn't alone.\n\nOldTimerPete: \"Same story here. Used to get 2 tons/acre of tomatoes without trying. Now I fight for 1.5. My dad's soil was dark and crumbly — mine looks like parking lot fill.\"\n\nGreenThumb_Sara: \"It's not a mystery. Organic matter is what feeds the microbes that release nitrogen to your crops. When OM drops, you're essentially running out of your soil's savings account. You can buy fertilizer to patch over it, but you're treating the symptom.\"\n\nDrip_Queen_Linda: \"My extension agent says every 0.1% of OM you lose is like losing free nitrogen production. Below 1.5% and your soil basically stops feeding itself.\"\n\nValleyDirt_Dan: \"So what do I DO about it?\"\n\nGreenThumb_Sara: \"Cover crops. Every fall. It's slow — we're talking years, not seasons — but it's the only thing that actually rebuilds OM. You're putting organic material back into the soil instead of just taking it out.\"\n\nThe thread goes on, but the message is clear: soil organic matter isn't just a number on a test — it's the engine that drives everything else.",
+      },
+      {
+        id: 'soil-fine',
+        label: 'My Soil\'s Fine',
+        description: 'You haven\'t noticed any problems.',
+        effects: [
+          { type: 'add_notification', message: 'Dan\'s soil concerns don\'t seem relevant to your operation.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'soil', 'ecology'],
+  },
+
+  {
+    id: 'forum-aquifer-discussion',
+    type: 'community',
+    illustrationId: 'event-aquifer',
+    title: 'Forum Post: "The Wells Are Going Deeper"',
+    description: "Drip_Queen_Linda posted in the Valley Growers Forum:\n\n\"Remember a few years back when I mentioned my brother-in-law hearing about water board meetings? Well. The monitoring wells they drilled near Tulare show the water table has dropped 60 feet since we were all arguing about it. Sixty. My neighbor just spent $40,000 deepening his well because the old one went dry. The state says SGMA enforcement is coming whether we like it or not. This isn't rumors anymore, folks.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 15 },
+      { type: 'max_year', year: 22 },
+      { type: 'random', probability: 0.35 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'aquifer-details',
+        label: 'How Bad Is It?',
+        description: 'Linda was right about the water board. What else does she know?',
+        effects: [
+          { type: 'add_notification', message: 'The Forum shared alarming data about San Joaquin Valley groundwater decline.', notificationType: 'event_result' },
+        ],
+        followUpText: "Linda came with receipts this time.\n\nDrip_Queen_Linda: \"I pulled the actual DWR data. The Central Valley has lost more than 30 million acre-feet of groundwater since the 1960s. That's not a drought blip — that's structural depletion.\"\n\nOldTimer_Reedley: \"My grandfather's well was 80 feet. My dad's was 150. Mine is 300. At some point you're not farming anymore — you're mining water.\"\n\nAlmondBaron_Ray: \"The Sustainable Groundwater Management Act gives local agencies until 2040 to bring basins into balance. 'Balance' means pumping no more than recharges naturally. For us that means... a lot less water than we're using.\"\n\nFreedomFarmer_Dave: \"So what happens to the farms that can't operate on less water?\"\n\nOldTimer_Reedley: \"What happened to the farms in Arizona and the Colorado River basin. They dry up.\"\n\nThe thread goes quiet after that.",
+      },
+      {
+        id: 'heard-it-before',
+        label: 'We\'ve Heard This Before',
+        description: 'Water restriction talk is as old as the Valley.',
+        effects: [
+          { type: 'add_notification', message: 'You\'ve been hearing about water crises for years. The wells are still pumping.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'water', 'ecology'],
+  },
+
+  {
+    id: 'forum-biodiversity-observation',
+    type: 'community',
+    illustrationId: 'event-forum-gathering',
+    title: 'Forum Post: "Something Weird About Pest Pressure"',
+    description: "GreenThumb_Sara posted in the Valley Growers Forum:\n\n\"OK science nerds, I've been tracking pest counts on my fields for 3 years now. The plots where I rotate crops and keep cover crops over winter? Barely any aphid damage. The plots where I ran corn twice in a row? Crawling with them. My extension agent says the diverse plots have more predator insects — ladybugs, lacewings, parasitic wasps. The corn-only plots are basically an all-you-can-eat buffet with no bouncers. Is anyone else seeing this?\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 10 },
+      { type: 'max_year', year: 16 },
+      { type: 'has_flag', flag: 'monoculture_penalty_shown' },
+      { type: 'random', probability: 0.35 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'tell-me-more-bio',
+        label: 'That\'s Interesting',
+        description: 'Sara\'s observations match some patterns you\'ve noticed.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum discussed how crop diversity supports natural pest control.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread turned into a genuinely useful discussion.\n\nValleyVet_Jake: \"I've seen the same thing. My vet school biology is rusty, but the concept is 'enemy of my enemy.' A monoculture gives one pest species unlimited food and nowhere for predators to live between meals. Diverse plantings support a food web — predator insects need pollen, nectar, and alternative prey to survive year-round.\"\n\nGreenThumb_Sara: \"The extension literature calls it 'ecological pest suppression.' Basically, biodiversity is free pest control.\"\n\nCornDawg_82: \"OK but I can't exactly plant flowers between my corn rows.\"\n\nGreenThumb_Sara: \"You don't have to. Just rotating crops and keeping cover crops over winter creates enough habitat diversity. The soil microbiome changes too — different crops support different soil fungi, and some of those fungi are actually toxic to pest larvae.\"\n\nOldTimerPete: \"Used to be every farm had hedgerows and field margins with native plants. Somewhere along the way we ripped them all out for efficiency. Maybe that wasn't so efficient after all.\"",
+      },
+      {
+        id: 'sounds-anecdotal',
+        label: 'Sounds Anecdotal',
+        description: 'A few data points don\'t prove anything.',
+        effects: [
+          { type: 'add_notification', message: 'Sara\'s pest observations are interesting, but you\'d want more data before changing your approach.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'ecology', 'biodiversity'],
+  },
+
+  {
+    id: 'forum-cover-crop-success',
+    type: 'community',
+    illustrationId: 'event-cover-crops',
+    title: 'Forum Post: "Year 3 of Cover Crops — Results Are Real"',
+    description: "GreenThumb_Sara posted in the Valley Growers Forum:\n\n\"Update for anyone following my cover crop experiment. Year 3 results: my soil is darker, softer, holds water longer between irrigations. Extension agent confirmed my organic matter went from 1.8% to 2.1%. Not dramatic, but the direction is right. The big surprise? My spring nitrogen levels are higher than they've ever been and I didn't buy a single bag of fertilizer. The crimson clover is pulling nitrogen out of the air and putting it in my soil for free. I'm a convert.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 8 },
+      { type: 'max_year', year: 14 },
+      { type: 'random', probability: 0.30 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'how-does-it-work',
+        label: 'How Does That Work?',
+        description: 'Free nitrogen sounds too good to be true.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum discussed nitrogen fixation and organic matter building through cover crops.', notificationType: 'event_result' },
+        ],
+        followUpText: "Sara clearly did her homework.\n\nGreenThumb_Sara: \"So legume cover crops — clover, vetch, field peas — have these root nodules full of bacteria called rhizobia. Those bacteria pull nitrogen gas straight out of the atmosphere and convert it into a form plants can use. When you incorporate the cover crop in spring, all that nitrogen gets released into the soil. It's literally free fertilizer, subsidized by evolution.\"\n\nValleyDirt_Dan: \"What about the organic matter side?\"\n\nGreenThumb_Sara: \"Every plant puts carbon into the soil through its roots. When the cover crop dies and decomposes, that carbon becomes organic matter. OM holds water, feeds soil microbes, and creates structure that roots can grow through. It's a slow process — you won't see dramatic jumps — but the trend line matters more than any single season.\"\n\nSorghumDave: \"The math is what got me. I was spending $300/year on synthetic nitrogen. Cover crop seed costs me $60. The nitrogen isn't quite as instant, but over 3 years my soil is healthier AND my input costs dropped.\"\n\nOldTimerPete: \"My grandfather called it 'green manure.' We thought we got smarter than that. Turns out the old-timers had it figured out.\"",
+      },
+      {
+        id: 'noted-thanks',
+        label: 'Noted, Thanks',
+        description: 'Good information to file away.',
+        effects: [
+          { type: 'add_notification', message: 'Sara\'s cover crop results noted for future reference.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'cover-crops', 'ecology'],
+  },
+
+  {
+    id: 'forum-insurance-anxiety',
+    type: 'community',
+    illustrationId: 'event-forum-gathering',
+    title: 'Forum Post: "My Insurance Premium Just Doubled"',
+    description: "CropInsGuy_Mike posted in the Valley Growers Forum:\n\n\"Well folks, remember when I told everyone to get crop insurance? Still good advice. But I just got my renewal notice and I'm... not great. Premium doubled. The agent says the actuarial models got updated — apparently the Valley's risk profile has 'materially changed.' Translation: too many claims, too many extreme events. They're not dropping me yet, but a few guys I know in Kings County got non-renewed outright. The safety net is fraying.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 18 },
+      { type: 'max_year', year: 25 },
+      { type: 'has_flag', flag: 'has_crop_insurance' },
+      { type: 'random', probability: 0.30 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'insurance-limits',
+        label: 'What Are You Hearing?',
+        description: 'If Mike is worried, you should be paying attention.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum discussed rising insurance costs and the limits of crop insurance in a changing climate.', notificationType: 'event_result' },
+        ],
+        followUpText: "Mike's thread became the longest in Forum history.\n\nCropInsGuy_Mike: \"Here's what my agent told me off the record. Insurance companies build their models on historical data. When the actual loss frequency exceeds the model — like it has for the last 5 years — they have three choices: raise premiums, restrict coverage, or leave the market. We're seeing all three.\"\n\nFreedomFarmer_Dave: \"So when do they just pull out entirely?\"\n\nCropInsGuy_Mike: \"Some already have. Florida citrus insurers left after two bad hurricane seasons. The National Flood Insurance Program has been insolvent for years. Crop insurance works when bad years are occasional. When they become the norm... the math breaks.\"\n\nAlmondBaron_Ray: \"This is the part nobody talks about. We all plan like insurance will always be there. What's your plan B?\"\n\nOldTimer_Reedley: \"Cash reserves. Diversification. Not putting everything in one crop that one bad week can destroy. The stuff that's always been true, just harder to ignore now.\"",
+      },
+      {
+        id: 'still-worth-it',
+        label: 'Still Worth It',
+        description: 'Even expensive insurance beats losing everything.',
+        effects: [
+          { type: 'add_notification', message: 'Insurance premiums are up, but you figure it\'s still the smart bet.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'insurance', 'climate-risk'],
+  },
+
+  {
+    id: 'forum-neighbor-bankruptcy',
+    type: 'community',
+    illustrationId: 'event-neighbor-bankruptcy',
+    title: 'Forum Post: "Jerry Hendricks Sold His Farm"',
+    description: "OldTimer_Reedley posted in the Valley Growers Forum:\n\n\"Sad news. Jerry Hendricks over on Route 99 finally sold. Thirty years of nothing but corn, no rotation, no cover crops. His soil was dead — I mean literally dead, wouldn't grow a weed if you paid it. When the water got tight and corn prices dropped, he had no margin left. Bank called in the note. Land went for half what it was worth because the buyer has to spend years rebuilding the soil before anything will grow right on it.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 15 },
+      { type: 'max_year', year: 22 },
+      { type: 'random', probability: 0.30 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'what-happened',
+        label: 'What Went Wrong?',
+        description: 'Thirty years is a long time to farm and end up with nothing.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum reflected on Jerry Hendricks\' failure and what it means for soil-dependent farming.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread turned into a wake for a way of farming.\n\nOldTimer_Reedley: \"Jerry wasn't stupid. He was stubborn. Corn paid well for 20 years. He didn't see why he should fix what wasn't broken. But every year he was withdrawing from his soil and never depositing. By year 20 his organic matter was below 1%. Nitrogen wouldn't stick. Water ran right through. He was spending more on fertilizer than he was making on corn.\"\n\nValleyDirt_Dan: \"My extension agent calls it 'soil capital depletion.' You can farm on depleted soil — you just have to spend more and more to get less and less.\"\n\nGreenThumb_Sara: \"The worst part is recovery takes 5-10 years of active rebuilding. That's why the land sold at half price. The new buyer is looking at half a decade of cover crops and compost before they'll see real yields.\"\n\nCornDawg_82: \"...I might need to rethink some things.\"\n\nOldTimerPete: \"You think? We've been telling you for years, kid.\"\n\nThe thread settles into a long silence. Everyone's doing the same mental math about their own soil.",
+      },
+      {
+        id: 'not-my-problem',
+        label: 'Sad, But Not My Situation',
+        description: 'Your operation is different from Jerry\'s.',
+        effects: [
+          { type: 'add_notification', message: 'Jerry Hendricks\' situation is unfortunate, but your farm is on a different path.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'soil', 'monoculture', 'ecology'],
+  },
+
+  {
+    id: 'forum-food-system',
+    type: 'community',
+    illustrationId: 'event-food-system',
+    title: 'Forum Post: "Where Does Our Food Actually Go?"',
+    description: "CitrusGal_Visalia posted in the Valley Growers Forum:\n\n\"My daughter is doing a school project on food systems and she asked me to explain where our oranges go after we sell them. I started drawing a map and honestly? I scared myself. Our valley produces about 25% of America's food and nuts on less than 1% of the country's land. We're feeding 80 million people from a strip of ground that depends on shrinking groundwater and a climate that's changing under our feet. When did farming become this high-stakes?\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 20 },
+      { type: 'max_year', year: 26 },
+      { type: 'random', probability: 0.35 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'bigger-picture',
+        label: 'Makes You Think',
+        description: 'You\'ve been so focused on your fields you forgot the bigger picture.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum reflected on the Central Valley\'s outsized role in the national food system.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread took on an unusually thoughtful tone.\n\nAlmondBaron_Ray: \"I did the math once. A single acre of almonds in our valley feeds about 1,400 people. A single acre of corn feeds about 250, mostly through livestock. The decisions we make on 40 or 400 acres ripple out to millions of dinner tables.\"\n\nOldTimerPete: \"When I started farming, the Central Valley was one of dozens of major agricultural regions in the country. Now we're one of about four that really matter. The others dried up, got paved over, or stopped being viable. We're still here, but for how long?\"\n\nCitrusGal_Visalia: \"My daughter's project conclusion was basically: 'The food system works until it doesn't, and when it doesn't, everyone finds out at the same time.' She's twelve and she gets it better than most adults.\"\n\nDrip_Queen_Linda: \"That's the thing about farming at this scale. Your 40 acres feel small. But multiply your decisions by every farmer in the Valley and suddenly you're talking about national food security. No pressure.\"\n\nThe conversation tapers off. Nobody quite has a solution. But the scale of what you're part of feels a little more real.",
+      },
+      {
+        id: 'just-a-farmer',
+        label: 'I\'m Just a Farmer',
+        description: 'The big picture is above your pay grade.',
+        effects: [
+          { type: 'add_notification', message: 'Food system scale is interesting, but your job is keeping 40 acres alive.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'food-system', 'ecology'],
+  },
+
+  {
+    id: 'forum-climate-skeptic-response',
+    type: 'community',
+    illustrationId: 'event-climate-data',
+    title: 'Forum Post: "I Was Wrong"',
+    description: "FreedomFarmer_Dave posted in the Valley Growers Forum:\n\n\"Alright. I owe some of you an apology. Five years ago I was in here telling everyone that climate talk was overblown. Pete posted his temperature records and I said it was just cycles. Ray worried about markets and I said California quality would win out. I was wrong.\n\nI pulled up my own records last night. 20 years of planting dates, yields, water bills, and weather. It's all right there in my own handwriting. Summer highs up 6 degrees. Water costs tripled. My best corn yields are behind me by a decade.\n\nI don't know what to call it and I don't care about the politics. But something is different and pretending it isn't is costing me real money. So. Now what?\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 22 },
+      { type: 'max_year', year: 28 },
+      { type: 'has_flag', flag: 'regime_heat_threshold' },
+      { type: 'random', probability: 0.35 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'respect-honesty',
+        label: 'Respect for Saying That',
+        description: 'Changing your mind based on evidence takes guts.',
+        effects: [
+          { type: 'add_notification', message: 'Dave\'s post sparked a rare moment of honesty on the Forum about long-term climate trends.', notificationType: 'event_result' },
+        ],
+        followUpText: "For once, nobody argued with Dave.\n\nOldTimerPete: \"Takes a big man to say that, Dave. For what it's worth, I wasn't trying to scare anyone with my weather logs. I just wanted people to look at the data instead of the talking heads.\"\n\nGreenThumb_Sara: \"The thing about data is it doesn't care what you believe. Your yields are your yields. Your water bills are your water bills. At some point the numbers stop being debatable.\"\n\nCitrusGal_Visalia: \"Dave, the 'now what' is: you adapt. That's what we've all been doing, even the ones who didn't call it that. Different crops, better water management, cover crops. It's not about predicting the future — it's about building a farm that can handle whatever comes.\"\n\nFreedomFarmer_Dave: \"Yeah. I'm starting to figure that out. Little late, but I guess late beats never.\"\n\nAlmondBaron_Ray: \"Dave, you've still got years of farming ahead of you. That's enough time to make real changes if you start now.\"\n\nThe thread ended with something the Forum rarely has: consensus.",
+      },
+      {
+        id: 'about-time',
+        label: 'About Time, Dave',
+        description: 'He could\'ve figured this out years ago.',
+        effects: [
+          { type: 'add_notification', message: 'Better late than never, Dave.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'climate', 'ecology'],
+  },
+
+  {
+    id: 'forum-regenerative-buzz',
+    type: 'community',
+    illustrationId: 'event-cover-crops',
+    title: 'Forum Post: "Anyone Heard of Regenerative Agriculture?"',
+    description: "ValleyDirt_Dan posted in the Valley Growers Forum:\n\n\"Watched a documentary last night about these farms in the Midwest that basically rebuilt dead soil in 10 years. They call it 'regenerative agriculture.' Cover crops, diverse rotations, minimizing soil disturbance, integrating livestock. Their organic matter went from 1% to 4%. Four percent! The soil was so healthy they stopped buying fertilizer entirely. I know a documentary isn't peer-reviewed science, but these guys are producing real yields on soil that was written off. Is this real or am I getting sold something?\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 15 },
+      { type: 'max_year', year: 22 },
+      { type: 'random', probability: 0.30 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'whats-regenerative',
+        label: 'Tell Me More',
+        description: 'Rebuilding dead soil sounds almost too good to be true.',
+        effects: [
+          { type: 'add_notification', message: 'The Forum debated whether regenerative agriculture practices could work in the San Joaquin Valley.', notificationType: 'event_result' },
+        ],
+        followUpText: "The Forum had opinions.\n\nGreenThumb_Sara: \"It's real, Dan. The science checks out — there are peer-reviewed studies from USDA-ARS and land-grant universities showing 0.1-0.3% OM gains per year with full regenerative systems. The documentary exaggerates the speed a bit, but the direction is right.\"\n\nOldTimerPete: \"My problem with the 'regenerative' crowd is they act like they invented something new. Cover crops, rotation, composting — my grandfather did all of this. We just gave it a marketing name.\"\n\nGreenThumb_Sara: \"Fair. But Pete, your grandfather also had more rain and cheaper water. The difference now is we need these practices to survive, not just to feel virtuous.\"\n\nAlmondBaron_Ray: \"Can it work at our scale though? Those Midwest guys are on flat land with rain. We're irrigating in a semi-arid valley with expensive water.\"\n\nSorghumDave: \"The principles translate. Cover crops work here. Rotation works here. We just can't copy the Midwest playbook exactly — we need a Valley version.\"\n\nValleyDirt_Dan: \"So it's not magic. It's just... doing the basics consistently.\"\n\nGreenThumb_Sara: \"Basically, yes. Boring, consistent soil building. The exciting part is what happens after year 5.\"",
+      },
+      {
+        id: 'sounds-trendy',
+        label: 'Sounds Trendy',
+        description: 'Another farming fad with a good marketing budget.',
+        effects: [
+          { type: 'add_notification', message: 'Regenerative agriculture sounds interesting but you\'re skeptical of the hype.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'soil', 'cover-crops', 'ecology'],
+  },
+
+  {
+    id: 'forum-late-game-reflection',
+    type: 'community',
+    illustrationId: 'event-forum-gathering',
+    title: 'Forum Post: "To My Grandson"',
+    description: "OldTimerPete posted in the Valley Growers Forum:\n\n\"My grandson told me he wants to farm. I sat with that for a week before I answered him.\n\nThirty years ago we had more water, cooler summers, cheaper fuel, and soil that still had life in it. We thought those things were permanent. They weren't. The valley will still feed people. I believe that. But it won't be the same valley, and the farmers who survive the next thirty years won't farm the way we did.\n\nI told him: listen to the soil. Watch the water. Diversify before you have to. And don't plant what your grandfather planted just because your grandfather planted it.\n\nHe asked if farming would still be worth it. I told him the truth: I don't know. But there's no better way to learn what matters.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'met_forum' },
+      { type: 'min_year', year: 26 },
+      { type: 'max_year', year: 29 },
+      { type: 'random', probability: 0.40 },
+    ],
+    priority: 50,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'growers-forum',
+    choices: [
+      {
+        id: 'well-said-pete',
+        label: 'Well Said, Pete',
+        description: 'Pete earned the right to say that.',
+        effects: [
+          { type: 'add_notification', message: 'Pete\'s reflection resonated across the Forum.', notificationType: 'event_result' },
+        ],
+        followUpText: "The thread filled up slowly. No arguments this time.\n\nGreenThumb_Sara: \"Pete, this is the best thing you've ever posted. I'm printing it out for my office.\"\n\nDrip_Queen_Linda: \"My daughter wants to farm too. Same conversation, same fears. I told her the skills that matter aren't the ones you think — it's not about knowing which seed to buy. It's about watching, adapting, being willing to change your plan when the land tells you to.\"\n\nValleyDirt_Dan: \"I look back at my early years and cringe. All the soil I burned through, all the 'it'll be fine' decisions. If I could go back, I'd start with cover crops from year one.\"\n\nFreedomFarmer_Dave: \"I'd buy insurance earlier and argue about it less.\"\n\nCornDawg_82: \"I'd... rotate my crops.\" [17 laugh reacts]\n\nOldTimerPete: \"Point is, we all learned. Most of the important things I know about farming, I learned by getting something wrong first. That's the job. Good luck to all of you, and tell your kids the valley is worth fighting for.\"\n\nThe thread stays pinned at the top of the Forum for the rest of the season.",
+      },
+      {
+        id: 'getting-sentimental',
+        label: 'Getting Sentimental, Pete?',
+        description: 'It\'s not like him to get philosophical.',
+        effects: [
+          { type: 'add_notification', message: 'Pete\'s post was surprisingly moving. Getting old does that to people.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['community', 'forum', 'reflection', 'ecology'],
+  },
+
+  // --- New Santos Advisor Storylets (2) ---
+
+  {
+    id: 'advisor-soil-trajectory',
+    type: 'advisor',
+    illustrationId: 'event-soil-exhaustion',
+    title: 'Santos: Soil Health Declining',
+    description: 'Dr. Santos stops by with a clipboard and a concerned expression. "I\'ve been tracking your soil test data, and I need to be direct. Your organic matter is declining — significantly. At current levels, your soil is losing its ability to hold water, cycle nutrients, and support healthy root systems. Think of organic matter as your soil\'s savings account. Right now, you\'re spending it faster than you\'re replenishing it. We can address the immediate nitrogen deficit with a fertilizer application, but long-term recovery requires putting organic material back into the ground. Cover crops are your best tool for that."',
+    preconditions: [
+      { type: 'min_year', year: 10 },
+      { type: 'avg_organic_matter_below', level: 1.5 },
+    ],
+    priority: 85,
+    cooldownDays: 730,
+    maxOccurrences: 2,
+    advisorId: 'extension-agent',
+    choices: [
+      {
+        id: 'buy-fertilizer-emergency',
+        label: 'Emergency Nitrogen Boost ($600)',
+        description: 'A short-term fertility fix — not a soil solution.',
+        cost: 600,
+        requiresCash: 600,
+        effects: [
+          { type: 'modify_cash', amount: -600 },
+          { type: 'modify_nitrogen_all', amount: 30 },
+          { type: 'add_notification', message: 'Emergency nitrogen applied across your fields. Fertility boosted short-term, but the underlying organic matter decline continues.', notificationType: 'event_result' },
+        ],
+        followUpText: 'Santos nods as the fertilizer is applied. "This will help your crops right now — the nitrogen boost should be noticeable within a few weeks. But I want to be clear: this is treating the symptom, not the disease. Your soil organic matter is what produces nitrogen naturally through microbial activity. Every tenth of a percent you lose reduces your soil\'s ability to feed your crops on its own. Eventually, you\'d be buying all your nitrogen instead of growing it.\n\nThe way out is cover crops. Plant them every fall — legumes like crimson clover fix atmospheric nitrogen into your soil for free, and all cover crops add organic matter when they decompose in spring. It\'s slow — we\'re talking years, not weeks — but it\'s the only way to rebuild what your soil has lost. The fertilizer buys you time. Cover crops buy you a future."',
+      },
+      {
+        id: 'noted-trajectory',
+        label: 'I\'ll Keep an Eye on It',
+        description: 'You\'ll monitor the situation.',
+        effects: [
+          { type: 'add_notification', message: 'Santos urges you to consider cover crops for long-term soil health.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'soil', 'ecology'],
+  },
+
+  {
+    id: 'advisor-cover-crop-education',
+    type: 'advisor',
+    illustrationId: 'event-cover-crops',
+    title: 'Santos: The Case for Cover Crops',
+    description: 'Dr. Santos catches you between seasons. "Do you have a minute? I wanted to talk to you about cover crops. I know they\'re not a revenue crop — nobody\'s getting rich selling crimson clover. But they do something your cash crops can\'t: they build soil. When you plant a legume cover crop in the fall, bacteria in its root nodules take nitrogen gas out of the atmosphere and convert it into a form your soil can use. When the plant decomposes in spring, that nitrogen transfers to your next crop. It\'s essentially free fertilizer from thin air. And all cover crops — legumes or not — add organic matter to the soil as they break down. Better water retention, better nutrient cycling, healthier root zones. I really think it\'s worth your time."',
+    preconditions: [
+      { type: 'min_year', year: 5 },
+      { type: 'not_has_flag', flag: 'santos_cover_crop_explained' },
+    ],
+    priority: 80,
+    cooldownDays: 0,
+    maxOccurrences: 1,
+    advisorId: 'extension-agent',
+    choices: [
+      {
+        id: 'explain-more-cover',
+        label: 'How Does Nitrogen Fixation Work?',
+        description: 'The free fertilizer claim is interesting.',
+        effects: [
+          { type: 'set_flag', flag: 'santos_cover_crop_explained', value: true },
+          { type: 'add_notification', message: 'Santos explained how cover crops build soil fertility through nitrogen fixation and organic matter addition.', notificationType: 'event_result' },
+        ],
+        followUpText: "Santos pulls out a diagram he clearly prepared in advance.\n\n\"OK, here's the biology. Legume roots form a partnership with Rhizobium bacteria — you can actually see the nodules if you dig up a clover plant. Those bacteria contain an enzyme called nitrogenase that breaks the triple bond in atmospheric nitrogen gas. That's a bond so strong it takes an industrial fertilizer plant temperatures of 400\u00B0C and extreme pressure to break it. These bacteria do it at soil temperature, powered by sugar from the plant's photosynthesis.\n\nThe plant gets nitrogen, the bacteria get carbon. When you incorporate the cover crop in spring, all that fixed nitrogen becomes available to your next cash crop as the plant material decomposes.\n\nBut nitrogen fixation is only half the story. All plants — legumes and grasses alike — pump carbon into the soil through their roots. About 30% of a plant's photosynthetic output goes directly underground. When cover crops die and decompose, that carbon becomes soil organic matter. More OM means better water holding capacity, better nutrient cycling, and a more active soil food web.\n\nIt's not flashy and it's not fast. But it's the foundation everything else depends on.\"",
+      },
+      {
+        id: 'maybe-later-cover',
+        label: 'Maybe Next Season',
+        description: 'You have more pressing concerns right now.',
+        effects: [
+          { type: 'add_notification', message: 'Santos will bring up cover crops again when the time is right.', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['advisor', 'cover-crops', 'ecology'],
+  },
 ] as const;

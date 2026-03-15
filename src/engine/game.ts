@@ -471,8 +471,11 @@ function processHarvestBulk(state: GameState, scope: 'all' | 'row' | 'col', inde
     // Sort aggregated factors by severity for this crop
     data.factors.sort((a, b) => a.value - b.value);
     const factorText = formatYieldFactors(data.factors);
+    const lossWarning = data.revenue < 0
+      ? ` Warning: harvest costs exceeded crop value — net loss of $${Math.abs(Math.floor(data.revenue)).toLocaleString()}.`
+      : '';
     addNotification(state, 'harvest',
-      `Harvested ${data.count} plots of ${cropDef.name} \u2014 $${Math.floor(data.revenue).toLocaleString()} revenue${factorText}`);
+      `Harvested ${data.count} plots of ${cropDef.name} \u2014 $${Math.floor(data.revenue).toLocaleString()} revenue${factorText}${lossWarning}`);
   }
 
   // Empty field guidance (#86): fire once after bulk harvest if nothing is plantable
@@ -994,6 +997,9 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
       `The ${seasonName.toLowerCase()} season arrives — Year ${year}.`,
       `${seasonName} of Year ${year} is here.`,
       `A new season: ${seasonName}, Year ${year}.`,
+      `Year ${year} — ${seasonName.toLowerCase()} settles over the valley.`,
+      `${seasonName}, Year ${year}. Another season, another set of decisions.`,
+      `The calendar turns to ${seasonName.toLowerCase()}, Year ${year}.`,
     ];
     const scIdx = ((state.seasonChangeMsgIdx ?? -1) + 1) % SEASON_CHANGE_MESSAGES.length;
     state.seasonChangeMsgIdx = scIdx;
@@ -1111,6 +1117,8 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
           `Auto-irrigation watered ${count} plot${s} ($${costStr}).`,
           `Irrigation system activated for ${count} stressed plot${s} — $${costStr} deducted.`,
           `${count} plot${s} auto-watered before crops took damage ($${costStr}).`,
+          `Drip system engaged — ${count} plot${s} received water ($${costStr}).`,
+          `Auto-irrigation detected stress in ${count} plot${s} and responded ($${costStr}).`,
         ];
         const msgIdx = ((state.autoIrrigationMsgIdx ?? -1) + 1) % autoIrrigationMessages.length;
         state.autoIrrigationMsgIdx = msgIdx;
@@ -2122,6 +2130,9 @@ const WATER_STRESS_MESSAGES = [
   'Soil moisture is critically low in several plots.',
   'Your fields are drying out — water soon to avoid yield loss.',
   'Water stress detected! Crops may suffer without irrigation.',
+  'Wilting leaves spotted — your crops are asking for water.',
+  'Moisture levels are dropping fast. Some plots look parched.',
+  'Without irrigation soon, stressed crops will lose yield potential.',
 ];
 
 function nextWaterStressMessage(state: GameState): string {

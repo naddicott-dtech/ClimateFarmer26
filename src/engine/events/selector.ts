@@ -111,6 +111,15 @@ export function evaluateCondition(
       }
       return (totalK / (GRID_ROWS * GRID_COLS)) < condition.level;
     }
+    case 'avg_organic_matter_below': {
+      let totalOM = 0;
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          totalOM += state.grid[r][c].soil.organicMatter;
+        }
+      }
+      return (totalOM / (GRID_ROWS * GRID_COLS)) < condition.level;
+    }
     case 'has_any_crop_in': {
       for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
