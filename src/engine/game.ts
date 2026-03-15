@@ -917,6 +917,9 @@ function forEachCellInScope(
 
 export function incorporateCoverCrops(state: GameState): void {
   let incorporated = 0;
+  let totalN = 0;
+  let totalOM = 0;
+  let totalMoisture = 0;
   const coverMultiplier = state.flags['tech_advanced_cover_crops'] ? 1.5 : 1.0;
 
   for (let row = 0; row < GRID_ROWS; row++) {
@@ -927,14 +930,22 @@ export function incorporateCoverCrops(state: GameState): void {
       const coverDef = getCoverCropDefinition(cell.coverCropId);
       const eff = getCoverCropEffectiveness(cell);
 
+      const nAmount = coverDef.nitrogenFixation * eff;
+      const omAmount = coverDef.organicMatterBonus * eff * coverMultiplier;
+      const moistureAmount = coverDef.moistureDrawdown * eff;
+
       // Apply nitrogen fixation (clamped to 200), scaled by effectiveness
-      cell.soil.nitrogen = Math.min(200, cell.soil.nitrogen + coverDef.nitrogenFixation * eff);
+      cell.soil.nitrogen = Math.min(200, cell.soil.nitrogen + nAmount);
 
       // Apply organic matter bonus, scaled by effectiveness and tech upgrade
-      cell.soil.organicMatter += coverDef.organicMatterBonus * eff * coverMultiplier;
+      cell.soil.organicMatter += omAmount;
 
       // Apply moisture drawdown (tradeoff), also scaled — less biomass = less water draw
-      cell.soil.moisture = Math.max(0, cell.soil.moisture - coverDef.moistureDrawdown * eff);
+      cell.soil.moisture = Math.max(0, cell.soil.moisture - moistureAmount);
+
+      totalN += nAmount;
+      totalOM += omAmount;
+      totalMoisture += moistureAmount;
 
       // Clear cover crop
       cell.coverCropId = null;
@@ -943,10 +954,11 @@ export function incorporateCoverCrops(state: GameState): void {
   }
 
   if (incorporated > 0) {
-    const coverDef = getCoverCropDefinition('legume-cover');
-    const omBonus = (coverDef.organicMatterBonus * coverMultiplier).toFixed(2);
+    const avgN = (totalN / incorporated).toFixed(0);
+    const avgOM = (totalOM / incorporated).toFixed(2);
+    const avgM = (totalMoisture / incorporated).toFixed(1);
     addNotification(state, 'info',
-      `Cover crops incorporated on ${incorporated} plot${incorporated !== 1 ? 's' : ''}: +${coverDef.nitrogenFixation} lbs/ac nitrogen, +${omBonus}% organic matter, -${coverDef.moistureDrawdown}in moisture`);
+      `Cover crops incorporated on ${incorporated} plot${incorporated !== 1 ? 's' : ''}: avg +${avgN} lbs/ac nitrogen, +${avgOM}% organic matter, -${avgM}in moisture per plot`);
   }
 }
 

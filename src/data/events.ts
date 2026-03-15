@@ -2202,6 +2202,7 @@ export const STORYLETS: readonly Storylet[] = [
     preconditions: [
       { type: 'min_year', year: 10 },
       { type: 'avg_organic_matter_below', level: 1.3 },
+      { type: 'avg_organic_matter_above', level: 1.0 }, // Band guard: skip warning if OM already in crisis range
     ],
     priority: 95,
     cooldownDays: 0,
@@ -2339,23 +2340,13 @@ export const STORYLETS: readonly Storylet[] = [
         followUpText: "The cooperative coordinator — a retired almond grower named Margaret — walks you through the model.\n\n\"This isn't insurance. Let me be clear about that up front. There's no actuarial table, no adjusters, no corporate claims department. What we have is 47 farms pooling resources. When one of us gets hit, the rest chip in. The payouts are smaller than what Valley Ag was offering — roughly half — but they're real and they're fast.\n\nThe $800 buy-in goes into the shared fund. No annual premiums after that — the fund replenishes from member contributions after each payout event. If the fund runs low, we do a voluntary call for additional contributions.\n\nThe real value isn't the money, honestly. It's the network. When rootworm hits your neighbor, you hear about it the same day — not two weeks later from an extension bulletin. When disease shows up in someone's orchard, we've got people with chainsaws and experience on-site within 48 hours.\n\nIt's not perfect. But it's ours.\"",
       },
       {
-        id: 'self-insure-exit',
-        label: 'Self-Insure',
-        description: 'Rely on your cash reserves. No coverage, but no costs either.',
+        id: 'go-without-coverage',
+        label: 'Go Without Coverage',
+        description: 'Rely on your cash reserves. No coverage, but no ongoing costs either.',
         effects: [
           { type: 'set_flag', flag: 'has_crop_insurance', value: false },
           { type: 'set_flag', flag: 'regime_insurance_exit', value: true },
-          { type: 'add_notification', message: 'You chose to self-insure. No more premium payments, but no safety net for future catastrophes. Chen: "I hope your cash reserves are deep enough."', notificationType: 'event_result' },
-        ],
-      },
-      {
-        id: 'accept-risk-exit',
-        label: 'Accept the Risk',
-        description: "You'll deal with problems as they come.",
-        effects: [
-          { type: 'set_flag', flag: 'has_crop_insurance', value: false },
-          { type: 'set_flag', flag: 'regime_insurance_exit', value: true },
-          { type: 'add_notification', message: 'Insurance gone. No replacement coverage. You\'re on your own for any future catastrophes.', notificationType: 'event_result' },
+          { type: 'add_notification', message: 'No replacement coverage. Insurance premiums stop, but you\'re on your own for any future catastrophes. Chen: "I hope your cash reserves are deep enough."', notificationType: 'event_result' },
         ],
       },
     ],

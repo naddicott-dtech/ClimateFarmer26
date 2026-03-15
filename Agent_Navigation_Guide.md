@@ -1,6 +1,6 @@
 # Climate Farmer — Agent Navigation Guide
 Purpose: reliable UI navigation and state observation for AI/QA agents.
-Updated: 2026-03-15. Build: Slice 7b.
+Updated: 2026-03-15. Build: Slice 7c.
 
 **Changelog from v1:** Added `__exportPlaytestLog()` (§3), added confirm dialog to blocking panels table (§6), added execution timeout guidance (§11), expanded known automation traps (§12), corrected harvest dialog behavior documentation.
 
@@ -486,6 +486,8 @@ These have caused incorrect QA findings in the past. Avoid them.
 9. **Async loops timeout at ~30 seconds.** Keep loops to 5-10 steps per JS execution call. Use multiple calls to cover more game time.
 
 10. **Event/advisor cooldowns and caps are real.** If an event fires 30+ times in the same session, your script is likely not dismissing panels correctly (infinite refire). Check for testid typos (case-sensitive: `testid` vs `testId`).
+
+11. **Organic warning creates advisor loops.** If automation picks a non-organic choice on an advisor while organic certification is active, the organic-warning interstitial fires. Cancelling returns to the same advisor with the same choices. If your script always picks the same choice, it loops forever. Fix: after an organic-warning cancel, pick a different choice on the advisor, or always prefer the last/dismiss choice on advisors when organic cert is active.
 
 ---
 

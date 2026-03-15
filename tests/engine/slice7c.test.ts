@@ -228,6 +228,34 @@ describe('§7c.2: Cover crop multiplier', () => {
     expect(note).toBeDefined();
     expect(note!.message).toContain('+0.10%');
   });
+
+  it('notification reflects reduced effectiveness under evergreen perennial', () => {
+    const state = makeState();
+    // Plant citrus (evergreen, coverCropEffectiveness = 0.5) with cover crop
+    const cell = state.grid[0][0];
+    cell.crop = {
+      cropId: 'citrus-navels',
+      plantedDay: 1,
+      gddAccumulated: 0,
+      waterStressDays: 0,
+      growthStage: 'seedling',
+      overripeDaysRemaining: -1,
+      isPerennial: true,
+      perennialAge: 3,
+      perennialEstablished: true,
+      harvestedThisSeason: false,
+      chillHoursAccumulated: 0,
+      lastHarvestYieldRatio: 0,
+    };
+    cell.coverCropId = 'legume-cover';
+
+    incorporateCoverCrops(state);
+
+    const note = state.notifications.find(n => n.message.includes('organic matter'));
+    expect(note).toBeDefined();
+    // eff = 0.60 for citrus understory, so OM = 0.10 * 0.60 = 0.06
+    expect(note!.message).toContain('+0.06%');
+  });
 });
 
 // ============================================================================
@@ -250,10 +278,13 @@ describe('§7c.3: soil-decline-warning', () => {
     expect(hasCondition(s(), 'random')).toBe(false);
   });
 
-  it('requires avg_organic_matter_below 1.3 and min_year 10', () => {
-    const omCond = s().preconditions.find(p => p.type === 'avg_organic_matter_below');
-    expect(omCond).toBeDefined();
-    expect((omCond as { level: number }).level).toBe(1.3);
+  it('requires avg_organic_matter_below 1.3, above 1.0 (band guard), and min_year 10', () => {
+    const omBelow = s().preconditions.find(p => p.type === 'avg_organic_matter_below');
+    expect(omBelow).toBeDefined();
+    expect((omBelow as { level: number }).level).toBe(1.3);
+    const omAbove = s().preconditions.find(p => p.type === 'avg_organic_matter_above');
+    expect(omAbove).toBeDefined();
+    expect((omAbove as { level: number }).level).toBe(1.0);
     const yearCond = s().preconditions.find(p => p.type === 'min_year');
     expect(yearCond).toBeDefined();
     expect((yearCond as { year: number }).year).toBe(10);
@@ -413,8 +444,8 @@ describe('§7c.5: regime-insurance-exit', () => {
     expect(s().foreshadowing!.reliability).toBe(1.0);
   });
 
-  it('has 3 choices', () => {
-    expect(s().choices).toHaveLength(3);
+  it('has 2 choices (no false-choice pair)', () => {
+    expect(s().choices).toHaveLength(2);
   });
 
   it('all choices remove has_crop_insurance and set regime_insurance_exit', () => {
@@ -431,14 +462,8 @@ describe('§7c.5: regime-insurance-exit', () => {
     expect(c.effects).toContainEqual({ type: 'set_flag', flag: 'mutual_aid', value: true });
   });
 
-  it('self-insure-exit is free', () => {
-    const c = getChoice(s(), 'self-insure-exit');
-    const hasModifyCash = c.effects.some(e => e.type === 'modify_cash');
-    expect(hasModifyCash).toBe(false);
-  });
-
-  it('accept-risk-exit is free', () => {
-    const c = getChoice(s(), 'accept-risk-exit');
+  it('go-without-coverage is free', () => {
+    const c = getChoice(s(), 'go-without-coverage');
     const hasModifyCash = c.effects.some(e => e.type === 'modify_cash');
     expect(hasModifyCash).toBe(false);
   });
@@ -639,10 +664,12 @@ describe('§7c.10: Escalation ladder', () => {
     expect((omCond as { level: number }).level).toBe(1.5);
   });
 
-  it('soil-decline-warning fires at OM < 1.3 (stricter threshold)', () => {
+  it('soil-decline-warning fires at OM 1.0-1.3 (band guard prevents overlap)', () => {
     const s = getStorylet('soil-decline-warning');
-    const omCond = s.preconditions.find(p => p.type === 'avg_organic_matter_below');
-    expect((omCond as { level: number }).level).toBe(1.3);
+    const omBelow = s.preconditions.find(p => p.type === 'avg_organic_matter_below');
+    expect((omBelow as { level: number }).level).toBe(1.3);
+    const omAbove = s.preconditions.find(p => p.type === 'avg_organic_matter_above');
+    expect((omAbove as { level: number }).level).toBe(1.0);
   });
 
   it('soil-exhaustion-crisis fires at OM < 1.0 (most severe)', () => {
@@ -657,9 +684,27 @@ describe('§7c.10: Escalation ladder', () => {
     expect(getStorylet('soil-exhaustion-crisis').maxOccurrences).toBe(1);
   });
 
-  it('crisis has higher priority than decline-warning (dominates when both conditions met)', () => {
+  it('crisis has higher priority than decline-warning', () => {
     const crisis = getStorylet('soil-exhaustion-crisis');
     const warning = getStorylet('soil-decline-warning');
     expect(crisis.priority).toBeGreaterThan(warning.priority);
+  });
+
+  it('band guard: warning does not create foreshadow when OM is below 1.0 (crisis range)', () => {
+    const state = makeState();
+    setYear(state, 15);
+    setAllOM(state, 0.8); // Below 1.0 — in crisis range, not warning range
+    state.calendar.season = 'summer';
+
+    const rng = makeRng();
+    const result = evaluateEvents(state, STORYLETS as unknown as Storylet[], rng, { conditionOnlyAdvisors: true });
+
+    // soil-decline-warning should NOT create a foreshadow (band guard fails: OM < 1.0)
+    const warningForeshadow = result.newForeshadows.find(f => f.storyletId === 'soil-decline-warning');
+    expect(warningForeshadow).toBeUndefined();
+
+    // soil-exhaustion-crisis SHOULD create a foreshadow (OM < 1.0 and year >= 15)
+    const crisisForeshadow = result.newForeshadows.find(f => f.storyletId === 'soil-exhaustion-crisis');
+    expect(crisisForeshadow).toBeDefined();
   });
 });
