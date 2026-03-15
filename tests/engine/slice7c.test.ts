@@ -278,7 +278,7 @@ describe('§7c.3: soil-decline-warning', () => {
     expect(hasCondition(s(), 'random')).toBe(false);
   });
 
-  it('requires avg_organic_matter_below 1.3, above 1.0 (band guard), and min_year 10', () => {
+  it('requires avg_organic_matter_below 1.3, above 1.0 (band guard), and min_year 12', () => {
     const omBelow = s().preconditions.find(p => p.type === 'avg_organic_matter_below');
     expect(omBelow).toBeDefined();
     expect((omBelow as { level: number }).level).toBe(1.3);
@@ -287,7 +287,7 @@ describe('§7c.3: soil-decline-warning', () => {
     expect((omAbove as { level: number }).level).toBe(1.0);
     const yearCond = s().preconditions.find(p => p.type === 'min_year');
     expect(yearCond).toBeDefined();
-    expect((yearCond as { year: number }).year).toBe(10);
+    expect((yearCond as { year: number }).year).toBe(12);
   });
 
   it('has priority 95 and maxOccurrences 1', () => {
@@ -606,7 +606,7 @@ describe('§7c.8: FLAG_LABELS', () => {
 describe('§7c.9: Condition-only event with foreshadowing', () => {
   it('creates foreshadow first, then fires event after delay', () => {
     const state = makeState();
-    setYear(state, 10);
+    setYear(state, 12);
     setAllOM(state, 1.2); // Below 1.3 threshold for soil-decline-warning
     state.calendar.season = 'summer';
 
@@ -628,7 +628,7 @@ describe('§7c.9: Condition-only event with foreshadowing', () => {
 
   it('foreshadow matures after daysBeforeEvent ticks', () => {
     const state = makeState();
-    setYear(state, 10);
+    setYear(state, 12);
     setAllOM(state, 1.2);
     state.calendar.season = 'summer';
 

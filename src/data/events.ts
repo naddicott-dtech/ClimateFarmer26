@@ -2200,7 +2200,7 @@ export const STORYLETS: readonly Storylet[] = [
     title: 'Santos: Urgent Soil Health Intervention',
     description: "Dr. Santos arrives unannounced, which she never does. She sets a folder of lab results on your tailgate and lets you look before she speaks.\n\n\"Your organic matter is at levels I haven't seen outside of construction sites. We're below 1.3% across your fields — that's not 'low,' that's structural failure in slow motion. Your soil is losing its ability to hold water, cycle nutrients, and support root systems. Every season you farm on degraded soil, the next season gets harder.\"\n\nShe pulls out two options she's already costed.\n\n\"Option one: I can get you an advanced cover crop seed mix — multi-species blend with deep-rooted legumes, brassicas, and grasses. It's not the basic clover you've been using. This mix builds organic matter faster and fixes more nitrogen. Same planting window, same button — just a better toolkit. Eight hundred dollars.\n\nOption two: emergency compost application. Fifteen hundred, and it gives you an immediate boost to both organic matter and nitrogen. But it's a one-time fix — like getting a blood transfusion when what you need is to stop the bleeding.\n\nOr you can keep doing what you're doing and watch the numbers drop.\"",
     preconditions: [
-      { type: 'min_year', year: 10 },
+      { type: 'min_year', year: 12 }, // 2-year gap after advisor-soil-trajectory (Y10+) to avoid double-warning feel
       { type: 'avg_organic_matter_below', level: 1.3 },
       { type: 'avg_organic_matter_above', level: 1.0 }, // Band guard: skip warning if OM already in crisis range
     ],
