@@ -36,6 +36,38 @@ const ADVISOR_CHARACTERS: Record<string, { portrait: string; name: string; role:
   },
 };
 
+/** Parse forum text into speaker messages and narrative blocks. */
+function parseForumThread(text: string): Array<{ type: 'speaker' | 'narrative'; speaker?: string; text: string }> {
+  const paragraphs = text.split('\n\n').map(p => p.trim()).filter(Boolean);
+  return paragraphs.map(para => {
+    // Match patterns like "SpeakerName: "text" or SpeakerName: text
+    const match = para.match(/^([A-Za-z][A-Za-z0-9_]*(?:[_ ][A-Za-z0-9_]+)*):\s*"?(.+)/s);
+    if (match) {
+      return { type: 'speaker' as const, speaker: match[1].replace(/_/g, ' '), text: match[2].replace(/"$/, '') };
+    }
+    return { type: 'narrative' as const, text: para };
+  });
+}
+
+/** Render text as a forum thread with speaker/narrative formatting. */
+function ForumThreadView({ text }: { text: string }) {
+  const messages = parseForumThread(text);
+  return (
+    <div class={styles.forumThread}>
+      {messages.map((msg, i) =>
+        msg.type === 'speaker' ? (
+          <div key={i} class={styles.forumMessage}>
+            <div class={styles.forumSpeaker}>{msg.speaker}</div>
+            <div class={styles.forumText}>{msg.text}</div>
+          </div>
+        ) : (
+          <div key={i} class={styles.forumNarrative}>{msg.text}</div>
+        )
+      )}
+    </div>
+  );
+}
+
 /**
  * EventPanel renders the event/advisor choice UI when an activeEvent exists.
  * Replaces the generic auto-pause overlay for 'event' and 'advisor' reasons.
@@ -180,7 +212,9 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; is
           )}
 
           <h2 class={styles.title} data-testid="event-title">{followUp.title}</h2>
-          <div class={styles.message} data-testid="follow-up-text">{followUp.text}</div>
+          <div class={styles.message} data-testid="follow-up-text">
+            {followUp.advisorId === 'growers-forum' ? <ForumThreadView text={followUp.text} /> : followUp.text}
+          </div>
 
           <div class={styles.choiceList}>
             <button
@@ -238,7 +272,9 @@ export function EventPanel({ event, isAdvisor }: { event: ActiveEvent | null; is
         )}
 
         <h2 class={styles.title} data-testid="event-title">{event.title}</h2>
-        <div class={styles.message} data-testid="event-description">{event.description}</div>
+        <div class={styles.message} data-testid="event-description">
+          {advisorId === 'growers-forum' ? <ForumThreadView text={event.description} /> : event.description}
+        </div>
 
         <div class={styles.choiceList}>
           {visibleChoices.map(choice => {

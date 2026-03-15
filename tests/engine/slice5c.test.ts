@@ -444,42 +444,19 @@ describe('Slice 5c: regime-heat-threshold', () => {
     expect(evaluateNonRandomConditions(getStorylet('regime-heat-threshold'), state)).toBe(false);
   });
 
-  it('research-heat-crops choice: sets regime_heat_threshold + tech_crop_avocado, costs $800', () => {
+  it('acknowledge-heat-regime choice: sets regime_heat_threshold, no cost (7d restructure)', () => {
     const storylet = getStorylet('regime-heat-threshold');
-    const researchChoice = storylet.choices.find(c => c.id === 'research-heat-crops');
-    expect(researchChoice).toBeDefined();
-    expect(researchChoice!.requiresCash).toBe(800);
+    expect(storylet.choices.length).toBe(1);
+    const choice = storylet.choices[0];
+    expect(choice.id).toBe('acknowledge-heat-regime');
+    expect(choice.requiresCash).toBeUndefined();
 
     const testState = makeState();
-    const cashBefore = testState.economy.cash;
-    applyEffects(testState, researchChoice!.effects, 'regime-heat-threshold');
+    applyEffects(testState, choice.effects, 'regime-heat-threshold');
 
     expect(testState.flags['regime_heat_threshold']).toBe(true);
-    expect(testState.flags['tech_crop_avocado']).toBe(true);
-    expect(testState.economy.cash).toBe(cashBefore - 800);
-  });
-
-  it('accept-heat choice: sets regime_heat_threshold but NOT tech_crop_avocado', () => {
-    const storylet = getStorylet('regime-heat-threshold');
-    const acceptChoice = storylet.choices.find(c => c.id === 'accept-heat');
-    expect(acceptChoice).toBeDefined();
-
-    const testState = makeState();
-    applyEffects(testState, acceptChoice!.effects, 'regime-heat-threshold');
-
-    expect(testState.flags['regime_heat_threshold']).toBe(true);
+    // Avocado now comes from separate events (advisor-avocado-research / advisor-avocado-catchup)
     expect(testState.flags['tech_crop_avocado']).toBeUndefined();
-  });
-
-  it('after research: getTechLevel(flags, crop) === 2 (given tech_crop_agave was also set)', () => {
-    const storylet = getStorylet('regime-heat-threshold');
-    const researchChoice = storylet.choices.find(c => c.id === 'research-heat-crops')!;
-
-    const testState = makeState();
-    testState.flags['tech_crop_agave'] = true; // prerequisite
-    applyEffects(testState, researchChoice.effects, 'regime-heat-threshold');
-
-    expect(getTechLevel(testState.flags, 'crop')).toBe(2);
   });
 });
 
@@ -903,6 +880,6 @@ describe('Slice 5c: data integrity', () => {
     const conditionOnlyCount = STORYLETS.filter(
       s => !s.preconditions.some(c => c.type === 'random'),
     ).length;
-    expect(conditionOnlyCount).toBe(23);
+    expect(conditionOnlyCount).toBe(25);
   });
 });

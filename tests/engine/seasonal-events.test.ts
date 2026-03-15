@@ -66,7 +66,7 @@ describe('hasRandomCondition', () => {
     ]);
   });
 
-  it('identifies all 23 per-tick events', () => {
+  it('identifies all 25 per-tick events', () => {
     const perTickIds = STORYLETS.filter(s => !hasRandomCondition(s)).map(s => s.id);
     expect(perTickIds).toEqual([
       'advisor-orchard-decline',
@@ -80,9 +80,13 @@ describe('hasRandomCondition', () => {
       'tech-water-irrigation',
       'tech-soil-management',
       'tech-crop-agave',
+      // Slice 7d: avocado research (early)
+      'advisor-avocado-research',
       'regime-water-restriction',
       'regime-market-crash',
       'regime-heat-threshold',
+      // Slice 7d: avocado catchup (late)
+      'advisor-avocado-catchup',
       'advisor-potassium-management',
       'santos-organic-offer',
       'chen-insurance-offer',

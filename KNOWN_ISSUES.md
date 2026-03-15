@@ -410,9 +410,8 @@ See also: #85 (same root issue identified in 5c testing).
 Severity: MEDIUM (pedagogy — information without agency). After unlocking soil testing tech, students see potassium values but have no clear understanding of what depletes K, what restores it, or what they can do about it. The number is effectively noise without a legible cause-and-effect loop. K is consumed at harvest (per-crop uptake rates), but without visible replenishment mechanics or clear price impact signaling, the information doesn't drive decisions.
 Two directions for Slice 6: (A) Add a K lever — potassium fertilizer purchase option. (B) Make K's effect more visible at harvest — "Potassium-depleted soil reduced crop quality — sale price dropped 15%." Option B is more pedagogically interesting: it connects to rotation (different crops have different K uptake rates) without adding new mechanics. Either way, students need to see the consequence AND understand the lever.
 
-**94. Avocado unlock arrives too late for economic impact.**
-Severity: MEDIUM (pacing). `regime-heat-threshold` fires ~Year 20, unlocking heat-tolerant avocado research. With a 4-year establishment period, meaningful production starts ~Year 24-25. Only 5-6 years of production before Year 30 — too little runway for the crop to feel like a compelling profit pivot.
-Fix options for Slice 6: move the unlock earlier (Y15-17), shorten establishment period, or reframe avocado's value as resilience/scoring rather than late-game cash pivot. The crop needs to matter in actual play, not just on paper.
+**94. ~~Avocado unlock arrives too late for economic impact.~~ RESOLVED (Slice 7d)**
+Separated avocado research from `regime-heat-threshold`. Early Santos advisory (`advisor-avocado-research`, Y10-14, $600) offers proactive research. Heat regime becomes pure consequence (single acknowledge choice). Late catchup (`advisor-avocado-catchup`, post-regime, $800, 90-day foreshadow spacer) for students who missed the early window. Foresight rewarded, ignorance not hard-locked.
 
 **95. Growers Forum effectively disappears after intro.**
 Severity: MEDIUM (content). Only the intro storylet (`growers-forum-intro`) exists. In a 30-year playthrough, the Forum appears once and then vanishes as an ongoing voice. Santos and Chen have recurring presence; the Forum does not.
@@ -459,6 +458,16 @@ Severity: MEDIUM (scoring balance/narrative tone). Deferred — needs design dis
 - **Advanced accessibility** (colorblind modes, full screen reader support) — Baseline keyboard nav + ARIA in Slice 1.
 - **Sound / music** — Not essential for classroom use.
 - **Farm expansion (neighbor buyout)** — Likely v2, not Classroom-Ready Build.
+
+### Resolved — Slice 7d
+
+**103. Settings gear dropdown invisible.** `overflow: hidden` on `.rightGroup` in TopBar.module.css clipped the absolutely-positioned dropdown. Fixed: changed to `overflow: visible`.
+
+**104. Event panel text lacks paragraph breaks.** `.message` class had no `white-space` rule, collapsing `\n\n` in event descriptions to single spaces. Fixed: added `white-space: pre-wrap`.
+
+**105. Forum posts render as wall of text.** Multi-speaker followUpText and some descriptions had structured dialogue (speaker names, quoted text, narrative framing) but rendered as a single paragraph. Fixed: forum thread parser in EventPanel detects `advisorId === 'growers-forum'` and renders with distinct speaker/narrative styling.
+
+**106. Event panels don't scroll on long content.** `.panel` class had no `max-height` or `overflow-y`, so tall event panels grew beyond the viewport. Fixed: added `max-height: 85vh; overflow-y: auto` to `.panel`.
 
 ### Deferred — Post-Slice 4 / Academic Integrity
 

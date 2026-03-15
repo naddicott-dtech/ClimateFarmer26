@@ -759,6 +759,49 @@ export const STORYLETS: readonly Storylet[] = [
     tags: ['tech-unlock', 'advisor', 'crop'],
   },
 
+  // --- Slice 7d: Early avocado research (proactive adaptation) ---
+
+  {
+    id: 'advisor-avocado-research',
+    type: 'advisor',
+    title: 'Santos: Heat-Tolerant Crop Research',
+    description: "Dr. Santos stops by with a research paper and a look of quiet excitement. \"I just got back from a UC Riverside field day. They've been breeding avocado varieties specifically for inland heat — not the coastal Hass you see in grocery stores, but rootstock that actually thrives above 100°F. The trial plots in Bakersfield are producing real yields.\"\n\nShe spreads out temperature charts from the last decade. \"Look at the trend. Our average summer highs have been climbing steadily. I can't tell you exactly when it'll matter for your current crops, but the direction is clear. Getting ahead of it with heat-adapted varieties could be very smart.\"\n\nChen looks over the economics. \"Avocados are high-value — $1.20 per pound at current prices. Establishment is expensive and takes 4 years, but once they're producing, the returns are strong. $600 for the research license and starter rootstock.\"\n\nThe Forum has been hearing things too. \"Guy in Bakersfield says his test trees are loving this heat. First time I've heard someone say that about a crop.\"",
+    preconditions: [
+      { type: 'min_year', year: 10 },
+      { type: 'max_year', year: 14 },
+      { type: 'not_has_flag', flag: 'tech_crop_avocado' },
+      { type: 'has_crop' },
+    ],
+    priority: 95,
+    cooldownDays: 365,
+    maxOccurrences: 2,
+    advisorId: 'extension-agent',
+    choices: [
+      {
+        id: 'research-avocado-early',
+        label: 'Research Heat-Tolerant Avocado',
+        description: 'Invest in heat-adapted avocado rootstock and growing techniques. Unlocks avocados — high value, no heat penalty, but 4-year establishment. Costs $600.',
+        cost: 600,
+        requiresCash: 600,
+        effects: [
+          { type: 'modify_cash', amount: -600 },
+          { type: 'set_flag', flag: 'tech_crop_avocado', value: true },
+          { type: 'add_notification', message: 'Avocado research complete! You can now plant heat-tolerant avocados — high value, no heat penalty, but they need 4 years to establish. Santos: "Getting ahead of the curve is the smartest move in farming."', notificationType: 'event_result' },
+        ],
+        followUpText: "Santos walks you through the research package.\n\n\"These aren't your grandmother's avocados. The UC Riverside program spent 15 years selecting rootstock that handles sustained heat above 100°F without dropping fruit. Standard Hass avocados abort their crop when it gets too hot — these varieties actually photosynthesize more efficiently at higher temperatures.\n\nThe establishment period is real — 4 years before your first harvest. That's a long time to carry maintenance costs without income. But once they're producing, avocados are one of the highest-value crops per acre in California.\n\nAnd here's the strategic angle: if summer temperatures keep climbing — and the data says they will — heat-sensitive crops like tomatoes, almonds, and citrus are going to struggle. Avocados won't just survive that future. They'll thrive in it.\n\nYou're not reacting to a crisis. You're positioning for one that hasn't hit yet. That's the difference between adaptation and scrambling.\"",
+      },
+      {
+        id: 'defer-avocado',
+        label: 'Not Right Now',
+        description: 'The research is interesting but you have other priorities.',
+        effects: [
+          { type: 'add_notification', message: 'You passed on avocado research for now. Santos: "The option stays open — the breeding program isn\'t going anywhere."', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['tech-unlock', 'advisor', 'crop'],
+  },
+
   {
     id: 'regime-water-restriction',
     type: 'regulatory',
@@ -848,7 +891,7 @@ export const STORYLETS: readonly Storylet[] = [
     id: 'regime-heat-threshold',
     type: 'climate',
     title: 'Permanent Heat Threshold Crossed',
-    description: "Dr. Santos arrives with a stack of climate data and a grave expression. \"I've been tracking the temperature trends, and we've crossed a threshold. Average summer highs are now consistently above what most of our traditional crops can handle. This isn't a heatwave — this is the new baseline.\"\n\nShe shows yield projections: tomatoes down 25%, corn down 15%, almonds down 20%. Only sorghum, pistachios, and agave are unaffected.\n\n\"But there's an opportunity,\" she continues. \"UC Riverside has developed a heat-tolerant avocado variety specifically for inland valleys. It thrives in these temperatures and could become a high-value replacement for struggling crops.\"\n\nChen reviews the investment: \"$800 for the research license and starter rootstock. The avocados need 4 years to establish, but the long-term value is significant.\"\n\nThe Forum has been watching the thermometer too. \"My grandfather never saw summers like this. The valley is changing — we either change with it or we're done.\"",
+    description: "Dr. Santos arrives with a stack of climate data and a grave expression. \"I've been tracking the temperature trends, and we've crossed a threshold. Average summer highs are now consistently above what most of our traditional crops can handle. This isn't a heatwave — this is the new baseline.\"\n\nShe shows yield projections: tomatoes down 25%, corn down 15%, almonds down 20%, citrus down 15%. Only sorghum, pistachios, and agave are unaffected.\n\n\"Every heat-sensitive crop on your farm will produce less from now on,\" she says. \"The valley has always been hot, but this is a different kind of hot. Sustained, consistent, year after year. The crops that were bred for the old climate aren't adapted to this one.\"\n\nThe Forum has been watching the thermometer too. \"My grandfather never saw summers like this. The valley is changing — we either change with it or we're done.\"",
     preconditions: [
       { type: 'min_year', year: 15 },
       { type: 'max_year', year: 20 },
@@ -861,29 +904,65 @@ export const STORYLETS: readonly Storylet[] = [
     advisorId: 'extension-agent',
     choices: [
       {
-        id: 'research-heat-crops',
-        label: 'Research Heat-Adapted Varieties',
-        description: 'Invest in heat-tolerant avocado rootstock and growing techniques. Unlocks avocados — high value, no heat penalty, but 4-year establishment. Costs $800.',
+        id: 'acknowledge-heat-regime',
+        label: 'The Climate Has Changed',
+        description: 'Heat-sensitive crops (tomatoes, corn, wheat, almonds, citrus) will permanently yield less. Sorghum, pistachios, and agave are unaffected.',
+        effects: [
+          { type: 'set_flag', flag: 'regime_heat_threshold', value: true },
+          { type: 'add_notification', message: 'Heat threshold permanently crossed. Tomatoes (-25%), corn (-15%), almonds (-20%), wheat (-10%), and citrus (-15%) will all produce lower yields going forward. Santos: "The valley has crossed a line. The crops that thrive here are changing."', notificationType: 'event_result' },
+        ],
+      },
+    ],
+    tags: ['regime-shift', 'advisor', 'heat'],
+  },
+
+  // --- Slice 7d: Late avocado catchup (reactive fallback) ---
+
+  {
+    id: 'advisor-avocado-catchup',
+    type: 'advisor',
+    title: 'Santos: Avocado Research — Playing Catch-Up',
+    description: "Dr. Santos finds you reviewing your latest yield reports. \"I can see the heat regime is hitting your bottom line. Tomatoes, corn, almonds — they're all producing less than they used to, and that's not going to reverse.\"\n\nShe pauses. \"I should have pushed harder on this earlier, but UC Riverside's heat-tolerant avocado program is still open to new growers. The varieties they've developed actually thrive in these temperatures — no heat penalty at all. It's a 4-year establishment period and $800 for the research license, but given what you're losing on heat-sensitive crops, the math works.\"\n\nChen is cautious. \"You're starting late. Four years of establishment means your first harvest isn't until — well, you do the math on how many years you have left. It's not ideal timing.\"\n\nSantos nods. \"Late is still better than never. But I won't pretend this is the same opportunity it was five years ago.\"",
+    preconditions: [
+      { type: 'has_flag', flag: 'regime_heat_threshold' },
+      { type: 'not_has_flag', flag: 'tech_crop_avocado' },
+      { type: 'max_year', year: 25 },
+      { type: 'has_crop' },
+    ],
+    priority: 90,
+    cooldownDays: 365,
+    maxOccurrences: 2,
+    advisorId: 'extension-agent',
+    foreshadowing: {
+      daysBeforeEvent: 90,
+      reliability: 1.0,
+      signal: 'Santos mentions she\'s been reviewing UC Riverside\'s heat-adapted avocado research — says she might have something worth discussing soon.',
+      advisorSource: 'extension-agent',
+    },
+    choices: [
+      {
+        id: 'research-avocado-late',
+        label: 'Research Heat-Tolerant Avocado',
+        description: 'Invest in heat-adapted avocado rootstock. Same crop, higher price — you\'re playing catch-up. Costs $800.',
         cost: 800,
         requiresCash: 800,
         effects: [
           { type: 'modify_cash', amount: -800 },
-          { type: 'set_flag', flag: 'regime_heat_threshold', value: true },
           { type: 'set_flag', flag: 'tech_crop_avocado', value: true },
-          { type: 'add_notification', message: 'Heat threshold permanently crossed. Traditional crops will yield less, but you\'ve unlocked heat-tolerant avocado cultivation. Santos: "The future belongs to crops that thrive in heat, not just survive it."', notificationType: 'event_result' },
+          { type: 'add_notification', message: 'Avocado research complete! You can now plant heat-tolerant avocados. Santos: "Better late than never — but you\'ll have less runway than if you\'d started earlier."', notificationType: 'event_result' },
         ],
+        followUpText: "Santos helps you set up the starter rootstock.\n\n\"I'll be honest with you — if you'd done this a few years ago, you'd be harvesting by now instead of waiting through another establishment period. The economics are still good, but the window is shorter.\n\nHere's what you're getting: avocado varieties bred specifically for inland heat. No yield penalty when temperatures spike — they actually produce better in sustained heat. $1.20 per pound at current prices, and the trees are productive for decades once established.\n\nThe catch is the 4-year wait. That's 4 years of maintenance costs with no income from these trees. You need to make sure your other crops can carry the farm through that period.\n\nBut the alternative is watching your heat-sensitive crops lose another 15-25% every year with no way to recover that yield. At least avocados give you a path forward.\"\n\nShe looks at the temperature forecast on her tablet. \"The heat isn't going back to what it was. Neither should your crop plan.\"",
       },
       {
-        id: 'accept-heat',
-        label: 'Accept Yield Losses',
-        description: 'No investment in new varieties. Heat-sensitive crops (tomatoes, corn, wheat, almonds, citrus) permanently yield less.',
+        id: 'defer-avocado-late',
+        label: 'Not Right Now',
+        description: 'You have other priorities despite the heat losses.',
         effects: [
-          { type: 'set_flag', flag: 'regime_heat_threshold', value: true },
-          { type: 'add_notification', message: 'Heat threshold permanently crossed. Tomatoes, corn, wheat, almonds, and citrus will all produce lower yields going forward. Santos: "Without adaptation, you\'re farming against the climate instead of with it."', notificationType: 'event_result' },
+          { type: 'add_notification', message: 'Santos nods slowly. "The offer stands, but the clock is ticking. Every year you wait is a year less of production."', notificationType: 'event_result' },
         ],
       },
     ],
-    tags: ['regime-shift', 'advisor', 'heat', 'tech-unlock'],
+    tags: ['tech-unlock', 'advisor', 'crop'],
   },
 
   // --- Slice 6a: K fertilizer advisor ---
