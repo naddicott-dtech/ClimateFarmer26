@@ -892,6 +892,70 @@ describe('§12: Organic Compliance Layer', () => {
 });
 
 // ============================================================================
+// §12a: Organic Milestone Banners in Year-End Data
+// ============================================================================
+
+describe('§12a: Organic Milestone in Year-End Data', () => {
+  function getYearEndData(state: GameState): Record<string, unknown> | undefined {
+    advanceToYearEnd(state);
+    const yearEnd = state.autoPauseQueue.find(e => e.reason === 'year_end');
+    return yearEnd?.data as Record<string, unknown> | undefined;
+  }
+
+  it('year-end data includes organicMilestone="certified" when certification is granted', () => {
+    const state = makeOrganicState({ compliantYears: 2, coverCropCells: 16 });
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBe('certified');
+  });
+
+  it('year-end data includes organicMilestone="revoked" when violation while certified', () => {
+    const state = makeOrganicState({ compliantYears: 4, coverCropCells: 16 });
+    state.flags['organic_certified'] = true;
+    state.flags['organic_violation_this_year'] = true;
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBe('revoked');
+  });
+
+  it('year-end data includes organicMilestone="reset" when violation during transition', () => {
+    const state = makeOrganicState({ compliantYears: 1 });
+    state.flags['organic_violation_this_year'] = true;
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBe('reset');
+  });
+
+  it('year-end data includes organicMilestone="delayed" when years met but not enough cover crops', () => {
+    const state = makeOrganicState({ compliantYears: 2, coverCropCells: 5 });
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBe('delayed');
+  });
+
+  it('year-end data includes organicMilestone="transition-N" during clean transition years', () => {
+    const state = makeOrganicState({ compliantYears: 0 });
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBe('transition-1');
+  });
+
+  it('year-end data includes organicMilestone="suspended" when cover crops drop below minimum', () => {
+    const state = makeOrganicState({ compliantYears: 4, coverCropCells: 16 });
+    state.flags['organic_certified'] = true;
+    // Remove cover crops below minimum — suspension should trigger
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        state.grid[r][c].coverCropId = undefined;
+      }
+    }
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBe('suspended');
+  });
+
+  it('year-end data has no organicMilestone when player is not enrolled', () => {
+    const state = makeState();
+    const data = getYearEndData(state);
+    expect(data?.organicMilestone).toBeUndefined();
+  });
+});
+
+// ============================================================================
 // §12b: Prohibited Choices Set Violation Flag
 // ============================================================================
 

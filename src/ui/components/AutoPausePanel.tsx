@@ -166,6 +166,7 @@ interface YearEndData {
   breakdown?: ExpenseLineItem[];
   hasLoans?: boolean;
   insurancePayouts?: number;
+  organicMilestone?: string;
 }
 
 function getEventConfig(event: AutoPauseEvent): EventConfig {
@@ -220,6 +221,7 @@ function getEventConfig(event: AutoPauseEvent): EventConfig {
           breakdown: breakdownLines,
           hasLoans: (state?.economy.totalLoansReceived ?? 0) > 0,
           insurancePayouts: breakdown?.insurancePayouts as number | undefined,
+          organicMilestone: data.organicMilestone as string | undefined,
         } : undefined,
       };
     }
@@ -272,11 +274,42 @@ function getEventConfig(event: AutoPauseEvent): EventConfig {
   }
 }
 
+function getOrganicBanner(milestone: string | undefined): { text: string; tone: 'success' | 'warning' | 'info' } | null {
+  switch (milestone) {
+    case 'certified':
+      return { text: 'USDA Organic Certification earned! All harvest revenue now receives a 20% price premium.', tone: 'success' };
+    case 'revoked':
+      return { text: 'Organic certification revoked — synthetic inputs used. Must complete 3 new clean years to re-qualify.', tone: 'warning' };
+    case 'suspended':
+      return { text: 'Organic certification suspended — not enough cover crops. Must re-qualify with 3 clean years.', tone: 'warning' };
+    case 'reset':
+      return { text: 'Organic transition reset — synthetic inputs used. The 3-year clock restarts.', tone: 'warning' };
+    case 'delayed':
+      return { text: 'Organic certification delayed — need more fields with cover crops.', tone: 'info' };
+    default:
+      if (milestone?.startsWith('transition-')) {
+        const years = milestone.slice('transition-'.length);
+        return { text: `Organic transition: ${years} of 3 clean years completed.`, tone: 'info' };
+      }
+      return null;
+  }
+}
+
 function YearEndTable({ data }: { data: YearEndData }) {
   const isProfit = data.net >= 0;
+  const organicBanner = getOrganicBanner(data.organicMilestone);
 
   return (
-    <table class={styles.summaryTable} data-testid="year-end-summary">
+    <>
+      {organicBanner && (
+        <div
+          class={`${styles.organicBanner} ${organicBanner.tone === 'success' ? styles.organicBannerSuccess : organicBanner.tone === 'warning' ? styles.organicBannerWarning : styles.organicBannerInfo}`}
+          data-testid="organic-milestone-banner"
+        >
+          {organicBanner.text}
+        </div>
+      )}
+      <table class={styles.summaryTable} data-testid="year-end-summary">
       <tbody>
         <tr>
           <td>Revenue</td>
@@ -312,5 +345,6 @@ function YearEndTable({ data }: { data: YearEndData }) {
         </tr>
       </tbody>
     </table>
+    </>
   );
 }

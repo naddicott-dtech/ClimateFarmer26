@@ -81,6 +81,34 @@
   background: var(--color-danger-light);
 }
 
+/* Organic milestone banner (year-end) */
+.organicBanner {
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  text-align: center;
+}
+
+.organicBannerSuccess {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.organicBannerWarning {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.organicBannerInfo {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
 /* Year-end summary table */
 .summaryTable {
   width: 100%;
@@ -278,10 +306,14 @@
 }
 
 .organicWarning {
-  font-size: var(--font-size-xs, 0.7rem);
-  font-weight: 600;
+  font-size: var(--font-size-sm, 0.8rem);
+  font-weight: 700;
   color: var(--color-danger);
-  margin-top: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  background: #fef2f2;
+  border-radius: 4px;
+  border: 1px solid var(--color-danger);
 }
 
 .choiceLabel {

@@ -425,14 +425,20 @@ Fix for Slice 6: foreshadowed catastrophic events with mitigation options (not r
 **97. Root-cause visibility for revenue changes is weak.**
 Severity: MEDIUM (pedagogy). When revenue drops sharply (e.g., Year 2 after first harvest), the student sees the cash number change but has no explanation of *why*. The year-end expense breakdown helps post-hoc, but in the moment the cause-and-effect link is missing. Possible approaches: harvest notification showing per-crop revenue breakdown, inline yield-factor explanation ("OM penalty: -15%"), or a "why did my revenue drop?" advisor trigger.
 
-**98. Organic transition failure is too easy to miss.**
-Severity: MEDIUM (pedagogy/UX). When a player breaks organic certification (e.g., using synthetic fertilizer while enrolled), the decisive consequence is delivered as a notification bar toast — the same visual weight as "Crops watered." The organic warning interstitial catches pre-choice, but if the player proceeds, the result message is easily missed. Should be a more prominent UI signal (e.g., centered flash, or advisor follow-up).
+~~**98. Organic transition failure is too easy to miss.**~~
+PARTIALLY RESOLVED. Organic milestones (certification granted, revoked, transition reset, transition progress) now show as prominent banners in the year-end summary panel with color-coded styling (green/red/blue). The inline organic warning label on event choices is now larger and bordered. Post-choice notifications remain as toast — could still benefit from a dedicated advisor follow-up beat, but the year-end banner ensures the player sees the status change.
 
 **100. Negative harvest revenue is unexplained.**
 Severity: MEDIUM (pedagogy). When yield penalties (OM, water stress, monoculture streak) stack heavily enough, harvest revenue can go negative after subtracting labor/seed costs. Students see absurd-looking negative revenue with no explanation of why. Confirmed on both tomatoes and orchard crops. Should show an explicit breakdown before or at harvest: gross yield, penalties applied, costs, net revenue. Without this, the cause-and-effect link — the game's core educational value — is broken at precisely the moment it matters most.
 
 **99. Row/column bulk actions are automation-hostile.**
 Severity: LOW (dev tooling, not student-facing). Row/col bulk action testids only render when a cell is selected, and re-render on every new selection. This caused AI testers to report "only one row planted" and wrong-testid errors. Mitigated by `__gameDebug.getActionState()` and `__gameDebug.selectCell()` helpers (added post-6e), which remove the need for brittle DOM scraping. Not a product bug — the UI works correctly for human users.
+
+**101. Late-game orchard play is too quiet after main buildout.**
+Severity: MEDIUM (engagement/pacing). Deferred to Slice 7+. Once a perennial orchard is established (Years 15-20), there are few meaningful decisions until aging/revenue decline hits in the final years. Years 25-28 become autopilot-heavy. Possible approaches: more mature-orchard events (replanting pressure, pest cycles), explicit late-game soil/aging tradeoffs, or revenue cliff foreshadowing that creates decision pressure earlier.
+
+**102. "Thriving" tier may be too generous for cash-rich but soil-declining farms.**
+Severity: MEDIUM (scoring balance/narrative tone). Deferred — needs design discussion. A farm can score "Thriving" with enormous cash reserves despite OM falling to ~1.4% and revenue collapsing in Years 29-30. Mathematically correct under current score weighting (financial component dominates), but creates a perception mismatch — "rich but ecologically decaying" reads as unambiguously triumphant. Options: adjust score weights to penalize late-stage soil decline more, or soften epilogue tone for Thriving farms with declining soil.
 
 ### Deferred to Slice 5+ / Later Discussion
 

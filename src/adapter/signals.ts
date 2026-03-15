@@ -944,6 +944,7 @@ function gameLoop(now: number): void {
         const plantableKey = getPlantableKey(_liveState);
         if (_prevPlantableKey && plantableKey !== _prevPlantableKey) {
           const season = _liveState.calendar.season;
+          _liveState.speed = 0; // true pause — game stays stopped until player resumes
           _liveState.autoPauseQueue.push({
             reason: 'planting_options',
             message: season === 'fall'
@@ -986,6 +987,7 @@ function buildPlantingWindowCallback(state: GameState): ((s: GameState) => void)
       const plantableKey = getPlantableKey(s);
       if (ffPrevPlantableKey && plantableKey !== ffPrevPlantableKey) {
         const season = s.calendar.season;
+        s.speed = 0;
         s.autoPauseQueue.push({
           reason: 'planting_options',
           message: season === 'fall'

@@ -371,7 +371,7 @@ const TIER_HEADLINES: Record<ScoreResult['tier'], string> = {
 const SCENARIO_FLAVOR: Record<string, string> = {
   'gradual-warming': 'temperatures climbed year after year, and every season demanded a little more',
   'early-drought': 'drought struck early and stayed long, testing every decision from the start',
-  'whiplash': 'the weather whipped between extremes — floods one year, drought the next',
+  'whiplash': 'the weather whipped between extremes — drought one year, relief the next, and no two seasons alike',
   'late-escalation': 'the first years felt gentle, but the climate shifted hard when it mattered most',
   'mild-baseline': 'conditions were relatively forgiving, leaving room for the choices that shaped your farm',
 };
@@ -601,17 +601,18 @@ export function estimateHumanFoodServings(state: GameState): number {
   }
 
   // Annuals harvested before year-end won't appear in snapshots.
-  // Use planted_crop_* flags to detect them, then add a conservative estimate:
-  // assume 8 cells/year (one row) × years survived. Deliberately conservative.
-  const yearsPlayed = snapshots.length || 1;
-  const CONSERVATIVE_CELLS_PER_YEAR = 8;
+  // Use planted_crop_* flags to detect them, then add a one-time conservative
+  // estimate per crop type: 8 cells (one row) × 1 occurrence.
+  // NOT multiplied by yearsPlayed — the flag only proves the crop was planted
+  // at least once, not how many years it was grown.
+  const CONSERVATIVE_CELLS = 8;
   for (const [flag, value] of Object.entries(state.flags)) {
     if (!flag.startsWith('planted_crop_') || !value) continue;
     const cropId = flag.slice('planted_crop_'.length);
     if (cropSeenInSnapshots.has(cropId)) continue; // already counted from snapshots
     const crop = CROPS[cropId];
     if (!crop || !crop.humanServingsPerUnit || crop.type !== 'annual') continue;
-    total += CONSERVATIVE_CELLS_PER_YEAR * yearsPlayed * crop.yieldPotential * crop.humanServingsPerUnit;
+    total += CONSERVATIVE_CELLS * crop.yieldPotential * crop.humanServingsPerUnit;
   }
 
   return Math.round(total);

@@ -174,16 +174,18 @@ export function getBlockingState(state: GameState, hasPendingFollowUp = false, h
       reason,
       panelTestId,
       eventId: state.activeEvent.storyletId,
-      choices: state.activeEvent.choices.map(c => {
-        const canAfford = c.requiresCash === undefined || state.economy.cash >= c.requiresCash;
-        return {
-          testid: `${prefix}-choice-${c.id}`,
-          label: c.label,
-          enabled: canAfford,
-          cost: c.cost,
-          requiresCash: c.requiresCash,
-        };
-      }),
+      choices: state.activeEvent.choices
+        .filter(c => !c.requiresFlag || state.flags[c.requiresFlag])
+        .map(c => {
+          const canAfford = c.requiresCash === undefined || state.economy.cash >= c.requiresCash;
+          return {
+            testid: `${prefix}-choice-${c.id}`,
+            label: c.label,
+            enabled: canAfford,
+            cost: c.cost,
+            requiresCash: c.requiresCash,
+          };
+        }),
     };
   }
 

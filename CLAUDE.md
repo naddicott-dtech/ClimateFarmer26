@@ -59,14 +59,14 @@ rm -rf docs && cp -r dist docs
    - `scoring.ts` — `computeScore()`, `generateEpilogue()`, `generateCategoryHints()`, `generateAdvisorFarewells()`, `estimateHumanFoodServings()`
    - `events/` — Storylet system: `types.ts` (19 condition types, 10 effect types, optional `illustrationId`), `selector.ts` (seasonal draw + per-tick evaluation), `effects.ts`
 
-2. **Adapter** (`src/adapter/signals.ts`) — Bridges engine↔UI with Preact Signals.
-   - `_liveState` (mutable) → `publishState()` via `structuredClone` → reactive `gameState` signal
-   - `requestAnimationFrame` game loop, 12 ticks/sec × speed
-   - Debug hooks: `window.__gameDebug` (`setCash`, `setDay`, `setFlag`, `triggerEvent`, `getState`, etc.)
+2. **Adapter** (`src/adapter/`) — Bridges engine↔UI with Preact Signals.
+   - `signals.ts` — `_liveState` (mutable) → `publishState()` via `structuredClone` → reactive `gameState` signal. `requestAnimationFrame` game loop, 12 ticks/sec × speed.
+   - `observer.ts` — AI test agent affordances: `getBlockingState()`, `getActionState()`, `fastForwardUntilBlocked()`, `fastForwardDays()`
+   - Debug hooks: `window.__gameDebug` — `setCash`, `setDay`, `setFlag`, `triggerEvent`, `getState`, `getBlockingState`, `fastForward`, `fastForwardUntilBlocked`, `fastForwardDays`, `getNotifications`, `dismissAllNotifications`, `getActionState`, `selectCell`, `setAutoPausePlanting`, `getPreferences`, etc.
 
 3. **UI** (`src/ui/`) — Preact components + CSS Modules. Components: App, GameScreen, NewGameScreen, TopBar, FarmGrid, FarmCell, SidePanel, CropMenu, AutoPausePanel, EndgamePanel, NotificationBar, ConfirmDialog, Tutorial, EventPanel
 
-**Data files** (`src/data/`): `crops.ts` (9 crops with yield curves, K uptake, heat sensitivity, `requiredFlag` gating, `humanServingsPerUnit`), `cover-crops.ts`, `scenarios.ts` (5 climate scenarios with `marketCrashTargetCropId`), `events.ts` (22 storylets: 8 seasonal draw + 14 condition-only, 4 with `illustrationId`)
+**Data files** (`src/data/`): `crops.ts` (9 crops with yield curves, K uptake, heat sensitivity, `requiredFlag` gating, `humanServingsPerUnit`), `cover-crops.ts`, `scenarios.ts` (5 climate scenarios with `marketCrashTargetCropId`), `events.ts` (39 storylets: seasonal draw + condition-only advisors/tech/regime, 4 with `illustrationId`)
 
 **Save system** (`src/save/storage.ts`): localStorage with corruption detection + V1→V9 migration chain. Auto-save on season change. Manual saves keyed by "Year N Season".
 

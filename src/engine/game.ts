@@ -1243,6 +1243,9 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
     }
 
     // Organic certification: annual cost, compliance check, transition/maintenance (6d.2)
+    // Track milestone for year-end summary banner
+    let organicMilestone: string | undefined;
+
     if (state.flags['organic_enrolled']) {
       const hadViolation = !!state.flags['organic_violation_this_year'];
       const coverCropCells = state.grid.flat().filter(c => c.coverCropId).length;
@@ -1257,10 +1260,12 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         if (state.flags['organic_certified']) {
           delete state.flags['organic_certified'];
           state.organicCompliantYears = 0;
+          organicMilestone = 'revoked';
           addNotification(state, 'event_result',
             'Organic certification revoked: synthetic inputs used this year. You must complete 3 new clean years to re-qualify.');
         } else {
           state.organicCompliantYears = 0;
+          organicMilestone = 'reset';
           addNotification(state, 'event_result',
             'Organic transition reset: synthetic inputs used this year. The 3-year clock restarts.');
         }
@@ -1273,12 +1278,20 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
           if (state.organicCompliantYears >= ORGANIC_TRANSITION_YEARS) {
             if (coverCropCells >= ORGANIC_COVER_CROP_MIN) {
               state.flags['organic_certified'] = true;
+              organicMilestone = 'certified';
               addNotification(state, 'event_result',
                 'Your farm has earned USDA Organic Certification! All harvest revenue now receives a 20% price premium.');
             } else {
+              organicMilestone = 'delayed';
               addNotification(state, 'event_result',
                 `Organic certification delayed: cover crops needed on at least ${ORGANIC_COVER_CROP_MIN} fields (currently ${coverCropCells}).`);
             }
+          } else {
+            // Progress update during transition
+            const remaining = ORGANIC_TRANSITION_YEARS - state.organicCompliantYears;
+            organicMilestone = `transition-${state.organicCompliantYears}`;
+            addNotification(state, 'event_result',
+              `Organic transition: ${state.organicCompliantYears} clean year${state.organicCompliantYears > 1 ? 's' : ''} completed. ${remaining} more to go.`);
           }
         }
       }
@@ -1287,6 +1300,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
       if (state.flags['organic_certified'] && coverCropCells < ORGANIC_COVER_CROP_MIN) {
         delete state.flags['organic_certified'];
         state.organicCompliantYears = 0;
+        organicMilestone = 'suspended';
         addNotification(state, 'event_result',
           `Organic certification suspended: cover crops on fewer than ${ORGANIC_COVER_CROP_MIN} fields. Must re-qualify with 3 clean years.`);
       }
@@ -1322,6 +1336,7 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         debt: state.economy.debt,
         interestPaid: state.economy.interestPaidThisYear,
         expenseBreakdown: frozenExpenses,
+        organicMilestone,
       },
     });
 

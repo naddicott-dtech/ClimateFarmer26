@@ -302,6 +302,31 @@ describe('Observer — getBlockingState()', () => {
     expect(result.choices![2].cost).toBe(500);
     expect(result.choices![2].requiresCash).toBe(500);
   });
+
+  it('filters out choices whose requiresFlag is not set (mirrors EventPanel)', () => {
+    const state = makeState();
+    state.autoPauseQueue.push({ reason: 'event', message: 'Test' });
+    state.activeEvent = {
+      storyletId: 'test-flag-gate',
+      title: 'Test',
+      description: 'Test.',
+      choices: [
+        { id: 'always', label: 'Always visible', description: 'No flag needed', effects: [] },
+        { id: 'gated', label: 'Needs insurance', description: 'Requires flag', requiresFlag: 'has_crop_insurance', effects: [] },
+      ],
+      firedOnDay: 100,
+    };
+    // Without the flag — gated choice should be filtered out
+    const result1 = getBlockingState(state);
+    expect(result1.choices).toHaveLength(1);
+    expect(result1.choices![0].label).toBe('Always visible');
+
+    // With the flag — both choices visible
+    state.flags['has_crop_insurance'] = true;
+    const result2 = getBlockingState(state);
+    expect(result2.choices).toHaveLength(2);
+    expect(result2.choices![1].label).toBe('Needs insurance');
+  });
 });
 
 // ============================================================================

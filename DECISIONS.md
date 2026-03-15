@@ -439,3 +439,15 @@ Format: **Date — Decision — Rationale**
 2026-03-14 — Event illustrations on high-impact storylets only — Optional `illustrationId` field on Storylet type. Only 4 storylets get illustrations (heatwave, water restriction, rootworm, orchard disease) — pivotal moments that benefit from visual impact. EventPanel renders illustration above event title when present.
 
 2026-03-14 — Per-category hints limited to max 2 weakest — Only categories where `raw < 60` are eligible. Returns the 2 weakest (by raw score), not just any 2 under 60. Each hint is one sentence: metric + implication + one lever. Uses actual player numbers where helpful (e.g., "Your soil OM averaged 1.2%"). Empty array if all categories ≥ 60 (strong player gets no unsolicited advice).
+
+2026-03-15 — Silage corn counts as ~10% indirect food servings (energy pyramid) — Changed `humanServingsPerUnit` from 0 to 200 for silage corn. Rationale: feed crops still produce human food indirectly through livestock, and the ~10% energy transfer is a core energy pyramid concept in the curriculum. Students running pure corn farms now see nonzero but much lower servings than diversified farms, creating the educational contrast.
+
+2026-03-15 — Food servings fallback uses one-time conservative estimate, not per-year — `planted_crop_*` flags prove a crop was planted at least once, but not how many years. Fallback estimates 8 cells × 1 occurrence per crop type. NOT multiplied by `yearsPlayed` (previous version overcounted badly). Snapshot-based counting remains primary; fallback only fires for annuals not seen in any year-end snapshot.
+
+2026-03-15 — Observer filters choices by requiresFlag to match EventPanel — `getBlockingState()` now filters `activeEvent.choices` by `requiresFlag`, matching `EventPanel.tsx:203`. Prevents AI test agents from seeing choices that aren't actually rendered. Same pattern as the existing `requiresCash → enabled` metadata.
+
+2026-03-15 — Planting-options autopause sets speed=0 (true pause) — Previously, `planting_options` queued in the adapter layer but never zeroed speed (unlike engine-queued pauses). Dismissing "Continue" resumed the game immediately at the previous speed. Now sets `speed = 0` before pushing the queue entry, matching all other autopause behaviors.
+
+2026-03-15 — Organic milestones surfaced as year-end banners — Organic certification grant was too quiet (just a notification toast). Now the year-end summary panel shows a prominent color-coded banner for all organic status changes: certified (green), revoked/suspended/reset (red), transition progress/delayed (blue). Also added transition progress notifications ("2 of 3 clean years completed") that were previously missing.
+
+2026-03-15 — Insurance claim notifications use net-payout format with alternative comparison — All 4 insurance claim notifications rewritten to: "$X payout minus $200 deductible = $Y net. [consequence] (vs. Z without insurance)." Makes the financial benefit clear and compares against the non-insurance alternative so players understand the value of their policy.

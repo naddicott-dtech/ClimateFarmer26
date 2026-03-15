@@ -29,18 +29,22 @@ New condition/effect types, `getTechLevel()` reconvergence (water/soil/crop trac
 Marcus Chen (`farm-credit`) + Valley Growers Forum (`growers-forum`) advisor characters with intro storylets. Water irrigation tech unlock (year 3, drip irrigation → auto-irrigation end-to-end). Auto-irrigation notification with 3-message rotating pool.
 
 ### Slice 5c: Full Content + Regime Shifts (Complete)
-Remaining tech decisions (soil testing, crop tech, advanced water, late-game regime-aware offers). 3 regime shifts (water allocation reduction Y10-12, market crash Y15-18, heat threshold Y20-25). 2 novel crops (agave + heat-tolerant avocados). Year-30 reflection panel (#65). Tech soft-lock fix (#80). 19 condition types, 10 effect types, 22 storylets total (8 seasonal draw + 14 condition-only). 9 crops (4 annual + 5 perennial).
+Remaining tech decisions (soil testing, crop tech, advanced water, late-game regime-aware offers). 3 regime shifts (water allocation reduction Y10-12, market crash Y15-18, heat threshold Y20-25). 2 novel crops (agave + heat-tolerant avocados). Year-30 reflection panel (#65). Tech soft-lock fix (#80). 19 condition types, 10 effect types. 9 crops (4 annual + 5 perennial).
 
 ### Slice 5d: Balance + Validate (Complete)
 - **5d.1:** UX fixes — advisor threshold tuning (#82), bulk plant full-field feedback (#81), year-end "before loan" conditional copy (#87), bankruptcy reflection on loan decline (#88).
 - **5d.2 "Corn Dominance Fix":** Monoculture streak penalty (escalating yield loss: 2nd=0.85, 3rd=0.70, 4th=0.55, 5th+=0.50 floor), cover crop OM protection reduction (50% vs 100%), diversified bot rewrite (proper rotation). Balance result: diversified ($301K) > corn ($193K) > citrus ($86K), all 100% survival. 6 bots × 5 scenarios tested.
 
-### Observer Layer (Post-5d.2)
+### Observer Layer (Post-5d.2, expanded post-6e)
 Debug-only affordances for AI test agents (`src/adapter/observer.ts`). Machine-readable state queries exposed via `window.__gameDebug`:
-- `getBlockingState()` — single call returning `{ blocked, reason, panelTestId, choices[], speed, year, season, day }` with descriptive button labels matching actual UI text
-- `fastForwardUntilBlocked(maxTicks)` — runs ticks until any autopause fires (does NOT auto-dismiss, unlike `fastForward()`)
-- `getNotifications()` / `dismissAllNotifications()` — full notification queue access
-- `game-observer` DOM element — hidden div with reactive `data-*` attributes for lightweight state polling
+- `getBlockingState()` — returns `{ blocked, reason, panelTestId, choices[], speed, year, season, day }`. Choices include `enabled`, `cost`, `requiresCash` metadata. Filters by `requiresFlag` to match actual UI visibility.
+- `fastForwardUntilBlocked(maxTicks)` — runs ticks until any autopause fires (does NOT auto-dismiss, unlike `fastForward()`). Accepts `onTick` callback for planting-window detection.
+- `fastForwardDays(days)` — calendar-day-based advancement, returns `{ stopped, reason, ticksRun, day }`.
+- `getActionState()` — returns available crops, cover crop eligibility, harvest-ready count, bulk action testids for current cell selection. Eliminates DOM scraping.
+- `selectCell(row, col)` — programmatic cell selection for automation.
+- `getNotifications()` / `dismissAllNotifications()` — full notification queue access.
+- `setAutoPausePlanting(bool)` / `getPreferences()` — settings control without UI interaction.
+- `game-observer` DOM element — hidden div with reactive `data-*` attributes for lightweight state polling.
 
 See `Agent_Navigation_Guide.md` for AI agent usage patterns.
 
@@ -61,9 +65,9 @@ Three deliverables making the ending feel like a real conclusion:
 ## Current Metrics
 
 ```
-npm test             # 1113 unit tests, all passing (33 test files)
-npm run test:browser # 121 Playwright browser tests (all passing; foreshadow natural-flow test may flake under --repeat-each stress)
-npm run build        # ~76.46 KB gzipped JS, ~6.09 KB CSS
+npm test             # 1066 unit tests, all passing (31 test files)
+npm run test:browser # 123 Playwright browser tests (all passing; foreshadow natural-flow test may flake under --repeat-each stress)
+npm run build        # ~78.23 KB gzipped JS, ~6.21 KB CSS
 SAVE_VERSION         # '9.0.0'
 ```
 
@@ -92,16 +96,18 @@ src/
     signals.ts       Bridges engine↔UI. _liveState → structuredClone → gameState signal
                      Debug hooks: window.__gameDebug (setCash, setDay, setDebt, triggerEvent,
                      setFlag, getState, publish, setScenario, fastForward,
-                     getBlockingState, fastForwardUntilBlocked, getNotifications,
-                     dismissAllNotifications)
-    observer.ts      AI agent observer layer: getBlockingState, fastForwardUntilBlocked,
-                     getNotificationsDebug, dismissAllNotificationsDebug
+                     getBlockingState, fastForwardUntilBlocked, fastForwardDays,
+                     getActionState, selectCell, getNotifications, dismissAllNotifications,
+                     setAutoPausePlanting, getPreferences)
+    observer.ts      AI agent observer layer: getBlockingState, getActionState,
+                     fastForwardUntilBlocked, fastForwardDays, getNotificationsDebug,
+                     dismissAllNotificationsDebug
   data/
     crops.ts         9 crop definitions (4 annual + 5 perennial) with yield curves,
                      requiredFlag gating, humanServingsPerUnit
     cover-crops.ts   Cover crop definitions (legume-cover)
     scenarios.ts     5 calibrated climate scenarios with chillHours per year, marketCrashTargetCropId
-    events.ts        STORYLETS array (22 storylets: 8 seasonal draw + 14 condition-only,
+    events.ts        STORYLETS array (39 storylets: seasonal draw + condition-only,
                      4 with illustrationId for event art)
   save/
     storage.ts       localStorage: auto-save, manual saves, V1→V9 migration chain
@@ -115,9 +121,9 @@ tests/
                      advisors, perennials, yieldcurve, covercrop, weather-advisor,
                      slice3a1, economy, seasonal-events, balance-harness, tracking,
                      slice5a, slice5b, slice5c, slice5d, observer, scoring,
-                     slice6e (33 files)
+                     slice6e (31 files)
   engine/balance/    Bot runner + 6 bots + smoke/full balance suites + scenario tests
-  browser/           Playwright specs (game.spec.ts — 121 tests)
+  browser/           Playwright specs (game.spec.ts — 123 tests)
 ```
 
 ## Key Balance Mechanics
@@ -184,10 +190,10 @@ See ASSETS.md for full manifest and prompting notes.
 ## Verification Commands
 
 ```bash
-npm test             # 1113 unit tests (33 files)
-npm run test:browser # 121 Playwright browser tests (builds first)
+npm test             # 1059 unit tests (31 files)
+npm run test:browser # 123 Playwright browser tests (builds first)
 npm run test:all     # All tests in sequence
-npm run build        # Production build (~76KB gzipped JS)
+npm run build        # Production build (~78KB gzipped JS)
 npm run test:balance # Balance smoke (75 runs, ~5-8 min)
 ```
 
