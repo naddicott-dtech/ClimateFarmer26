@@ -169,6 +169,12 @@ setting-auto-pause-planting    ← checkbox: auto-pause at planting window bound
 
 The planting-window setting changes what autopauses are expected during play. When enabled, the game pauses at each season boundary where planting options change. Agents should note this setting's state when reporting observations — it affects pacing.
 
+**For automation:** Do NOT use screenshot-based clicking on the gear icon. Use the debug helper instead:
+```js
+__gameDebug.setAutoPausePlanting(true);   // enable
+__gameDebug.getPreferences();              // { autoPausePlanting: true }
+```
+
 ---
 
 ## 6. Dialog Handling
@@ -345,6 +351,10 @@ __gameDebug.fastForward(ticks)     // Runs ticks, auto-dismisses non-event pause
 // Action state (use instead of DOM scraping)
 __gameDebug.getActionState()       // Available crops, cover crop eligibility, valid bulk testids. See §8.
 __gameDebug.selectCell(row, col)   // Select a cell programmatically. Required for row/col actions.
+
+// Preferences (avoids tiny gear icon)
+__gameDebug.setAutoPausePlanting(bool) // Enable/disable planting-window autopause
+__gameDebug.getPreferences()           // Returns { autoPausePlanting: bool }
 
 // Direct state access
 __gameDebug.getState()             // Mutable live reference. Call publish() after mutation.

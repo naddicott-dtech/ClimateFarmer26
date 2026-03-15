@@ -1182,4 +1182,19 @@ function syncPlantingTrackingState(): void {
     selectCell(row, col);
     publishState();
   },
+  /**
+   * Set the planting-window autopause preference directly.
+   * Avoids screenshot-based clicking on the tiny gear icon.
+   */
+  setAutoPausePlanting(enabled: boolean) {
+    setAutoPausePlanting(enabled);
+  },
+  /**
+   * Returns current user preferences (settings that affect game behavior).
+   */
+  getPreferences() {
+    return {
+      autoPausePlanting: autoPausePlanting.value,
+    };
+  },
 };
