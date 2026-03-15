@@ -319,7 +319,7 @@ describe('Advisor cooldown and maxOccurrences', () => {
     }
 
     const storylet = getStorylet('advisor-soil-nitrogen');
-    // Log enough occurrences to hit max (3 for soil-nitrogen)
+    // Log enough occurrences to hit max (2 for soil-nitrogen)
     for (let i = 0; i < storylet.maxOccurrences!; i++) {
       state.eventLog.push({ storyletId: storylet.id, day: i * 400, choiceId: 'some-choice' });
     }

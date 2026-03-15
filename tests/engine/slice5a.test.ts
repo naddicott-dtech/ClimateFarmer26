@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { evaluateCondition, drawSeasonalEvents, evaluateEvents, hasRandomCondition } from '../../src/engine/events/selector.ts';
+import { expireActiveEffects } from '../../src/engine/events/effects.ts';
 import { createInitialState, simulateTick, processCommand, harvestCell, getAvailableCrops } from '../../src/engine/game.ts';
 import { SLICE_1_SCENARIO } from '../../src/data/scenario.ts';
 import { SCENARIOS } from '../../src/data/scenarios.ts';
@@ -1101,6 +1102,107 @@ describe('Slice 5a: Auto-irrigation', () => {
     const hasWaterPause = state.autoPauseQueue.some(p => p.reason === 'water_stress');
     expect(hasWaterPause).toBe(true);
   });
+
+  it('does NOT fire water_stress auto-pause when wateringRestricted is true', () => {
+    // No irrigation tech, but watering is restricted
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+    state.grid[0][0].soil.moisture = 0;
+    state.wateringRestricted = true;
+    state.wateringRestrictionEndsDay = state.calendar.totalDay + 90;
+
+    simulateTick(state, SLICE_1_SCENARIO);
+
+    // Should NOT queue a water_stress pause — player can't act on it
+    const hasWaterPause = state.autoPauseQueue.some(p => p.reason === 'water_stress');
+    expect(hasWaterPause).toBe(false);
+    // Should get a notification instead
+    const hasRestrictionNotice = state.notifications.some(
+      n => n.message.includes('restricted') || n.message.includes('restriction')
+    );
+    expect(hasRestrictionNotice).toBe(true);
+  });
+
+  it('does NOT fire water_stress auto-pause when wateringRestricted even with irrigation tech', () => {
+    state.flags['tech_drip_irrigation'] = true;
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+    state.grid[0][0].soil.moisture = 0;
+    state.wateringRestricted = true;
+    state.wateringRestrictionEndsDay = state.calendar.totalDay + 90;
+
+    simulateTick(state, SLICE_1_SCENARIO);
+
+    // Auto-irrigation should NOT fire (restriction overrides tech)
+    const hasWaterPause = state.autoPauseQueue.some(p => p.reason === 'water_stress');
+    expect(hasWaterPause).toBe(false);
+    // Cash should be unchanged (no auto-irrigation spending)
+    // (Can't easily test because planting costs cash, but no water_stress pause is the key assertion)
+  });
+
+  it('fires actionable water_stress pause after restriction expires mid-season', () => {
+    // Set up: restriction active, water stress, notification sent (consumes token)
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+    state.grid[0][0].soil.moisture = 0;
+    state.wateringRestricted = true;
+    state.wateringRestrictionEndsDay = state.calendar.totalDay + 5;
+    state.activeEffects.push({
+      effectType: 'watering_restriction',
+      sourceEventId: 'test',
+      expiresDay: state.calendar.totalDay + 5,
+    });
+
+    // First tick: restriction active → notification, no auto-pause
+    simulateTick(state, SLICE_1_SCENARIO);
+    expect(state.autoPauseQueue.some(p => p.reason === 'water_stress')).toBe(false);
+    expect(state.waterStressPausedThisSeason).toBe(true);
+
+    // Advance past restriction expiry
+    state.calendar.totalDay = state.wateringRestrictionEndsDay;
+    expireActiveEffects(state);
+
+    // Restriction lifted → pause token should be reset
+    expect(state.wateringRestricted).toBe(false);
+    expect(state.waterStressPausedThisSeason).toBe(false);
+
+    // Next tick with continued stress → should now fire the actionable pause
+    state.grid[0][0].soil.moisture = 0;
+    simulateTick(state, SLICE_1_SCENARIO);
+    const hasWaterPause = state.autoPauseQueue.some(p => p.reason === 'water_stress');
+    expect(hasWaterPause).toBe(true);
+  });
+
+  it('stays restricted when overlapping restrictions exist and only one expires', () => {
+    state.wateringRestricted = true;
+    state.waterStressPausedThisSeason = true; // simulates notification already sent
+
+    // Two overlapping restrictions with different durations
+    const baseDay = state.calendar.totalDay;
+    state.activeEffects.push({
+      effectType: 'watering_restriction',
+      sourceEventId: 'short-ban',
+      expiresDay: baseDay + 30,
+    });
+    state.activeEffects.push({
+      effectType: 'watering_restriction',
+      sourceEventId: 'long-ban',
+      expiresDay: baseDay + 90,
+    });
+
+    // Expire the short one
+    state.calendar.totalDay = baseDay + 30;
+    expireActiveEffects(state);
+
+    // Long restriction still active — should remain restricted
+    expect(state.wateringRestricted).toBe(true);
+    expect(state.waterStressPausedThisSeason).toBe(true);
+
+    // Expire the long one
+    state.calendar.totalDay = baseDay + 90;
+    expireActiveEffects(state);
+
+    // Now both expired — should be cleared
+    expect(state.wateringRestricted).toBe(false);
+    expect(state.waterStressPausedThisSeason).toBe(false);
+  });
 });
 
 // ============================================================================
@@ -1308,15 +1410,21 @@ describe('Slice 5a: Auto-irrigation event restrictions', () => {
     processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
     state.grid[0][0].soil.moisture = 0;
     state.wateringRestricted = true;
+    state.wateringRestrictionEndsDay = state.calendar.totalDay + 90;
 
     const cashBefore = state.economy.cash;
     simulateTick(state, SLICE_1_SCENARIO);
 
     // Should NOT have spent cash on auto-irrigation
     expect(state.economy.cash).toBe(cashBefore);
-    // Should have fallen through to manual pause
+    // Should NOT queue water_stress auto-pause (player can't water during restriction)
     const hasWaterPause = state.autoPauseQueue.some(p => p.reason === 'water_stress');
-    expect(hasWaterPause).toBe(true);
+    expect(hasWaterPause).toBe(false);
+    // Should get a notification instead
+    const hasRestrictionNotice = state.notifications.some(
+      n => n.message.includes('restricted')
+    );
+    expect(hasRestrictionNotice).toBe(true);
   });
 
   it('auto-irrigation applies event cost modifiers on top of tech discount', () => {

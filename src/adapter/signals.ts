@@ -2,7 +2,7 @@ import { signal, computed, batch } from '@preact/signals';
 import type { GameState, Command, CommandResult, Cell, DailyWeather } from '../engine/types.ts';
 import { GRID_ROWS, GRID_COLS, IRRIGATION_COST_PER_CELL } from '../engine/types.ts';
 import { getIrrigationCostMultiplier } from '../engine/events/effects.ts';
-import { createInitialState, processCommand, simulateTick, dismissAutoPause, resetYearlyTracking, addNotification, dismissNotification, getAvailableCrops, executeBulkPlant, executeWater, executeBulkCoverCrop } from '../engine/game.ts';
+import { createInitialState, processCommand, simulateTick, dismissAutoPause, resetYearlyTracking, addNotification, dismissNotification, getAvailableCrops, executeBulkPlant, executeWater, executeBulkCoverCrop, isCoverCropEligible } from '../engine/game.ts';
 import { getCoverCropDefinition } from '../data/cover-crops.ts';
 import { logSessionStart } from '../engine/playtest-log.ts';
 import { getCropDefinition } from '../data/crops.ts';
@@ -943,14 +943,22 @@ function gameLoop(now: number): void {
       if (autoPausePlanting.value && _liveState.calendar.month !== _prevMonth && _prevMonth !== -1) {
         const plantableKey = getPlantableKey(_liveState);
         if (_prevPlantableKey && plantableKey !== _prevPlantableKey) {
-          const season = _liveState.calendar.season;
-          _liveState.speed = 0; // true pause — game stays stopped until player resumes
-          _liveState.autoPauseQueue.push({
-            reason: 'planting_options',
-            message: season === 'fall'
-              ? 'Planting window: fall crops and cover crops are now available.'
-              : `Planting window: ${season.charAt(0).toUpperCase() + season.slice(1)} crop options have changed.`,
-          });
+          // Only pause if there are plantable cells (empty cells for crops,
+          // or perennial cells eligible for cover crops in fall)
+          const isFall = _liveState.calendar.season === 'fall';
+          const hasPlantableCell = _liveState.grid.some(row => row.some(cell =>
+            cell.crop === null || (isFall && !cell.coverCropId && isCoverCropEligible(cell))
+          ));
+          if (hasPlantableCell) {
+            const season = _liveState.calendar.season;
+            _liveState.speed = 0; // true pause — game stays stopped until player resumes
+            _liveState.autoPauseQueue.push({
+              reason: 'planting_options',
+              message: season === 'fall'
+                ? 'Planting window: fall crops and cover crops are now available.'
+                : `Planting window: ${season.charAt(0).toUpperCase() + season.slice(1)} crop options have changed.`,
+            });
+          }
         }
         _prevPlantableKey = plantableKey;
       }
@@ -986,14 +994,19 @@ function buildPlantingWindowCallback(state: GameState): ((s: GameState) => void)
     if (s.calendar.month !== ffPrevMonth && ffPrevMonth !== -1) {
       const plantableKey = getPlantableKey(s);
       if (ffPrevPlantableKey && plantableKey !== ffPrevPlantableKey) {
-        const season = s.calendar.season;
-        s.speed = 0;
-        s.autoPauseQueue.push({
-          reason: 'planting_options',
-          message: season === 'fall'
-            ? 'Planting window: fall crops and cover crops are now available.'
-            : `Planting window: ${season.charAt(0).toUpperCase() + season.slice(1)} crop options have changed.`,
-        });
+        const hasPlantableCell = s.grid.some(row => row.some(cell =>
+          cell.crop === null || (s.calendar.season === 'fall' && !cell.coverCropId && isCoverCropEligible(cell))
+        ));
+        if (hasPlantableCell) {
+          const season = s.calendar.season;
+          s.speed = 0;
+          s.autoPauseQueue.push({
+            reason: 'planting_options',
+            message: season === 'fall'
+              ? 'Planting window: fall crops and cover crops are now available.'
+              : `Planting window: ${season.charAt(0).toUpperCase() + season.slice(1)} crop options have changed.`,
+          });
+        }
       }
       ffPrevPlantableKey = plantableKey;
     }

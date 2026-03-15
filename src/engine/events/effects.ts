@@ -165,10 +165,15 @@ export function expireActiveEffects(state: GameState): void {
   const expired = state.activeEffects.filter(e => currentDay >= e.expiresDay);
   state.activeEffects = state.activeEffects.filter(e => currentDay < e.expiresDay);
 
-  // Clear watering restriction if its effect expired
-  for (const e of expired) {
-    if (e.effectType === 'watering_restriction') {
+  // Clear watering restriction only if no active restriction remains
+  const hadRestrictionExpire = expired.some(e => e.effectType === 'watering_restriction');
+  if (hadRestrictionExpire) {
+    const stillRestricted = state.activeEffects.some(e => e.effectType === 'watering_restriction');
+    if (!stillRestricted) {
       state.wateringRestricted = false;
+      // Reset water stress pause token so the actionable prompt can fire
+      // now that the player can irrigate again
+      state.waterStressPausedThisSeason = false;
     }
   }
 }

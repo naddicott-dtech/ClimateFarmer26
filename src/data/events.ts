@@ -372,7 +372,7 @@ export const STORYLETS: readonly Storylet[] = [
     ],
     priority: 100,
     cooldownDays: 365,
-    maxOccurrences: 3,
+    maxOccurrences: 2,
     advisorId: 'extension-agent',
     choices: [
       {
@@ -993,7 +993,7 @@ export const STORYLETS: readonly Storylet[] = [
           { type: 'set_flag', flag: 'organic_violation_this_year', value: true },
           { type: 'add_notification', message: 'Potash fertilizer applied across all fields. Soil potassium levels restored.', notificationType: 'event_result' },
         ],
-        followUpText: "Potassium is one of the three primary nutrients plants need, along with nitrogen and phosphorus. Unlike nitrogen, which you can restore with cover crops and rotation, potassium is mainly replenished through mineral fertilizers or very slow rock weathering. Every harvest removes K from your soil — heavy feeders like tomatoes and corn deplete it fastest. The good news: this application should last several seasons. Keep an eye on crop quality at harvest for early warning signs.",
+        followUpText: "Potassium is one of the three primary nutrients plants need, along with nitrogen and phosphorus. Unlike nitrogen, which you can restore with cover crops and rotation, potassium is mainly replenished through mineral fertilizers or very slow rock weathering. Every harvest removes K from your soil — heavy feeders like tomatoes and corn deplete it fastest. How long it lasts depends on what you're growing — heavy feeders like tomatoes and corn will burn through it in a single harvest, while wheat and cover crops are much lighter on K. Keep an eye on crop quality at harvest for early warning signs.",
       },
       {
         id: 'note-symptoms',

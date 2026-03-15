@@ -736,7 +736,7 @@ function processRemoveCrop(state: GameState, row: number, col: number): CommandR
 // ============================================================================
 
 /** Check if a cell is eligible for cover crop planting (empty, deciduous perennial, or evergreen with coverCropEffectiveness). */
-function isCoverCropEligible(cell: Cell): boolean {
+export function isCoverCropEligible(cell: Cell): boolean {
   if (!cell.crop) return true;
   if (!cell.crop.isPerennial) return false;
   const def = getCropDefinition(cell.crop.cropId);
@@ -1145,10 +1145,19 @@ export function simulateTick(state: GameState, scenario: ClimateScenario): Daily
         state.autoPauseQueue.push({ reason: 'water_stress', message: wsMsg });
       }
     } else if (!state.waterStressPausedThisSeason) {
-      // No irrigation tech or watering restricted — manual pause (once per season)
-      state.waterStressPausedThisSeason = true;
-      const wsMsg = nextWaterStressMessage(state);
-      state.autoPauseQueue.push({ reason: 'water_stress', message: wsMsg });
+      if (state.wateringRestricted) {
+        // Watering banned — notify once but don't block the actionable pause.
+        // Set the flag to prevent notification spam, but expireActiveEffects
+        // resets it when the restriction lifts so the real pause can fire.
+        state.waterStressPausedThisSeason = true;
+        addNotification(state, 'water_warning',
+          'Crops are showing water stress, but irrigation is currently restricted by water allocation regulations.');
+      } else {
+        // No irrigation tech — manual pause (once per season)
+        state.waterStressPausedThisSeason = true;
+        const wsMsg = nextWaterStressMessage(state);
+        state.autoPauseQueue.push({ reason: 'water_stress', message: wsMsg });
+      }
     }
   }
 
