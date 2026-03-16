@@ -175,7 +175,7 @@ export function isPlaytestLogEnabled(): boolean {
   return ENABLED;
 }
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && import.meta.env.VITE_ENABLE_DEBUG === 'true') {
   (window as unknown as Record<string, unknown>).__playtestLog = log;
   (window as unknown as Record<string, unknown>).__exportPlaytestLog = () => JSON.stringify(log, null, 2);
 }

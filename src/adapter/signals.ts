@@ -1024,8 +1024,9 @@ function syncPlantingTrackingState(): void {
 
 // ============================================================================
 // Debug Hook — Playwright tests and classroom debugging.
-// Negligible size; no runtime cost unless called.
+// Gated behind VITE_ENABLE_DEBUG; stripped from student builds.
 // ============================================================================
+if (import.meta.env.VITE_ENABLE_DEBUG === 'true') {
 (window as unknown as Record<string, unknown>).__gameDebug = {
   setCash(amount: number) {
     if (!_liveState) return;
@@ -1213,3 +1214,4 @@ function syncPlantingTrackingState(): void {
     };
   },
 };
+} // VITE_ENABLE_DEBUG gate

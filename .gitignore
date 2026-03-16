@@ -16,6 +16,9 @@ dist-ssr
 playwright-report
 test-results
 
+# Deployment notes (not for student eyes)
+deploy/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

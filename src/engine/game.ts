@@ -1742,9 +1742,13 @@ export function computeHarvestYieldFactors(state: GameState, cell: Cell): YieldF
 
   // Skip chill — has its own detailed notification
 
-  // Perennial age
+  // Perennial age (ramp-up for young trees, decline for old)
   const ageFactor = getPerennialAgeFactor(crop, cropDef);
-  if (ageFactor < 0.95) factors.push({ name: 'tree age decline', value: ageFactor });
+  if (ageFactor < 0.95) {
+    const phase = getPerennialPhase(crop, cropDef);
+    const label = phase === 'Ramping Up' ? 'young tree (not yet peak)' : 'tree age decline';
+    factors.push({ name: label, value: ageFactor });
+  }
 
   // Heat regime
   if (state.flags['regime_heat_threshold'] && cropDef.heatSensitivity !== undefined && cropDef.heatSensitivity < 0.95) {

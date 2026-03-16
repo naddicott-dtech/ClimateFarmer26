@@ -1685,14 +1685,14 @@ export const STORYLETS: readonly Storylet[] = [
     choices: [
       {
         id: 'buy-emergency-water',
-        label: 'Buy Priority Water Access ($1,500)',
-        description: 'Pay for priority allocation. Shortest restriction period.',
+        label: 'Pay for Reduced Curtailment ($1,500)',
+        description: 'Pay for priority allocation — restriction reduced to 15 days instead of 60.',
         cost: 1500,
         requiresCash: 1500,
         effects: [
           { type: 'modify_cash', amount: -1500 },
           { type: 'restrict_watering', durationDays: 15 },
-          { type: 'add_notification', message: 'You bought priority water access. Watering restricted for 15 days.', notificationType: 'event_result' },
+          { type: 'add_notification', message: 'Priority allocation secured. Irrigation restricted for 15 days (instead of 60).', notificationType: 'event_result' },
         ],
       },
       {

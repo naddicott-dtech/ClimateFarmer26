@@ -41,20 +41,22 @@ export function GameScreen() {
       <AutoPausePanel />
       <ConfirmDialog />
       {showTutorial && <Tutorial />}
-      {/* Machine-readable state for AI test agents */}
-      <div
-        data-testid="game-observer"
-        data-blocked={blocked ? 'true' : 'false'}
-        data-block-reason={blockReason ?? ''}
-        data-panel={activePanel ?? ''}
-        data-speed={String(state?.speed ?? 0)}
-        data-notification-count={String(notifications.value.length)}
-        data-year={String(state?.calendar.year ?? 0)}
-        data-season={state ? (state.calendar.month >= 3 && state.calendar.month <= 5 ? 'spring' : state.calendar.month >= 6 && state.calendar.month <= 8 ? 'summer' : state.calendar.month >= 9 && state.calendar.month <= 11 ? 'fall' : 'winter') : ''}
-        data-day={String(state?.calendar.totalDay ?? 0)}
-        style="display:none"
-        aria-hidden="true"
-      />
+      {/* Machine-readable state for AI test agents — stripped from student builds */}
+      {import.meta.env.VITE_ENABLE_DEBUG === 'true' && (
+        <div
+          data-testid="game-observer"
+          data-blocked={blocked ? 'true' : 'false'}
+          data-block-reason={blockReason ?? ''}
+          data-panel={activePanel ?? ''}
+          data-speed={String(state?.speed ?? 0)}
+          data-notification-count={String(notifications.value.length)}
+          data-year={String(state?.calendar.year ?? 0)}
+          data-season={state ? (state.calendar.month >= 3 && state.calendar.month <= 5 ? 'spring' : state.calendar.month >= 6 && state.calendar.month <= 8 ? 'summer' : state.calendar.month >= 9 && state.calendar.month <= 11 ? 'fall' : 'winter') : ''}
+          data-day={String(state?.calendar.totalDay ?? 0)}
+          style="display:none"
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }
