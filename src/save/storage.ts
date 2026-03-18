@@ -344,6 +344,7 @@ function validateSave(data: unknown): data is SaveGame {
       if (typeof soil.nitrogen !== 'number' || !Number.isFinite(soil.nitrogen)) return false;
       if (typeof soil.organicMatter !== 'number' || !Number.isFinite(soil.organicMatter)) return false;
       if (typeof soil.moisture !== 'number' || !Number.isFinite(soil.moisture)) return false;
+      if (typeof soil.potassium !== 'number' || !Number.isFinite(soil.potassium)) return false;
     }
   }
 

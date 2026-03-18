@@ -433,6 +433,8 @@ function processHarvest(state: GameState, row: number, col: number): CommandResu
 }
 
 function processHarvestBulk(state: GameState, scope: 'all' | 'row' | 'col', index?: number): CommandResult {
+  const scopeError = validateScopeIndex(scope, index);
+  if (scopeError) return { success: false, reason: scopeError };
   const harvestable = getHarvestableCells(state, scope, index);
   if (harvestable.length === 0) {
     return { success: false, reason: 'No crops ready to harvest.' };
@@ -493,6 +495,8 @@ function processHarvestBulk(state: GameState, scope: 'all' | 'row' | 'col', inde
 }
 
 function processWater(state: GameState, scope: 'all' | 'row' | 'col', index?: number, scenario?: ClimateScenario): CommandResult {
+  const scopeError = validateScopeIndex(scope, index);
+  if (scopeError) return { success: false, reason: scopeError };
   // Watering restriction check (from regulatory events)
   if (state.wateringRestricted) {
     return { success: false, reason: 'Watering is currently restricted by water allocation regulations.' };
@@ -829,6 +833,8 @@ function processSetCoverCropBulk(
   coverCropId: string | null,
   index?: number,
 ): CommandResult {
+  const scopeError = validateScopeIndex(scope, index);
+  if (scopeError) return { success: false, reason: scopeError };
   // Clearing is always allowed
   if (coverCropId === null) {
     let cleared = 0;
@@ -897,6 +903,15 @@ function processSetCoverCropBulk(
   }
 
   return { success: true, cellsAffected: planted, cost: planted * def.seedCostPerAcre };
+}
+
+/** Validate scope+index and return an error reason if invalid, or null if OK. */
+function validateScopeIndex(scope: 'all' | 'row' | 'col', index: number | undefined): string | null {
+  if (scope === 'all') return null;
+  if (index === undefined) return `${scope} scope requires an index.`;
+  if (scope === 'row' && (index < 0 || index >= GRID_ROWS)) return `Invalid row index: ${index}.`;
+  if (scope === 'col' && (index < 0 || index >= GRID_COLS)) return `Invalid column index: ${index}.`;
+  return null;
 }
 
 /** Iterate over cells in the given scope. */
