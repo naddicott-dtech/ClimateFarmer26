@@ -209,6 +209,7 @@ export type ConfirmActionId =
   | 'cover-crop-all'
   | 'cover-crop-partial'
   | 'remove-crop'
+  | 'remove-bulk'
   | 'return-to-title';
 
 export type ConfirmOrigin = 'manual' | 'autopause';
@@ -744,6 +745,50 @@ function isCoverCropEligibleUI(cell: Cell): boolean {
   const def = getCropDefinition(cell.crop.cropId);
   if ((def.dormantSeasons?.length ?? 0) > 0) return true;         // deciduous
   return (def.coverCropEffectiveness ?? 0) > 0;                    // evergreen with explicit effectiveness
+}
+
+// ============================================================================
+// Bulk Tree Removal
+// ============================================================================
+
+export function removeBulk(scope: 'all' | 'row' | 'col', index?: number): void {
+  if (!_liveState) return;
+  // Validate scope/index
+  if ((scope === 'row' || scope === 'col') && (index === undefined || index < 0)) return;
+  if (scope === 'row' && index! >= GRID_ROWS) return;
+  if (scope === 'col' && index! >= GRID_COLS) return;
+
+  // Count removable perennials and calculate cost
+  const removable: { cropId: string; cost: number }[] = [];
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (scope === 'row' && r !== index) continue;
+      if (scope === 'col' && c !== index) continue;
+      const cell = _liveState.grid[r][c];
+      if (cell.crop?.isPerennial) {
+        const def = getCropDefinition(cell.crop.cropId);
+        removable.push({ cropId: cell.crop.cropId, cost: def.removalCost ?? 0 });
+      }
+    }
+  }
+
+  if (removable.length < 2) return; // engine would reject; don't show dialog
+
+  const totalCost = removable.reduce((sum, r) => sum + r.cost, 0);
+  const scopeLabel = scope === 'all' ? 'entire field'
+    : scope === 'row' ? `Row ${index! + 1}` : `Column ${index! + 1}`;
+
+  confirmDialog.value = {
+    message: `Remove ${removable.length} tree(s) from ${scopeLabel}? Total cost: $${totalCost.toLocaleString()}. This cannot be undone.`,
+    onConfirm: () => {
+      dispatch({ type: 'REMOVE_CROP_BULK', scope, index });
+      confirmDialog.value = null;
+      // No publishState() — dispatch() already publishes
+    },
+    onCancel: () => { confirmDialog.value = null; },
+    actionId: 'remove-bulk',
+    origin: 'manual',
+  };
 }
 
 // ============================================================================

@@ -572,4 +572,54 @@ describe('Observer — getActionState()', () => {
     expect(result.availableCrops).not.toContain('agave');
     expect(result.availableCrops).not.toContain('heat-avocado');
   });
+
+  // --- Bulk tree removal ---
+
+  it('includes action-remove-all when 2+ perennials on field', () => {
+    const state = makeState();
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 1, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    const result = getActionState(state, null);
+    expect(result.bulkActions).toContain('action-remove-all');
+  });
+
+  it('excludes action-remove-all when < 2 perennials on field', () => {
+    const state = makeState();
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    const result = getActionState(state, null);
+    expect(result.bulkActions).not.toContain('action-remove-all');
+  });
+
+  it('excludes action-remove-all when only annuals planted', () => {
+    const state = makeState();
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 1, cropId: 'silage-corn' }, SLICE_1_SCENARIO);
+    const result = getActionState(state, null);
+    expect(result.bulkActions).not.toContain('action-remove-all');
+  });
+
+  it('includes action-remove-row when 2+ perennials in that row + cell selected', () => {
+    const state = makeState();
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 2, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 2, cellCol: 1, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    const result = getActionState(state, { row: 2, col: 0 });
+    expect(result.bulkActions).toContain('action-remove-row-2');
+  });
+
+  it('includes action-remove-col when 2+ perennials in that col + cell selected', () => {
+    const state = makeState();
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 3, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 1, cellCol: 3, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    const result = getActionState(state, { row: 0, col: 3 });
+    expect(result.bulkActions).toContain('action-remove-col-3');
+  });
+
+  it('excludes row/col remove testids when no cell selected', () => {
+    const state = makeState();
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 0, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    processCommand(state, { type: 'PLANT_CROP', cellRow: 0, cellCol: 1, cropId: 'almonds' }, SLICE_1_SCENARIO);
+    const result = getActionState(state, null);
+    expect(result.bulkActions.some(a => a.startsWith('action-remove-row-'))).toBe(false);
+    expect(result.bulkActions.some(a => a.startsWith('action-remove-col-'))).toBe(false);
+  });
 });

@@ -1138,6 +1138,92 @@ test.describe('Perennial Crops', () => {
     await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Empty');
   });
 
+  test('bulk remove trees shows confirmation with cost and clears perennials', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // Game starts in March — both almonds (Jan–Mar) and corn (Mar–May) are plantable
+    // Plant first almond — triggers perennial warning confirm
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
+
+    // Plant second almond (no perennial warning after first)
+    await page.getByTestId('farm-cell-0-1').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Plant third almond
+    await page.getByTestId('farm-cell-0-2').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+
+    // Also plant an annual (corn) — bulk remove must leave it untouched
+    await page.getByTestId('farm-cell-0-3').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-silage-corn').click();
+
+    // "Remove All Trees" button should now be visible (3 >= 2 threshold)
+    await expect(page.getByTestId('action-remove-all')).toBeVisible();
+
+    // Click Remove All Trees
+    await page.getByTestId('action-remove-all').click();
+
+    // Confirmation dialog should appear with remove-bulk action metadata
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+    await expect(page.getByTestId('confirm-dialog')).toHaveAttribute('data-confirm-action', 'remove-bulk');
+    await expect(page.getByTestId('confirm-dialog')).toHaveAttribute('data-confirm-origin', 'manual');
+    // Message should include tree count (3, not 4) and cost
+    const msg = await page.getByTestId('confirm-message').textContent();
+    expect(msg).toContain('3 tree(s)');
+    expect(msg).toContain('1,500');
+
+    // Confirm removal
+    await page.getByTestId('confirm-accept').click();
+
+    // Dialog should close
+    await expect(page.getByTestId('confirm-dialog')).not.toBeVisible();
+
+    // All three almond cells should be empty — no single-remove action visible
+    await page.getByTestId('farm-cell-0-0').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Empty');
+    await expect(page.getByTestId('action-remove-crop')).not.toBeVisible();
+    await page.getByTestId('farm-cell-0-1').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Empty');
+    await expect(page.getByTestId('action-remove-crop')).not.toBeVisible();
+    await page.getByTestId('farm-cell-0-2').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toHaveText('Empty');
+    await expect(page.getByTestId('action-remove-crop')).not.toBeVisible();
+
+    // Corn in cell 0-3 should still be there (annuals untouched by bulk remove)
+    await page.getByTestId('farm-cell-0-3').click();
+    await expect(page.getByTestId('sidebar-crop-name')).toContainText('Corn');
+
+    // "Remove All Trees" button should no longer be visible (0 perennials)
+    await expect(page.getByTestId('action-remove-all')).not.toBeVisible();
+  });
+
+  test('bulk remove button hidden when fewer than 2 perennials', async ({ page }) => {
+    await startNewGame(page);
+    await waitForGameScreen(page);
+
+    // No perennials — button should not exist
+    await expect(page.getByTestId('action-remove-all')).not.toBeVisible();
+
+    // Plant 1 almond
+    await page.evaluate(() => {
+      (window as Record<string, any>).__gameDebug.setDay(0);
+    });
+    await page.getByTestId('farm-cell-0-0').click();
+    await page.getByTestId('action-plant').click();
+    await page.getByTestId('menu-crop-almonds').click();
+    await page.getByTestId('confirm-accept').click();
+
+    // Still only 1 perennial — button should not appear
+    await expect(page.getByTestId('action-remove-all')).not.toBeVisible();
+  });
+
   test('perennial harvest does not remove the tree', async ({ page }) => {
     await startNewGame(page);
     await waitForGameScreen(page);

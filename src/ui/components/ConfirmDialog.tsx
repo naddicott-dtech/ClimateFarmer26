@@ -20,6 +20,7 @@ function getAriaLabel(actionId: ConfirmActionId): string {
     case 'cover-crop-all': return 'Confirm cover crop planting';
     case 'cover-crop-partial': return 'Confirm partial cover crop planting';
     case 'remove-crop': return 'Confirm crop removal';
+    case 'remove-bulk': return 'Confirm bulk tree removal';
     case 'return-to-title': return 'Confirm return to title screen';
   }
 }

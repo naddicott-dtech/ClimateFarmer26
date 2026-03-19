@@ -9,6 +9,7 @@
  */
 
 import type { GameState, AutoPauseReason, ClimateScenario } from '../engine/types.ts';
+import { GRID_ROWS, GRID_COLS } from '../engine/types.ts';
 import { simulateTick, getAvailableCrops } from '../engine/game.ts';
 import { getCropDefinition } from '../data/crops.ts';
 
@@ -240,6 +241,20 @@ export function getActionState(
     }
   }
 
+  // Count perennials per scope for bulk removal (2+ threshold)
+  let perennialFieldCount = 0;
+  const perennialRowCounts = new Array(GRID_ROWS).fill(0) as number[];
+  const perennialColCounts = new Array(GRID_COLS).fill(0) as number[];
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (state.grid[r][c].crop?.isPerennial) {
+        perennialFieldCount++;
+        perennialRowCounts[r]++;
+        perennialColCounts[c]++;
+      }
+    }
+  }
+
   // Cover crop eligibility (same predicate as SidePanel)
   const coverCropsEligible = isFall && state.grid.some(row => row.some(c => {
     if (c.coverCropId) return false;
@@ -280,6 +295,17 @@ export function getActionState(
       bulkActions.push(`action-cover-crop-row-${sel.row}`);
       bulkActions.push(`action-cover-crop-col-${sel.col}`);
     }
+    if (perennialRowCounts[sel.row] >= 2) {
+      bulkActions.push(`action-remove-row-${sel.row}`);
+    }
+    if (perennialColCounts[sel.col] >= 2) {
+      bulkActions.push(`action-remove-col-${sel.col}`);
+    }
+  }
+
+  // Remove trees field — only when 2+ perennials anywhere
+  if (perennialFieldCount >= 2) {
+    bulkActions.push('action-remove-all');
   }
 
   return {

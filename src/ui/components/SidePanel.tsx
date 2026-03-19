@@ -1,7 +1,7 @@
 import {
   selectedCell, selectedCellData, gameState,
   openCropMenu, dispatch, harvestBulk, waterBulk,
-  plantBulk, coverCropBulk, cropMenuOpen, availableCrops, confirmDialog,
+  plantBulk, coverCropBulk, removeBulk, cropMenuOpen, availableCrops, confirmDialog,
 } from '../../adapter/signals.ts';
 import { getCropDefinition } from '../../data/crops.ts';
 import { getGrowthProgress, getYieldPercentage, getPerennialPhase, getPerennialAgeFactor } from '../../engine/game.ts';
@@ -494,6 +494,20 @@ function BulkActions() {
     return (def.dormantSeasons?.length ?? 0) > 0 || (def.coverCropEffectiveness ?? 0) > 0;
   }));
 
+  // Count perennials for bulk removal (2+ threshold)
+  let perennialFieldCount = 0;
+  const perennialRowCounts = new Array(GRID_ROWS).fill(0) as number[];
+  const perennialColCounts = new Array(GRID_COLS).fill(0) as number[];
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (state.grid[r][c].crop?.isPerennial) {
+        perennialFieldCount++;
+        perennialRowCounts[r]++;
+        perennialColCounts[c]++;
+      }
+    }
+  }
+
   return (
     <div class={styles.section}>
       <div class={styles.sectionTitle}>Bulk Actions</div>
@@ -629,6 +643,36 @@ function BulkActions() {
             onClick={() => coverCropBulk('col', 'legume-cover', sel.col)}
           >
             Cover Crop — Col {sel.col + 1}
+          </button>
+        )}
+
+        {perennialFieldCount >= 2 && (
+          <button
+            data-testid="action-remove-all"
+            class={`${styles.actionBtn} ${styles.actionBtnRemove}`}
+            onClick={() => removeBulk('all')}
+          >
+            Remove All Trees
+          </button>
+        )}
+
+        {sel && perennialRowCounts[sel.row] >= 2 && (
+          <button
+            data-testid={`action-remove-row-${sel.row}`}
+            class={`${styles.actionBtn} ${styles.actionBtnRemove}`}
+            onClick={() => removeBulk('row', sel.row)}
+          >
+            Remove Row {sel.row + 1} Trees
+          </button>
+        )}
+
+        {sel && perennialColCounts[sel.col] >= 2 && (
+          <button
+            data-testid={`action-remove-col-${sel.col}`}
+            class={`${styles.actionBtn} ${styles.actionBtnRemove}`}
+            onClick={() => removeBulk('col', sel.col)}
+          >
+            Remove Col {sel.col + 1} Trees
           </button>
         )}
       </div>

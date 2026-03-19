@@ -33,6 +33,7 @@ export type Command =
   | { type: 'TAKE_LOAN' }  // parameterless — amount is engine-computed
   // Slice 2b: Perennial removal
   | { type: 'REMOVE_CROP'; cellRow: number; cellCol: number }
+  | { type: 'REMOVE_CROP_BULK'; scope: 'all' | 'row' | 'col'; index?: number }
   // Slice 3b: Cover crops
   | { type: 'SET_COVER_CROP'; cellRow: number; cellCol: number; coverCropId: string | null }
   | { type: 'SET_COVER_CROP_BULK'; scope: 'all' | 'row' | 'col'; index?: number; coverCropId: string | null };

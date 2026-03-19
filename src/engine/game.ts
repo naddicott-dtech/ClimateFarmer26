@@ -174,6 +174,9 @@ export function processCommand(state: GameState, command: Command, scenario: Cli
     case 'REMOVE_CROP':
       result = processRemoveCrop(state, command.cellRow, command.cellCol);
       break;
+    case 'REMOVE_CROP_BULK':
+      result = processRemoveCropBulk(state, command.scope, command.index);
+      break;
     case 'SET_COVER_CROP':
       result = processSetCoverCrop(state, command.cellRow, command.cellCol, command.coverCropId);
       break;
@@ -733,6 +736,41 @@ function processRemoveCrop(state: GameState, row: number, col: number): CommandR
   cell.crop = null;
 
   return { success: true, cost };
+}
+
+function processRemoveCropBulk(state: GameState, scope: 'all' | 'row' | 'col', index?: number): CommandResult {
+  const scopeError = validateScopeIndex(scope, index);
+  if (scopeError) return { success: false, reason: scopeError };
+
+  const removable = getCellsInScope(state, scope, index).filter(c => c.crop?.isPerennial);
+
+  if (removable.length < 2) {
+    return { success: false, reason: removable.length === 0
+      ? 'No trees to remove in this area.'
+      : 'Use single removal for individual trees.' };
+  }
+
+  let totalCost = 0;
+  for (const cell of removable) {
+    const def = getCropDefinition(cell.crop!.cropId);
+    totalCost += def.removalCost ?? 0;
+  }
+
+  if (state.economy.cash < totalCost) {
+    return { success: false, reason: `Not enough cash. Removal cost: $${totalCost}, Available: $${Math.floor(state.economy.cash)}.` };
+  }
+
+  for (const cell of removable) {
+    const def = getCropDefinition(cell.crop!.cropId);
+    const cost = def.removalCost ?? 0;
+    state.economy.cash -= cost;
+    state.economy.yearlyExpenses += cost;
+    state.tracking.currentExpenses.removal += cost;
+    cell.crop = null;
+  }
+
+  addNotification(state, 'info', `Removed ${removable.length} tree(s). Total cost: $${totalCost.toLocaleString()}.`);
+  return { success: true, cellsAffected: removable.length, cost: totalCost };
 }
 
 // ============================================================================
