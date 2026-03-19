@@ -2217,6 +2217,7 @@ export const STORYLETS: readonly Storylet[] = [
         effects: [
           { type: 'modify_cash', amount: -600 },
           { type: 'modify_nitrogen_all', amount: 30 },
+          { type: 'set_flag', flag: 'organic_violation_this_year', value: true },
           { type: 'add_notification', message: 'Emergency nitrogen applied across your fields. Fertility boosted short-term, but the underlying organic matter decline continues.', notificationType: 'event_result' },
         ],
         followUpText: 'Santos nods as the fertilizer is applied. "This will help your crops right now — the nitrogen boost should be noticeable within a few weeks. But I want to be clear: this is treating the symptom, not the disease. Your soil organic matter is what produces nitrogen naturally through microbial activity. Every tenth of a percent you lose reduces your soil\'s ability to feed your crops on its own. Eventually, you\'d be buying all your nitrogen instead of growing it.\n\nThe way out is cover crops. Plant them every fall — legumes like crimson clover fix atmospheric nitrogen into your soil for free, and all cover crops add organic matter when they decompose in spring. It\'s slow — we\'re talking years, not weeks — but it\'s the only way to rebuild what your soil has lost. The fertilizer buys you time. Cover crops buy you a future."',
@@ -2566,7 +2567,7 @@ export const STORYLETS: readonly Storylet[] = [
       { type: 'min_year', year: 11 },
       { type: 'max_year', year: 16 },
       { type: 'total_planted_gte', cellCount: 40 },
-      { type: 'has_any_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
+      { type: 'has_harvestable_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
       { type: 'season', season: 'summer' },
     ],
     priority: 90,

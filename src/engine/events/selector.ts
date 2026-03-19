@@ -138,6 +138,18 @@ export function evaluateCondition(
       }
       return false;
     }
+    case 'has_harvestable_crop_in': {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const crop = state.grid[r][c].crop;
+          if (crop && condition.cropIds.includes(crop.cropId) &&
+              (crop.growthStage === 'harvestable' || crop.growthStage === 'overripe') &&
+              !crop.isDormant &&
+              !(crop.isPerennial && crop.harvestedThisSeason)) return true;
+        }
+      }
+      return false;
+    }
     case 'total_planted_gte': {
       let count = 0;
       for (let r = 0; r < GRID_ROWS; r++)

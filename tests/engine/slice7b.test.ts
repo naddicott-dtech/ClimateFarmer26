@@ -331,9 +331,11 @@ describe('§7b.4: Santos advisor storylets', () => {
         e => e.type === 'modify_nitrogen_all' && e.amount > 0
       );
       expect(hasNitrogenEffect).toBe(true);
-      // No dead-state flags — only add effects that have readers
-      const hasSetFlag = buyChoice!.effects.some(e => e.type === 'set_flag');
-      expect(hasSetFlag).toBe(false);
+      // Synthetic fertilizer must trigger organic violation (year-end compliance check reads this flag)
+      const hasOrganicViolation = buyChoice!.effects.some(
+        e => e.type === 'set_flag' && e.flag === 'organic_violation_this_year' && e.value === true
+      );
+      expect(hasOrganicViolation).toBe(true);
     });
 
     it('buy-fertilizer-emergency choice has followUpText', () => {

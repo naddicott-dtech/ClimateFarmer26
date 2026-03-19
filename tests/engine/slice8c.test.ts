@@ -337,10 +337,10 @@ describe('Slice 8c — forum-staffing-crunch storylet', () => {
     expect(s.preconditions).toContainEqual({ type: 'season', season: 'summer' });
   });
 
-  it('has_any_crop_in includes orchard/tree crop IDs but NOT processing-tomatoes', () => {
+  it('uses has_harvestable_crop_in (not has_any_crop_in) for orchard crop gate', () => {
     const s = getStorylet()!;
-    const cond = s.preconditions.find(p => p.type === 'has_any_crop_in') as
-      { type: 'has_any_crop_in'; cropIds: string[] } | undefined;
+    const cond = s.preconditions.find(p => p.type === 'has_harvestable_crop_in') as
+      { type: 'has_harvestable_crop_in'; cropIds: string[] } | undefined;
     expect(cond).toBeDefined();
     expect(cond!.cropIds).not.toContain('processing-tomatoes');
     expect(cond!.cropIds).toContain('almonds');
@@ -361,22 +361,34 @@ describe('Slice 8c — forum-staffing-crunch storylet', () => {
     expect(evalCond({ type: 'total_planted_gte', cellCount: 40 }, state)).toBe(true);
   });
 
-  it('has_any_crop_in gate: only corn/wheat → false (mechanized annual farm skipped)', () => {
+  it('has_harvestable_crop_in gate: immature almonds → false', () => {
     const state = makeState();
-    plantCells(state, 64, 'silage-corn');
+    plantCells(state, 40, 'almonds');
+    // Default makeCrop sets growthStage: 'vegetative' — not harvestable
     expect(evalCond(
-      { type: 'has_any_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
+      { type: 'has_harvestable_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
       state,
     )).toBe(false);
   });
 
-  it('has_any_crop_in gate: pistachios planted → true', () => {
+  it('has_harvestable_crop_in gate: harvestable almonds → true', () => {
     const state = makeState();
-    plantCells(state, 40, 'pistachios');
+    plantCells(state, 40, 'almonds');
+    state.grid[0][0].crop!.growthStage = 'harvestable';
     expect(evalCond(
-      { type: 'has_any_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
+      { type: 'has_harvestable_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
       state,
     )).toBe(true);
+  });
+
+  it('has_harvestable_crop_in gate: only corn/wheat → false', () => {
+    const state = makeState();
+    plantCells(state, 64, 'silage-corn');
+    state.grid[0][0].crop!.growthStage = 'harvestable';
+    expect(evalCond(
+      { type: 'has_harvestable_crop_in', cropIds: ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'] },
+      state,
+    )).toBe(false);
   });
 
   it('maxOccurrences is 2', () => {
@@ -447,5 +459,78 @@ describe('Slice 8c — forum-staffing-crunch effect shapes', () => {
       (e): e is YieldModEffect => e.type === 'modify_yield_modifier',
     );
     expect(yieldEffects.some(e => e.cropId === '*')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §6 — has_harvestable_crop_in condition
+// ---------------------------------------------------------------------------
+
+describe('Slice 8c — has_harvestable_crop_in condition', () => {
+  const cropIds = ['almonds', 'citrus-navels', 'pistachios', 'heat-avocado'];
+
+  it('returns false when no crops are planted', () => {
+    const state = makeState();
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(false);
+  });
+
+  it('returns false when matching crop is vegetative (immature)', () => {
+    const state = makeState();
+    plantCells(state, 10, 'almonds');
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(false);
+  });
+
+  it('returns true when matching crop is harvestable', () => {
+    const state = makeState();
+    plantCells(state, 10, 'almonds');
+    state.grid[0][0].crop!.growthStage = 'harvestable';
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(true);
+  });
+
+  it('returns true when matching crop is overripe', () => {
+    const state = makeState();
+    plantCells(state, 5, 'citrus-navels');
+    state.grid[0][0].crop!.growthStage = 'overripe';
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(true);
+  });
+
+  it('returns false when matching crop is dormant even if harvestable stage', () => {
+    const state = makeState();
+    plantCells(state, 5, 'almonds');
+    state.grid[0][0].crop!.growthStage = 'harvestable';
+    state.grid[0][0].crop!.isDormant = true;
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(false);
+  });
+
+  it('returns false when perennial already harvested this season', () => {
+    const state = makeState();
+    plantCells(state, 5, 'almonds');
+    state.grid[0][0].crop!.growthStage = 'harvestable';
+    state.grid[0][0].crop!.isPerennial = true;
+    state.grid[0][0].crop!.harvestedThisSeason = true;
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(false);
+  });
+
+  it('returns false when harvestable crop is not in the cropIds list', () => {
+    const state = makeState();
+    plantCells(state, 10, 'silage-corn');
+    state.grid[0][0].crop!.growthStage = 'harvestable';
+    expect(evalCond({ type: 'has_harvestable_crop_in', cropIds }, state)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §7 — Emergency nitrogen organic violation (bug fix)
+// ---------------------------------------------------------------------------
+
+describe('Slice 8c — buy-fertilizer-emergency organic violation', () => {
+  it('sets organic_violation_this_year flag', () => {
+    const s = STORYLETS.find(s => s.id === 'advisor-soil-trajectory')!;
+    const choice = s.choices.find(c => c.id === 'buy-fertilizer-emergency')!;
+    const setFlag = choice.effects.find(
+      (e): e is SetFlagEffect => e.type === 'set_flag' && e.flag === 'organic_violation_this_year',
+    );
+    expect(setFlag).toBeDefined();
+    expect(setFlag!.value).toBe(true);
   });
 });
